@@ -1,0 +1,20 @@
+NBody :
+  Domain :
+    fmt : BCCLightcone
+    rmin : 0.0
+    rmax : 500.0
+    nside : 4
+    nest : True
+  partpath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
+  denspath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/calcrnn/
+  hinfopath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
+  halofile : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/cut_reform_out_0.parents
+
+Cosmology:
+  omega_m : 0.286
+  omega_b : 0.046
+  h : 1.0
+  n_s : 0.96
+  sigma8 : 0.82
+  w : -1.0
+
