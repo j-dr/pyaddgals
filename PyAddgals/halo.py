@@ -1,6 +1,5 @@
-from __future__ import print_function, division
+nbodyfrom __future__ import print_function, division
 from halotools.sim_analysis import TabularAsciiReader
-import pyccl as ccl
 
 
 class HaloCatalog(object):
@@ -75,6 +74,6 @@ class HaloCatalog(object):
         self.catalog['rs']     = catalog['rs'] / 1000. #convert kpc to mpc
 
         #calculate z from r
-        self.catalog['z']     = 1/ccl.scale_factor_of_chi(self.nbody.cosmo, r) - 1
+        self.catalog['z']     = cosmo.zofR(r)
 
         del r

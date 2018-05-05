@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+nbodyfrom __future__ import print_function, division
 from pixlc.pixLC import read_radial_bin, nest2peano
 from glob import glob
 import healpy as hp
@@ -115,12 +115,12 @@ class ParticleCatalog(object):
 
                 pix_file, peano_idx = self.getFilePixels(pix, r)
 
-                for p in pix_file:
+                    for p in pix_file:
 
-                    f = '{}/snapshot_Lightcone_{}_{}'.fmat(partpath, r, p)
-                    hdr, idx = read_radial_bin(f)
+                        f = '{}/snapshot_Lightcone_{}_{}'.fmat(partpath, r, p)
+                        hdr, idx = read_radial_bin(f)
 
-                    Npart += np.sum(idx[peano_idx])
+                        Npart += np.sum(idx[peano_idx])
         else:
             raise(ValueError("Only BCCLightcone reading is currently implemented"))
 
@@ -349,7 +349,6 @@ class ParticleCatalog(object):
         self.catalog['rhalo'] = hinfo['rhalo']
         self.catalog['mass'] = hinfo['mass']
         self.catalog['radius'] = hinfo['radius']
-        self.catalog['z'] = 1 / \
-            ccl.scale_factor_of_chi(self.nbody.cosmo, r) - 1
+        self.catalog['z'] = cosmo.zofR(r)
 
         del r

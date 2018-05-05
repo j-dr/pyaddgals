@@ -16,14 +16,17 @@ class Domain(object):
             self.subbox = None
             self.lbox = None
 
-            if rmin is None:
+            if not rmin:
                 raise(ValueError("rmin, must be defined for BCCLightcone domain"))
 
-            if rmax is None:
+            if not rmax:
                 raise(ValueError("rmax, must be defined for BCCLightcone domain"))
 
-            if nside is None:
+            if not nside:
                 raise(ValueError("nside, must be defined for BCCLightcone domain"))
+
+            if not nest:
+                raise(ValueError("nest, must be defined for BCCLightcone domain"))
 
             self.rmin = rmin
             self.rmax = rmax
@@ -56,12 +59,12 @@ class Domain(object):
 
         """
 
-        rmin = ccl.comoving_radial_distance(cosmo, 1 / (1 + self.domain.zmin))
-        rmax = ccl.comoving_radial_distance(cosmo, 1 / (1 + self.domain.zmax))
+        rmin = self.nbody.cosmo.rofZ(self.domain.zmin)
+        rmax = self.nbody.cosmo.rofZ(self.domain.zmax)
 
         return rmin, rmax
 
-    def decomp(self, comm, rank, ntasks):
+    def domainDecomp(self, comm, rank, ntasks):
         """Perform domain decomposition, creating domain objects for each process. Store information within object.
 
         Parameters
@@ -83,8 +86,8 @@ class Domain(object):
         self.ntasks = ntasks
         self.comm = comm
 
-        if self.fmt == 'BCCLightcone':
+        if fmt == 'BCCLightcone':
             pass
 
-        if self.fmt == 'Snapshot':
+        if fmt == 'Snapshot':
             pass

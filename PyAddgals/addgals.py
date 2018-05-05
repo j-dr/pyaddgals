@@ -5,6 +5,7 @@ import pyccl as ccl
 import argparse
 
 from .config import parseConfig
+from .cosmology import Cosmology
 from .domain import Domain
 from .nBody import NBody
 
@@ -22,14 +23,12 @@ def main():
     cc = config['Cosmology']
     nb_config = config['NBody']
 
-    cosmo = ccl.Cosmology(Omega_c=float(cc['omega_m']) - float(cc['omega_b']),
-                            h=1.0, n_s=float(cc['n_s']),
-                            sigma8=float(cc['sigma8']), w=float(cc['w']))
+    cosmo = Cosmology(**cc)
 
     domain = Domain(**nb_config.pop(['Domain']))
     domain.decomp(comm, comm.rank, comm.ntasks)
 
-    nbody = NBody(basepath, cosmo, domain, **nb_config)
+    nbody = NBody(cosmo, domain, **nb_config)
 
     nbody.read()
     nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
