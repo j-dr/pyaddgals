@@ -24,6 +24,6 @@ def evalKeys(cfg):
 def parseConfig(filename):
 
     cfg = readCfg(filename)
-    cfg = evalKeys(cfg)
+    evalKeys(cfg)
 
     return cfg
