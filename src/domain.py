@@ -15,8 +15,6 @@ class Domain(object):
 
             self.subbox = None
             self.lbox = None
-            self.nside = nside
-            self.nest = nest
 
             if not rmin:
                 raise(ValueError("rmin, must be defined for BCCLightcone domain"))
@@ -24,8 +22,16 @@ class Domain(object):
             if not rmax:
                 raise(ValueError("rmax, must be defined for BCCLightcone domain"))
 
+            if not nside:
+                raise(ValueError("nside, must be defined for BCCLightcone domain"))
+
+            if not nest:
+                raise(ValueError("nest, must be defined for BCCLightcone domain"))
+
             self.rmin = rmin
             self.rmax = rmax
+            self.nside = nside
+            self.nest = nest
 
         if fmt == 'Snapshot':
 

@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from mpi4py import MPI
 import numpy as np
+import pyccl as ccl
 import argparse
 
 from .config import parseConfig
@@ -15,15 +16,15 @@ def main():
     args = parser.parse_args()
     config_file = args.configfile
 
-    config      = parseConfig(config_file)
-    comm        = MPI.COMM_WORLD
+    config = parseConfig(config_file)
+    comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
     nb_config = config['NBody']
 
-    cosmo = ccl.Cosmology(Omega_c=cc['Omega_m']-cc['Omega_b'], h=cc['h'],
-                            n_s=cc['n_s'], sigma8=cc['sigma8'], w=cc['w'])
-
+    cosmo = ccl.Cosmology(Omega_c=float(cc['omega_m']) - float(cc['omega_b']),
+                            h=1.0, n_s=float(cc['n_s']),
+                            sigma8=float(cc['sigma8']), w=float(cc['w']))
 
     domain = Domain(**nb_config.pop(['Domain']))
     domain.decomp(comm, comm.rank, comm.ntasks)
