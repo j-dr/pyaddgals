@@ -1,4 +1,4 @@
-nbodyfrom __future__ import print_function, division
+from __future__ import print_function, division
 from halotools.sim_analysis import TabularAsciiReader
 import pyccl as ccl
 

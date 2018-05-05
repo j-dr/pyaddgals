@@ -1,13 +1,15 @@
 from __future__ import print_function, division
-import pyccl as ccl
 
+from .particle import ParticleCatalog
+from .halo import HaloCatalog
+from .galaxy import GalaxyCatalog
 
 class NBody(object):
     """Object which stores all nbody data.
     """
 
     def __init__(self, cosmo, domain, partpath=None, denspath=None,
-                 hinfopath=None, halopath=None):
+                 hinfopath=None, halofile=None):
         """Create NBody object.
 
         Parameters
