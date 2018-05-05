@@ -8,7 +8,7 @@ class NBody(object):
 
     def __init__(self, cosmo, domain, partpath=None, denspath=None,
                  hinfopath=None, halopath=None):
-        """Create lightcone object.
+        """Create NBody object.
 
         Parameters
         ----------
