@@ -29,7 +29,7 @@ class ParticleCatalog(object):
 
     def read(self):
 
-        if self.nbody.domain.fmat == 'BCCLightcone':
+        if self.nbody.domain.fmt == 'BCCLightcone':
 
             self.readBCCLightcone()
         else:
@@ -103,7 +103,7 @@ class ParticleCatalog(object):
         """
         Npart = 0
 
-        if self.nbody.fmat == 'BCCLightcone':
+        if self.nbody.domain.fmt == 'BCCLightcone':
             partpath = self.nbody.partpath
             pix = self.nbody.domain.pix
             nside = self.nbody.domain.nside
@@ -117,7 +117,7 @@ class ParticleCatalog(object):
 
                 for p in pix_file:
 
-                    f = '{}/snapshot_Lightcone_{}_{}'.fmat(partpath, r, p)
+                    f = '{}/snapshot_Lightcone_{}_{}'.format(partpath, r, p)
                     hdr, idx = read_radial_bin(f)
 
                     Npart += np.sum(idx[peano_idx])

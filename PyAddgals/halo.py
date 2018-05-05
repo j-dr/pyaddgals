@@ -1,5 +1,5 @@
-nbodyfrom __future__ import print_function, division
-from halotools.sim_analysis import TabularAsciiReader
+from __future__ import print_function, division
+from halotools.sim_manager import TabularAsciiReader
 
 
 class HaloCatalog(object):
@@ -30,8 +30,8 @@ class HaloCatalog(object):
 
     def getColumnDict(self, fmat):
 
-        if fmat='BCCLightcone':
-            return {'mass':(2,np.float), 'x'(8,np.float), 'y':(9,np.float),
+        if fmat=='BCCLightcone':
+            return {'mass':(2,np.float), 'x':(8,np.float), 'y':(9,np.float),
                         'z':(10,np.float), 'vx':(11,np.float),
                         'vy':(12,np.float), 'vz':(13,np.float),
                         'rs':(6,np.float), 'radius':(5,np.float),

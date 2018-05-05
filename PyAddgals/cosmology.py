@@ -25,7 +25,7 @@ class Cosmology(object):
 
 
         self.omega_m = float(omega_m)
-        self.omega_b = float(omega_b
+        self.omega_b = float(omega_b)
         self.n_s = float(n_s)
         self.w = float(w)
         self.m_nu = float(m_nu)
@@ -39,8 +39,8 @@ class Cosmology(object):
         else:
             self.sigma8 = float(sigma8)
 
-        self._cosmo = ccl.Cosmology(Omega_c=self.omega_c, Omega_b=self.omega_b
-                                    h=1.0, n_s=self.n_s, sigma8=self.sigma8
+        self._cosmo = ccl.Cosmology(Omega_c=self.omega_c, Omega_b=self.omega_b,
+                                    h=1.0, n_s=self.n_s, sigma8=self.sigma8,
                                     A_s=self.a_s, w0=self.w, m_nu=self.m_nu,
                                     N_nu_rel=self.n_eff,
                                     N_nu_mass=self.n_nu_mass)
