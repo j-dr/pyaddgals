@@ -36,6 +36,19 @@ class ParticleCatalog(object):
             raise(NotImplementedError(
                 "Only BCCLightcone reading is currently implemented"))
 
+    def delete(self):
+        """Delete particle catalog
+
+        Returns
+        -------
+        None
+
+        """
+
+        for k in self.catalog.keys():
+            del self.catalog[k]
+
+
     def getFilePixels(self, r):
         """Given a healpix cell and radius for a given nside, figure out which
         lightcone pixels we need to read

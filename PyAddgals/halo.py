@@ -27,6 +27,17 @@ class HaloCatalog(object):
         if self.nbody.domain.fmat == 'BCCLightcone':
             self.readRockstarLightconeFile()
 
+    def delete(self):
+        """Delete halo catalog
+
+        Returns
+        -------
+        None
+
+        """
+
+        for k in self.catalog.keys():
+            del self.catalog[k]
 
     def getColumnDict(self, fmat):
 

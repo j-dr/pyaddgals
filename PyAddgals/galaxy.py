@@ -36,5 +36,24 @@ class GalaxyCatalog(object):
         self.catalog = model.paintGalaxies(self.lightcone)
 
     def writeCatalog(self):
+        """Write galaxy catalog to disk.
+
+        Returns
+        -------
+        None
+        """
 
         pass
+
+    def delete(self):
+        """Delete galaxy catalog
+
+        Returns
+        -------
+        None
+
+        """
+
+        for k in self.catalog.keys():
+
+            del self.catalog[k]

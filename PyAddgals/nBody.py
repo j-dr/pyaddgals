@@ -64,3 +64,8 @@ class NBody(object):
 
         self.particleCatalog.read()
         self.haloCatalog.read()
+
+    def delete(self):
+        self.particleCatalog.delete()
+        self.haloCatalog.delete()
+        self.galaxyCatalog.delete()
