@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from itertools import product
+from copy import deepcopy as copy
 
 
 class Domain(object):
@@ -169,7 +170,7 @@ class Domain(object):
 
                 d.rmin = self.rbins[d.rbin]
                 d.rmax = self.rbins[d.rmax]
-                
+
             elif self.fmt=='Snapshot':
                 d.subbox = self.domains_task[i]
 
