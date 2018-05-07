@@ -13,9 +13,9 @@ from .nBody import NBody
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('configfile', type=np.str, help='Config file')
+    parser.add_argument('config_file', type=np.str, help='Config file')
     args = parser.parse_args()
-    config_file = args.configfile
+    config_file = args.config_file
 
     config = parseConfig(config_file)
     comm = MPI.COMM_WORLD
@@ -28,7 +28,11 @@ def main():
     domain = Domain(**nb_config.pop(['Domain']))
     domain.decomp(comm, comm.rank, comm.ntasks)
 
-    nbody = NBody(cosmo, domain, **nb_config)
+    for d in domain.yieldDomains():
+        nbody = NBody(cosmo, d, **nb_config)
 
-    nbody.read()
-    nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
+        nbody.read()
+        nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
+        nbody.galaxyCatalog.write()
+
+        nbody.delete()
