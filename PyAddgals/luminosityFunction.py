@@ -4,10 +4,29 @@ import numpy as np
 
 class LuminosityFunction(object):
 
-    def __init__(self, params, name=None):
+    def __init__(self, params, name=None, magmin=25.0):
+        """Initialize LuminosityFunction object.
+
+        Parameters
+        ----------
+        params : array
+            Array of parameters for the LF
+        name : str
+            Name of the LF
+        magmin : float
+            Faintest magniutude that we want to populate the simulation
+            to.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
 
         self.name = name
         self.params = params
+        self.magmin = float(magmin)
 
     def genLuminosityFunction(self, lums, zs):
 
@@ -35,6 +54,30 @@ class LuminosityFunction(object):
 
     def evolveParams(self, z):
         pass
+
+    def drawLuminosities(self, cosmo, domain):
+
+        zmin = domain.zmin
+        zmean = domain.zmean
+        volume = domain.volume
+
+        #calculate faintest luminosity to use given
+        #the apparent magnitude limit that we want to
+        #populate to
+        lummin = self.magmin - cosmo.distanceModulus(z)
+        lums = np.linspace(-25, lummin, 10000)
+
+        #get the parameters at the
+        params = self.evolveParams(z)
+        number_density = self.calcNumberDensity(params, lums)
+        cdf_lum = np.cumsum(number_density)
+        cdf_lum /= p_of_lum[-1]
+
+        n_gals = number_density[-1] * volume
+        rands = np.random.uniform(size=n_gals)
+        lum_gals = cdf_lum.searchsorted(rands)
+
+        return lum_gals
 
 
 class DSGLuminosityFunction(LuminosityFunction):
@@ -79,6 +122,7 @@ class DSGLuminosityFunction(LuminosityFunction):
             np.exp(-(lums - p[6]) ** 2 / (2 * p[7] ** 2))
 
         return lums, phi
+
 
 
 def read_tabulated_loglf(filename):
