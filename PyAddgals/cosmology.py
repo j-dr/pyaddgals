@@ -81,3 +81,21 @@ class Cosmology(object):
 
         r = ccl.comoving_radial_distance(self._cosmo, 1 / (z + 1.))
         return r
+
+    def distanceModulus(self, z):
+        """Compute the distance modulus as a function of redshift
+
+        Parameters
+        ----------
+        z : array
+            redshifts to compute distance modulus at
+
+        Returns
+        -------
+        distance_modulus : array
+            distance modulus at input redshifts
+
+        """
+
+        distance_modulus = ccl.distance_modulus(self._cosmo, 1 / (z + 1.))
+        return distance_modulus
