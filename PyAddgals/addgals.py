@@ -25,13 +25,14 @@ def main():
 
     cosmo = Cosmology(**cc)
 
-    domain = Domain(**nb_config.pop(['Domain']))
+    domain = Domain(cosmo, **nb_config.pop(['Domain']))
     domain.decomp(comm, comm.rank, comm.ntasks)
 
     for d in domain.yieldDomains():
         nbody = NBody(cosmo, d, **nb_config)
 
         nbody.read()
+
         nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
         nbody.galaxyCatalog.write()
 

@@ -9,10 +9,11 @@ class Domain(object):
     """
 
 
-    def __init__(self, fmt='BCCLightcone', nside=4, nest=True,
+    def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, rbins=None, lbox=None, nbox=None):
 
         self.fmt = fmt
+        self.cosmo = cosmo
 
         if fmt == 'BCCLightcone':
 
@@ -46,7 +47,7 @@ class Domain(object):
             self.nest = None
 
             if not lbox:
-                raise(ValueError("lBox, must be defined for Snapshot domain"))
+                raise(ValueError("lbox, must be defined for Snapshot domain"))
             if not nbox:
                 raise(ValueError("subbox, must be defined for Snapshot domain"))
 
@@ -133,15 +134,44 @@ class Domain(object):
 
         if self.fmt == 'BCCLightcone':
             #get the pixels that overlap with the octants that we're using
-            self.allpix = []
+            allpix = []
 
+            #high resolution nside that we'll use to calculate areas of pixels
+            #that overlap with the octants in question.
+            hrnside = 2048
             #for now only use two octants
             for i in range(2):
-                self.allpix.extend(self.octVert(i))
+                vec = self.octVert(i)
 
-            self.allpix = np.unique(self.allpix)
+                #only want pixels whose centers fall within the octants
+                allpix.append(hp.query_polygon(hrnside, vec,
+                                                    inclusive=False,
+                                                    nest=self.nest))
+
+            allpix = np.hstack(allpix)
+            allpix = np.unique(allpix)
+
+            #get pixels at actual nside we want to use
+            if self.nest:
+                ud_map = hp.ud_grade(np.arange(12*self.nside**2), hrnside,
+                                        order_in='NESTED', order_out='NESTED')
+            else:
+                ud_map = hp.ud_grade(np.arange(12*self.nside**2), hrnside)
+
+            allpix = ud_map[allpix]
+
+            #calculate fraction of area
+            pcounts, e = np.histogram(allpix, np.arange(12*self.nside**2 + 1))
+            self.allpix = np.unique(allpix)
+            self.allpix.sort()
+
+            self.fracarea = pcounts[allpix] / (2 * np.log2(hdnside /
+                                                            self.nside))
 
             #get radial bins s.t. each bin has equal volume
+
+            NEED TO DEAL WITH OVERLAPS!
+
             dl = self.rmax - self.rmin
             r1 = dl / (self.nrbins)**(1/3)
             self.rbins = np.arange(self.nrbins+1)**(1/3) * r1 + self.rmin
@@ -170,8 +200,45 @@ class Domain(object):
 
                 d.rmin = self.rbins[d.rbin]
                 d.rmax = self.rbins[d.rmax]
+                d.zmin = self.cosmo.zofR(d.rmin)
+                d.zmax = self.cosmo.zofR(d.rmax)
+                d.rmean = 0.75 * (d.rmax - d.rmin) # volume weighted average radius
+                d.zmean = self.cosmo.zofR(d.rmean)
 
             elif self.fmt=='Snapshot':
                 d.subbox = self.domains_task[i]
 
             yield d
+
+    def getVolume(self):
+        """Get the volume of this domain in comoving Mpc/h
+
+        Returns
+        -------
+        volume : float
+            The volume of the simulation domain
+
+        """
+
+        if hasattr(self, 'volume'):
+            return self.volume
+
+        if self.fmt == 'BCCLightcone':
+            if not hasattr(self, 'pix'):
+                raise(ValueError('pix must be defined to calculate volume'))
+
+            pidx = self.allpix.searchsorted()
+            pixarea = hp.nside2pixarea(self.nside, degrees=True)
+            pixarea *= self.fracarea[pidx]
+
+            self.volume = 4 * np.pi * (pixarea / 41253.) * (self.rmax ** 3
+                                                        - self.rmin **3 ) / 3
+        elif self.fmt == 'Snapshot':
+
+            self.volume = self.lbox ** 3 / self.nbox ** 3
+
+        else:
+            raise(ValueError('Cannot calculate volumes for fmt {}'.format(self.fmt)))
+
+
+        return self.volume
