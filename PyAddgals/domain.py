@@ -210,6 +210,19 @@ class Domain(object):
 
             yield d
 
+    def getArea(self):
+
+        if hasattr(self, 'area'):
+            return self.pixarea
+
+        else:
+            pidx = self.allpix.searchsorted(self.pix)
+            self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
+            self.pixarea *= self.fracarea[pidx]
+
+        return self.pixarea
+
+
     def getVolume(self):
         """Get the volume of this domain in comoving Mpc/h
 
@@ -227,7 +240,7 @@ class Domain(object):
             if not hasattr(self, 'pix'):
                 raise(ValueError('pix must be defined to calculate volume'))
 
-            pidx = self.allpix.searchsorted()
+            pidx = self.allpix.searchsorted(self.pix)
             pixarea = hp.nside2pixarea(self.nside, degrees=True)
             pixarea *= self.fracarea[pidx]
 
