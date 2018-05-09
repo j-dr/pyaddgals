@@ -5,7 +5,8 @@ class GalaxyModel(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self):
+    def __init__(self, nbody):
+        self.nbody = nbody
         pass
 
     @abstractmethod

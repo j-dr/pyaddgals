@@ -5,8 +5,11 @@ from . import luminosityFunction
 
 class ADDGALSModel(GalaxyModel):
 
-    def __init__(self, luminosityFunctionConfig=None, rdelModelConfig=None,
+    def __init__(self, nbody, luminosityFunctionConfig=None,
+                    rdelModelConfig=None,
                     fredModelConfig=None, colorModelConfig=None):
+
+        self.nbody = nbody
 
         if luminosityFunctionConfig is None:
             raise(ValueError('ADDGALS model must define luminosityFunctionConfig'))
@@ -30,7 +33,7 @@ class ADDGALSModel(GalaxyModel):
         self.luminosityFunction = self.luminosityFunction(**luminosityFunctionConfig)
 
 
-    def paintGalaxies(self, nbody):
+    def paintGalaxies(self):
         """Paint galaxies into nbody using ADDGALS
 
         Parameters
