@@ -1,6 +1,8 @@
 from __future__ import print_function, division
 import numpy as np
+from addgalsModel import ADDGALSModel
 
+_available_models = ['ADDGALSModel']
 
 class GalaxyCatalog(object):
     """
@@ -27,8 +29,12 @@ class GalaxyCatalog(object):
         """
 
         model_class = config.keys()[0]
-        model = getattr(., model_class)
-        model = model(**config)
+
+        if not (model_class in _available_models):
+            raise(ValueError("Model {} is not implemented".format(model_class)))
+
+        if model_class == 'ADDGALSModel':
+            model = ADDGALSModel(**config['ADDGALSModel'])
 
         self.catalog = model.paintGalaxies(self.lightcone)
 

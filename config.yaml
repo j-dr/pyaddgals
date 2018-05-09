@@ -3,8 +3,10 @@ NBody :
     fmt : BCCLightcone
     rmin : 0.0
     rmax : 500.0
+    nrbins : 1
     nside : 4
     nest : True
+    pixlist : [0]
   partpath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
   denspath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/calcrnn/
   hinfopath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
@@ -18,3 +20,14 @@ Cosmology:
   sigma8 : 0.82
   w : -1.0
 
+GalaxyModel :
+  ADDGALSModel :
+    luminosityFunctionConfig : 
+      modeltype : DSGLuminosityFunction
+      magmin : 25.0
+    rdelModelConfig : 
+      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/DSG_0.684_0.17.yaml
+    redFractionModelConfig : 
+      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
+    colorModelConfig :
+      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/combined_dr6_cooper.dat

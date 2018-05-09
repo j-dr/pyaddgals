@@ -105,7 +105,7 @@ class ParticleCatalog(object):
         return pix_file, peano_idx
 
 
-    def getNPartAll(self):
+    def getNpartAll(self):
         """Get number of particles to be read from nbody.
 
         Returns
@@ -120,13 +120,12 @@ class ParticleCatalog(object):
             partpath = self.nbody.partpath
             pix = self.nbody.domain.pix
             nside = self.nbody.domain.nside
-            rmin, rmax = self.nbody.getRadialLimits()
-            rpmin = int(rmin//25.)
-            rpmax = int(rmax//25.)
+            rpmin = int(self.nbody.domain.rmin//25.)
+            rpmax = int(self.nbody.domain.rmax//25.)
 
             for r in range(rpmin, rpmax + 1):
 
-                pix_file, peano_idx = self.getFilePixels(pix, r)
+                pix_file, peano_idx = self.getFilePixels(r)
 
                 for p in pix_file:
 
@@ -308,7 +307,7 @@ class ParticleCatalog(object):
         rpmin = int(rmin // 25)
         rpmax = int(rmax // 25)
 
-        Npart = self.getNpartAll(partpath)
+        Npart = self.getNpartAll()
 
         count = 0
         hidtype = np.dtype([('haloid', np.int64),
@@ -324,7 +323,7 @@ class ParticleCatalog(object):
 
         for r in range(rpmin, rpmax + 1):
 
-            pix_file, peano_idx = self.getFilePixels(pix, r)
+            pix_file, peano_idx = self.getFilePixels(r)
 
             for p in pix_file:
 
@@ -335,11 +334,11 @@ class ParticleCatalog(object):
                 (hdr, idx, posi, veli, idsi), npart_read, npart_seek, npart_read_cum = self.readPartialRadialBin(fp, peano_idx,
                                     read_pos=True, read_vel=True, read_ids=True)
 
-                rnni = readPartialPartRnn(fr, peano_idx, npart_read, npart_seek,
-                                          npart_read_cum)
+                rnni = self.readPartialPartRnn(fr, peano_idx, npart_read, npart_seek,
+                                               npart_read_cum)
 
-                hinfoi = readPartialHinfo(fh, peano_idx, npart_read, npart_seek,
-                                          npart_read_cum, np.sum(idx))
+                hinfoi = self.readPartialHinfo(fh, peano_idx, npart_read, npart_seek,
+                                               npart_read_cum, np.sum(idx))
 
                 pos[count:count + npart_read_cum[-1]] = posi.reshape(-1, 3)
                 vel[count:count + npart_read_cum[-1]] = veli.reshape(-1, 3)
@@ -353,15 +352,18 @@ class ParticleCatalog(object):
         self.catalog = {}
 
         # calculate z from radii
-        r = np.sqrt(np.sum(self.pos**2, axis=1))
-        self.catalog['pos'] = pos
-        self.catalog['vel'] = vel
-        self.catalog['id'] = ids
-        self.catalog['rnn'] = rnn
-        self.catalog['haloid'] = hinfo['haloid']
-        self.catalog['rhalo'] = hinfo['rhalo']
-        self.catalog['mass'] = hinfo['mass']
-        self.catalog['radius'] = hinfo['radius']
-        self.catalog['z'] = cosmo.zofR(r)
+        r = np.sqrt(np.sum(pos**2, axis=1))
+        idx = (self.nbody.domain.rmin <= r) & (r < self.nbody.domain.rmax)
+        r = r[idx]
+
+        self.catalog['pos'] = pos[idx]
+        self.catalog['vel'] = vel[idx]
+        self.catalog['id'] = ids[idx]
+        self.catalog['rnn'] = rnn[idx]
+        self.catalog['haloid'] = hinfo['haloid'][idx]
+        self.catalog['rhalo'] = hinfo['rhalo'][idx]
+        self.catalog['mass'] = hinfo['mass'][idx]
+        self.catalog['radius'] = hinfo['radius'][idx]
+        self.catalog['z'] = self.nbody.cosmo.zofR(r)
 
         del r

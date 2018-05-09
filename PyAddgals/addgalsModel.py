@@ -7,7 +7,7 @@ class ADDGALSModel(GalaxyModel):
 
     def __init__(self, nbody, luminosityFunctionConfig=None,
                     rdelModelConfig=None,
-                    fredModelConfig=None, colorModelConfig=None):
+                    redFractionModelConfig=None, colorModelConfig=None):
 
         self.nbody = nbody
 
@@ -17,14 +17,14 @@ class ADDGALSModel(GalaxyModel):
         if rdelModelConfig is None:
             raise(ValueError('ADDGALS model must define rdelModelConfig'))
 
-        if fredModelConfig is None:
-            raise(ValueError('ADDGALS model must define fredModelConfig'))
+        if redFractionModelConfig is None:
+            raise(ValueError('ADDGALS model must define redFractionModelConfig'))
 
         if colorModelConfig is None:
             raise(ValueError('ADDGALS model must define colorModelConfig'))
 
         self.rdelModel = RdelModel(**rdelModelConfig)
-        self.fredModel = FredModel(**fredModelConfig)
+        self.redFractionModel = RedFractionModel(**redFractionModelConfig)
         self.colorModel = ColorModel(**colorModelConfig)
 
         lf_type = luminosityFunctionConfig['modeltype']
@@ -71,7 +71,7 @@ class RdelModel(object):
         if self.modelfile is None:
 
             for k in kwargs.keys():
-                setattr(self, k) = kwargs[]
+                setattr(self, k, kwargs[k])
 
     def densityPDF(self, r, p, muc, sigmac, muf, sigmaf):
 
@@ -87,8 +87,10 @@ class RdelModel(object):
 class RedFractionModel(object):
 
     def __init__(self, modelfile=None, **kwargs):
+        pass
 
 
 class ColorModel(object):
 
     def __init__(self, modelfile, **kwargs):
+        pass

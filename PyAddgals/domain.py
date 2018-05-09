@@ -1,6 +1,8 @@
 from __future__ import print_function, division
 from itertools import product
-from copy import deepcopy as copy
+from copy import copy
+import healpy as hp
+import numpy as np
 
 
 class Domain(object):
@@ -10,7 +12,8 @@ class Domain(object):
 
 
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
-                 rmin=None, rmax=None, rbins=None, lbox=None, nbox=None):
+                 rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
+                 pixlist=None):
 
         self.fmt = fmt
         self.cosmo = cosmo
@@ -19,6 +22,11 @@ class Domain(object):
 
             self.subbox = None
             self.lbox = None
+
+            if pixlist is not None:
+                self.pixlist = [int(p) for p in pixlist]
+            else:
+                self.pixlist = pixlist
 
             if rmin is None:
                 raise(ValueError("rmin must be defined for BCCLightcone domain"))
@@ -67,8 +75,8 @@ class Domain(object):
 
         """
 
-        rmin = self.nbody.cosmo.rofZ(self.domain.zmin)
-        rmax = self.nbody.cosmo.rofZ(self.domain.zmax)
+        rmin = self.cosmo.rofZ(self.zmin)
+        rmax = self.cosmo.rofZ(self.zmax)
 
         return rmin, rmax
 
@@ -89,21 +97,21 @@ class Domain(object):
 
         """
 
-        if octn==0:
+        if octant==0:
             vert = [[1,0,0], [0,1,0], [0,0,1]]
-        elif octn==1:
+        elif octant==1:
             vert = [[-1,0,0], [0,1,0], [0,0,1]]
-        elif octn==2:
+        elif octant==2:
             vert = [[-1,0,0], [0,-1,0], [0,0,1]]
-        elif octn==3:
+        elif octant==3:
             vert = [[1,0,0], [0,-1,0], [0,0,1]]
-        elif octn==4:
+        elif octant==4:
             vert = [[1,0,0], [0,1,0], [0,0,-1]]
-        elif octn==5:
+        elif octant==5:
             vert = [[-1,0,0], [0,1,0], [0,0,-1]]
-        elif octn==6:
+        elif octant==6:
             vert = [[-1,0,0], [0,-1,0], [0,0,-1]]
-        elif octn==7:
+        elif octant==7:
             vert = [[1,0,0], [0,-1,0], [0,0,-1]]
 
         return vert
@@ -165,8 +173,15 @@ class Domain(object):
             self.allpix = np.unique(allpix)
             self.allpix.sort()
 
-            self.fracarea = pcounts[allpix] / (2 * np.log2(hdnside /
+            self.fracarea = pcounts[self.allpix] / (2 * np.log2(hrnside /
                                                             self.nside))
+
+            if self.pixlist is not None:
+                idx = np.in1d(self.allpix, self.pixlist)
+                assert(idx.any())
+
+                self.allpix = self.allpix[idx]
+                self.fracarea = self.fracarea[idx]
 
             #get radial bins s.t. each bin has equal volume
 
@@ -199,7 +214,7 @@ class Domain(object):
                 d.pix  = self.domains_task[i][1]
 
                 d.rmin = self.rbins[d.rbin]
-                d.rmax = self.rbins[d.rmax]
+                d.rmax = self.rbins[d.rbin+1]
                 d.zmin = self.cosmo.zofR(d.rmin)
                 d.zmax = self.cosmo.zofR(d.rmax)
                 d.rmean = 0.75 * (d.rmax - d.rmin) # volume weighted average radius

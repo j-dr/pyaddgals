@@ -37,8 +37,10 @@ class Cosmology(object):
 
         if sigma8 is None:
             self.a_s = float(a_s)
+            self.sigma8 = sigma8
         else:
             self.sigma8 = float(sigma8)
+            self.a_s = a_s
 
         self._cosmo = ccl.Cosmology(Omega_c=self.omega_c, Omega_b=self.omega_b,
                                     h=1.0, n_s=self.n_s, sigma8=self.sigma8,

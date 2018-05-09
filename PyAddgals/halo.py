@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from halotools.sim_manager import TabularAsciiReader
-
+import numpy as np
+import healpy as hp
 
 class HaloCatalog(object):
 
@@ -24,7 +25,7 @@ class HaloCatalog(object):
 
     def read(self):
 
-        if self.nbody.domain.fmat == 'BCCLightcone':
+        if self.nbody.domain.fmt == 'BCCLightcone':
             self.readRockstarLightconeFile()
 
     def delete(self):
@@ -39,21 +40,21 @@ class HaloCatalog(object):
         for k in self.catalog.keys():
             del self.catalog[k]
 
-    def getColumnDict(self, fmat):
+    def getColumnDict(self, fmt):
 
-        if fmat=='BCCLightcone':
+        if fmt=='BCCLightcone':
             return {'mass':(2,np.float), 'x':(8,np.float), 'y':(9,np.float),
                         'z':(10,np.float), 'vx':(11,np.float),
                         'vy':(12,np.float), 'vz':(13,np.float),
                         'rs':(6,np.float), 'radius':(5,np.float),
                         'pid':(14,np.int)}
         else:
-            raise(NotImplementedError("fmat {} not recognized".format(fmat)))
+            raise(NotImplementedError("fmt {} not recognized".format(fmt)))
 
 
     def readRockstarLightconeFile(self):
 
-        cdict = self.getColumnDict(self.nbody.domain.fmat)
+        cdict = self.getColumnDict(self.nbody.domain.fmt)
 
         reader  = TabularAsciiReader(self.nbody.halofile, cdict)
         catalog = reader.read_ascii()
@@ -85,6 +86,6 @@ class HaloCatalog(object):
         self.catalog['rs']     = catalog['rs'] / 1000. #convert kpc to mpc
 
         #calculate z from r
-        self.catalog['z']     = cosmo.zofR(r)
+        self.catalog['z']     = self.nbody.cosmo.zofR(r)
 
         del r
