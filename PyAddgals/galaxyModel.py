@@ -29,3 +29,26 @@ class GalaxyModel(object):
         """
         catalog = None
         return catalog
+
+    def drawRedshifts(self, n_gal):
+        """Draw redshifts proportional to r^3
+
+        Parameters
+        ----------
+        n_gal : int
+            number of galaxies to draw redshifts for
+
+        Returns
+        -------
+        z : np.array
+            Array of length n_gal containing redshifts of the galaxies.
+
+        """
+
+        rmin = self.nbody.domain.rmin
+        rmax = self.nbody.domain.rmax
+
+        rands = np.random.uniform(size=n_gal)
+        z = ((rmax ** 3 - rmin ** 3) * rands + rmin ** 3) ** (1/3)
+
+        return z
