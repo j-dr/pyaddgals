@@ -1,9 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
 
-from . import luminosityFunction
-from . import galaxyModel
-
 
 class GalaxyCatalog(object):
     """
@@ -29,8 +26,8 @@ class GalaxyCatalog(object):
         None
         """
 
-        model_class = config.pop('model')
-        model = getattr(galaxyModel, model_class)
+        model_class = config.keys()[0]
+        model = getattr(., model_class)
         model = model(**config)
 
         self.catalog = model.paintGalaxies(self.lightcone)
