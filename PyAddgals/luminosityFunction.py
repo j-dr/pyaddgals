@@ -1,10 +1,11 @@
 from __future__ import print_function, division
+from scipy.integrate import dblquad
 import numpy as np
 
 
 class LuminosityFunction(object):
 
-    def __init__(self, params, name=None, magmin=25.0):
+    def __init__(self, params, name=None, magmin=25., magmax=10.):
         """Initialize LuminosityFunction object.
 
         Parameters
@@ -29,6 +30,20 @@ class LuminosityFunction(object):
         self.magmin = float(magmin)
 
     def genLuminosityFunction(self, lums, zs):
+        """Compute the luminosity function at a range of redshifts.
+
+        Parameters
+        ----------
+        lums : np.array
+            Array of luminosities at which to calculate the LF
+        zs : np.array
+            Array of redshifts at which to calculate the LF
+
+        Returns
+        -------
+        None
+
+        """
 
         self.lf = np.zeros((len(lums), len(zs)))
 
@@ -37,23 +52,122 @@ class LuminosityFunction(object):
             self.lf[:, i] = self.calcNumberDensity(zp, lums)
 
     def genLuminosityFunctionZ(self, lums, z):
+        """Calculate the luminosity function at one redshift
+
+        Parameters
+        ----------
+        lums : np.array
+            Array of luminosities at which to calculate the LF
+        z : float
+            Redshift at which to calculate the LF
+
+        Returns
+        -------
+        out : np.array
+            A structured array, containing luminosities and number
+            densities of the LF
+        """
+
         zp = self.evolveParams(z)
         lf = self.calcNumberDensity(zp, lums)
         out = np.zeros(len(lf[0]), dtype=np.dtype(
             [('mag', np.float), ('phi', np.float)]))
-        out['mag'] = lf[0]
-        out['phi'] = lf[1]
+        out['mag'] = lums
+        out['phi'] = lf
 
         return out
 
     def calcNumberDensity(self, p, lums):
-        """
-        Return number density in units of Mpc^{-3} h^{3}
+        """Return number density in units of Mpc^{-3} h^{3}
+
+        Parameters
+        ----------
+        lums : np.array
+            Array of luminosities at which to calculate the LF
+        p : np.array
+            Parameters of the LF
+
+        Returns
+        -------
+        phi : np.array
+            Array of number densities at lums
         """
         pass
 
+    def calcNumberDensitySingleZL(self, z, l):
+        """Calculate the number density for a single redshift and luminosity.
+
+        Parameters
+        ----------
+        z : float
+            Redshift
+        l : float
+            Luminosity
+
+        Returns
+        -------
+        nd : float
+            number density
+
+        """
+
+        zp = self.evolveParams(z)
+        nd = self.calcNumberDensity(zp, l)
+
+        return nd
+
     def evolveParams(self, z):
+        """Evolve base parameters of LF to a redshift of z. Usually
+        using the typical Q, P evolution parameters.
+
+        Parameters
+        ----------
+        z : float
+            Redshift to evolve parameters to
+
+        Returns
+        -------
+        zp : list
+            Parameters evolved to redshift z
+
+        """
         pass
+
+    def integrate(self, cosmo, z_min, z_max, area):
+        """Integrate the luminosity function over a redshift and luminosity
+        range to give a total number of galaxies in some volume.
+
+        Parameters
+        ----------
+        cosmo : Cosmology
+            Cosmology object
+        m_min : float
+            Faint end bound of luminosity integral
+        m_max : float
+            Bright end bound of luminosity integral
+        z_min : float
+            Low z bound of redshift integral
+        z_max : float
+            High z bound of redshift integral
+        area : float
+            If lightcone, the area the the volume subtends
+        Returns
+        -------
+        n_gal : float
+            Number of galaxies in this volume
+
+        """
+
+        m_min_of_z = lambda z : self.magmin - cosmo.distanceModulus(z)
+        m_max_of_z = lambda z : self.magmax - cosmo.distanceModulus(z)
+
+        f = lambda z, l : self.calcNumberDensitySingleZL(z, l) * cosmo.dVdz(z)
+
+        n_gal = dblquad(f, z_min, z_max, m_min_of_z, m_max_of_z)
+
+        return n_gal[0]
+
+
 
     def drawLuminosities(self, cosmo, domain):
 
@@ -121,7 +235,7 @@ class DSGLuminosityFunction(LuminosityFunction):
             p[5] / np.sqrt(2 * np.pi * p[7] ** 2) * \
             np.exp(-(lums - p[6]) ** 2 / (2 * p[7] ** 2))
 
-        return lums, phi
+        return phi
 
 
 
@@ -184,7 +298,7 @@ class BBGSLuminosityFunction(LuminosityFunction):
         af = AbundanceFunction(mag, phi, ext_range=(-26, 10),
                                nbin=2000, faint_end_fit_points=6)
 
-        return self.lf[:, 0], af(self.lf[:, 0])
+        return af(self.lf[:, 0])
 
 
 class CapozziLuminosityFunction(LuminosityFunction):
@@ -240,7 +354,7 @@ class BernardiLuminosityFunction(LuminosityFunction):
 
         self.lf[:, 0] += Q * (1 / (1 + z) - 1 / 1.1)
 
-        return self.lf[:, 0], self.lf[:, 1]
+        return self.lf[:, 1]
 
 
 class ReddickLuminosityFunction(LuminosityFunction):
@@ -267,4 +381,4 @@ class ReddickLuminosityFunction(LuminosityFunction):
 
         self.lf[:, 0] += Q * (1 / (1 + z) - 1 / 1.1)
 
-        return self.lf[:, 0], self.lf[:, 1]
+        return self.lf[:, 1]
