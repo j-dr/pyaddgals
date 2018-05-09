@@ -170,7 +170,7 @@ class Domain(object):
 
             #get radial bins s.t. each bin has equal volume
 
-            NEED TO DEAL WITH OVERLAPS!
+#            NEED TO DEAL WITH OVERLAPS!
 
             dl = self.rmax - self.rmin
             r1 = dl / (self.nrbins)**(1/3)
