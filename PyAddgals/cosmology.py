@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import pyccl as ccl
+from scipy.misc import derivative
 
 
 class Cosmology(object):
@@ -99,3 +100,44 @@ class Cosmology(object):
 
         distance_modulus = ccl.distance_modulus(self._cosmo, 1 / (z + 1.))
         return distance_modulus
+
+    def comovingVolume(self,z):
+        """Comoving Volume out to redshift z
+
+        Parameters
+        ----------
+        z : np.array
+            The redshifts at which to compute the comoving volume
+
+        Returns
+        -------
+        comoving_volume : np.array
+            The comoving volume at the input redshifts
+
+        """
+
+        r = self.rofZ(z)
+        comoving_volume = 4 * np.pi * r ** 3 / 3
+
+        return comoving_volume
+
+    def dVdz(self, z):
+        """Derivative of comoving volume with respect to redshift
+
+        Parameters
+        ----------
+        z : np.array
+            Redshifts to compute the derivative at
+
+        Returns
+        -------
+        dVdz : np.array
+            derivative of volume with respect to redshift
+
+        """
+
+
+        f = lambda z : self.comovingVolume(z)
+        dVdz = derivative(f, z)
+
+        return dVdz
