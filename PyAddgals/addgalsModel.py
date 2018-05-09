@@ -46,12 +46,19 @@ class ADDGALSModel(GalaxyModel):
         None
         """
 
-        self.luminosityFunction.drawLuminosities(nbody.cosmo, nbody.domain)
+        galaxies = self.nbody.galaxyCatalog.catalog
+        domain = self.nbody.domain
+        cosmo = self.nbody.cosmo
+
+        n_gal = self.luminosityFunction.integrate(cosmo, domain.zmin,
+                                                    domain.zmax,
+                                                    domain.getArea())
+        galaxies['redshift_true'] = self.drawRedshifts(n_gal)
+
+        self.luminosityFunction.drawLuminosities(cosmo, domain)
+
 
         self.catalog = None
-
-
-
 
 
 
