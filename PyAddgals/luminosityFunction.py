@@ -4,7 +4,6 @@ from copy import copy
 import numpy as np
 
 
-
 class LuminosityFunction(object):
 
     def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10.):
@@ -53,7 +52,7 @@ class LuminosityFunction(object):
 
         for i, z in enumerate(zs):
             zp = self.evolveParams(z)
-            self.lf[:, i] = self.calcNumberDensity(zp, lums)
+            self.lf[:, i] = self.numberDensity(zp, lums)
 
     def genLuminosityFunctionZ(self, lums, z):
         """Calculate the luminosity function at one redshift
@@ -73,7 +72,7 @@ class LuminosityFunction(object):
         """
 
         zp = self.evolveParams(z)
-        lf = self.calcNumberDensity(zp, lums)
+        lf = self.numberDensity(zp, lums)
         out = np.zeros(len(lf[0]), dtype=np.dtype(
             [('mag', np.float), ('phi', np.float)]))
         out['mag'] = lums
@@ -81,7 +80,7 @@ class LuminosityFunction(object):
 
         return out
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         """Return number density in units of Mpc^{-3} h^{3}
 
         Parameters
@@ -98,7 +97,7 @@ class LuminosityFunction(object):
         """
         pass
 
-    def calcNumberDensitySingleZL(self, z, l):
+    def numberDensitySingleZL(self, z, l):
         """Calculate the number density for a single redshift and luminosity.
 
         Parameters
@@ -116,13 +115,12 @@ class LuminosityFunction(object):
         """
 
         zp = self.evolveParams(z)
-        nd = self.calcNumberDensity(zp, l)
+        nd = self.numberDensity(zp, l)
 
         return nd
 
-
     def m_min_of_z(self, z):
-        if (self.magmin - self.cosmo.distanceModulus(z)) < -11.: 
+        if (self.magmin - self.cosmo.distanceModulus(z)) < -11.:
             return self.magmin - self.cosmo.distanceModulus(z)
         else:
             return -11.
@@ -130,7 +128,6 @@ class LuminosityFunction(object):
     def m_max_of_z(self, z):
 
         return self.magmax - self.cosmo.distanceModulus(0.05)
-
 
     def evolveParams(self, z):
         """Evolve base parameters of LF to a redshift of z. Usually
@@ -171,18 +168,19 @@ class LuminosityFunction(object):
             Number of galaxies in this volume
 
         """
-        
-        f = lambda l, z : self.calcNumberDensitySingleZL(z, l) * self.cosmo.dVdz(z)
 
-        n_gal = (area / 41253.) * dblquad(f, z_min, z_max, self.m_max_of_z, self.m_min_of_z)[0]
+        def f(l, z): return self.numberDensitySingleZL(
+            z, l) * self.cosmo.dVdz(z)
+
+        n_gal = (area / 41253.) * dblquad(f, z_min, z_max,
+                                          self.m_max_of_z, self.m_min_of_z)[0]
 
         return int(n_gal)
-
 
     def sampleLuminosities(self, domain, z):
 
         n_gal = z.size
-        zbins = np.arange(domain.zmin, domain.zmax+0.001, 0.001)
+        zbins = np.arange(domain.zmin, domain.zmax + 0.001, 0.001)
         zmean = zbins[1:] + zbins[:-1]
         volume = domain.getVolume()
 
@@ -192,28 +190,28 @@ class LuminosityFunction(object):
 
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
-            zhidx = z.searchsorted(zbins[i+1])
+            zhidx = z.searchsorted(zbins[i + 1])
             n_gal_z = zhidx - zlidx
 
-            #calculate faintest luminosity to use given
-            #the apparent magnitude limit that we want to
-            #populate to
+            # calculate faintest luminosity to use given
+            # the apparent magnitude limit that we want to
+            # populate to
             lummin = self.m_min_of_z(zmean[i])
 
             lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
-            #get the parameters at this redshift
+            # get the parameters at this redshift
             params = self.evolveParams(zmean[i])
 
-            number_density = self.calcNumberDensity(params, lums)
+            number_density = self.numberDensity(params, lums)
             cdf_lum = np.cumsum(number_density * (lums[1] - lums[0]))
             cdf_lum /= cdf_lum[-1]
 
-            #sample from CDF
+            # sample from CDF
             rands = np.random.uniform(size=n_gal_z)
             lums_gal[count:count + n_gal_z] = lums[cdf_lum.searchsorted(rands)]
             count += n_gal_z
-        
+
         return lums_gal
 
 
@@ -223,12 +221,13 @@ class DSGLuminosityFunction(LuminosityFunction):
 
         if params is None:
             params = np.array([1.56000000e-02,  -1.66000000e-01,
-                                6.71000000e-03,
+                               6.71000000e-03,
                                -1.52300000e+00,  -2.00100000e+01,
                                3.08000000e-05,
                                -2.18500000e+01,   4.84000000e-01, -1, 0])
 
-        LuminosityFunction.__init__(self, cosmo, params=params, name='DSG', **kwargs)
+        LuminosityFunction.__init__(
+            self, cosmo, params=params, name='DSG', **kwargs)
         self.unitmap = {'mag': 'magh', 'phi': 'hmpc3dex'}
 
     def evolveParams(self, z):
@@ -243,7 +242,7 @@ class DSGLuminosityFunction(LuminosityFunction):
 
         return zp
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         """
         Sum of a double schechter function and a gaussian.
         m -- magnitudes at which to calculate the number density
@@ -259,7 +258,6 @@ class DSGLuminosityFunction(LuminosityFunction):
             np.exp(-(lums - p[6]) ** 2 / (2 * p[7] ** 2))
 
         return phi
-
 
 
 def read_tabulated_loglf(filename):
@@ -302,7 +300,7 @@ class BBGSLuminosityFunction(LuminosityFunction):
     def evolveParams(self, z):
         return self.params, z
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         Q = p[0][0]
         P = p[0][1]
         z = p[1]
@@ -344,7 +342,7 @@ class CapozziLuminosityFunction(LuminosityFunction):
 
         return zp
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         phi = (0.4 * np.log(10) * np.exp(-10**(-0.4 * (lums - p[2]))) *
                (p[0] * 10 ** (-0.4 * (lums - p[2]) * (p[1] + 1))))
 
@@ -366,7 +364,7 @@ class BernardiLuminosityFunction(LuminosityFunction):
     def evolveParams(self, z):
         return self.Q, z
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         """
         Shift the tabulated Bernardi 2013 luminosity function
         p -- Q, h  and z
@@ -393,7 +391,7 @@ class ReddickLuminosityFunction(LuminosityFunction):
     def evolveParams(self, z):
         return self.Q, z
 
-    def calcNumberDensity(self, p, lums):
+    def numberDensity(self, p, lums):
         """
         Shift the tabulated Bernardi 2013 luminosity function
         p -- Q, h  and z
