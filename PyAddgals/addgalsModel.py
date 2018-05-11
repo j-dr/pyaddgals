@@ -27,10 +27,10 @@ class ADDGALSModel(GalaxyModel):
         self.redFractionModel = RedFractionModel(**redFractionModelConfig)
         self.colorModel = ColorModel(**colorModelConfig)
 
-        lf_type = luminosityFunctionConfig['modeltype']
+        lf_type = luminosityFunctionConfig.pop('modeltype')
 
         self.luminosityFunction = getattr(luminosityFunction, lf_type)
-        self.luminosityFunction = self.luminosityFunction(**luminosityFunctionConfig)
+        self.luminosityFunction = self.luminosityFunction(nbody.cosmo, **luminosityFunctionConfig)
 
 
     def paintGalaxies(self):
@@ -46,20 +46,18 @@ class ADDGALSModel(GalaxyModel):
         None
         """
 
-        galaxies = self.nbody.galaxyCatalog.catalog
         domain = self.nbody.domain
-        cosmo = self.nbody.cosmo
 
-        n_gal = self.luminosityFunction.integrate(cosmo, domain.zmin,
+        n_gal = self.luminosityFunction.integrate(domain.zmin,
                                                     domain.zmax,
                                                     domain.getArea())
-        galaxies['redshift_true'] = self.drawRedshifts(n_gal)
 
-        self.luminosityFunction.drawLuminosities(cosmo, domain)
+        z = self.drawRedshifts(n_gal)
+        mag = self.luminosityFunction.sampleLuminosities(domain, z)
+        dens = self.rdelModel.sampleDensities(z, mag)
 
 
         self.catalog = None
-
 
 
 class RdelModel(object):
@@ -72,6 +70,11 @@ class RdelModel(object):
 
             for k in kwargs.keys():
                 setattr(self, k, kwargs[k])
+
+    def loadModelFile(self):
+        pass
+
+        
 
     def densityPDF(self, r, p, muc, sigmac, muf, sigmaf):
 

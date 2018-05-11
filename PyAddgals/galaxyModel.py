@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from abc import ABCMeta, abstractmethod
+import numpy as np
 
 class GalaxyModel(object):
 
@@ -12,7 +13,7 @@ class GalaxyModel(object):
     @abstractmethod
     def paintGalaxies(self, nbody):
         """Abstract method taking in an nbody object and
-            returning a galaxy catalog.
+            populating the galaxyCatalog.catalog 
 
         Parameters
         ----------
@@ -22,13 +23,10 @@ class GalaxyModel(object):
 
         Returns
         -------
-        catalog : dict
-            A dictionary whose keys are attributes of the galaxy catalog and
-            whose values are arrays containing those attributes for each galaxy.
+        None
 
         """
-        catalog = None
-        return catalog
+        self.catalog = None
 
     def drawRedshifts(self, n_gal):
         """Draw redshifts proportional to r^3
@@ -50,5 +48,6 @@ class GalaxyModel(object):
 
         rands = np.random.uniform(size=n_gal)
         z = ((rmax ** 3 - rmin ** 3) * rands + rmin ** 3) ** (1/3)
+        z = self.nbody.cosmo.zofR(z)
 
         return z

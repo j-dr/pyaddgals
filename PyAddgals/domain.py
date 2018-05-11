@@ -173,7 +173,7 @@ class Domain(object):
             self.allpix = np.unique(allpix)
             self.allpix.sort()
 
-            self.fracarea = pcounts[self.allpix] / (2 * np.log2(hrnside /
+            self.fracarea = pcounts[self.allpix] / 2 ** (2 * np.log2(hrnside /
                                                             self.nside))
 
             if self.pixlist is not None:

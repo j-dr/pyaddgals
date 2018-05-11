@@ -13,6 +13,7 @@ class GalaxyCatalog(object):
     def __init__(self, nbody):
 
         self.nbody = nbody
+        self.catalog  = {}
 
     def paintGalaxies(self, config):
         """Apply a galaxy model to the nbody sim
@@ -36,7 +37,7 @@ class GalaxyCatalog(object):
         if model_class == 'ADDGALSModel':
             model = ADDGALSModel(**config['ADDGALSModel'])
 
-        self.catalog = model.paintGalaxies(self.lightcone)
+        model.paintGalaxies(self.lightcone)
 
     def writeCatalog(self):
         """Write galaxy catalog to disk.

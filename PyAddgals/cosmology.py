@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import pyccl as ccl
 from scipy.misc import derivative
-
+import numpy as np
 
 class Cosmology(object):
 
@@ -140,6 +140,6 @@ class Cosmology(object):
 
 
         f = lambda z : self.comovingVolume(z)
-        dVdz = derivative(f, z)
+        dVdz = derivative(f, z, dx=1e-6)
 
         return dVdz

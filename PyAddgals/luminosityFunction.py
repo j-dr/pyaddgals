@@ -1,11 +1,13 @@
 from __future__ import print_function, division
 from scipy.integrate import dblquad
+from copy import copy
 import numpy as np
+
 
 
 class LuminosityFunction(object):
 
-    def __init__(self, params, name=None, magmin=25., magmax=10.):
+    def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10.):
         """Initialize LuminosityFunction object.
 
         Parameters
@@ -27,7 +29,9 @@ class LuminosityFunction(object):
 
         self.name = name
         self.params = params
+        self.cosmo = cosmo
         self.magmin = float(magmin)
+        self.magmax = float(magmax)
 
     def genLuminosityFunction(self, lums, zs):
         """Compute the luminosity function at a range of redshifts.
@@ -116,6 +120,18 @@ class LuminosityFunction(object):
 
         return nd
 
+
+    def m_min_of_z(self, z):
+        if (self.magmin - self.cosmo.distanceModulus(z)) < -11.: 
+            return self.magmin - self.cosmo.distanceModulus(z)
+        else:
+            return -11.
+
+    def m_max_of_z(self, z):
+
+        return self.magmax - self.cosmo.distanceModulus(0.05)
+
+
     def evolveParams(self, z):
         """Evolve base parameters of LF to a redshift of z. Usually
         using the typical Q, P evolution parameters.
@@ -133,14 +149,12 @@ class LuminosityFunction(object):
         """
         pass
 
-    def integrate(self, cosmo, z_min, z_max, area):
+    def integrate(self, z_min, z_max, area):
         """Integrate the luminosity function over a redshift and luminosity
         range to give a total number of galaxies in some volume.
 
         Parameters
         ----------
-        cosmo : Cosmology
-            Cosmology object
         m_min : float
             Faint end bound of luminosity integral
         m_max : float
