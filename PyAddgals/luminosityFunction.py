@@ -171,46 +171,55 @@ class LuminosityFunction(object):
             Number of galaxies in this volume
 
         """
+        
+        f = lambda l, z : self.calcNumberDensitySingleZL(z, l) * self.cosmo.dVdz(z)
 
-        m_min_of_z = lambda z : self.magmin - cosmo.distanceModulus(z)
-        m_max_of_z = lambda z : self.magmax - cosmo.distanceModulus(z)
+        n_gal = (area / 41253.) * dblquad(f, z_min, z_max, self.m_max_of_z, self.m_min_of_z)[0]
 
-        f = lambda z, l : self.calcNumberDensitySingleZL(z, l) * cosmo.dVdz(z)
-
-        n_gal = dblquad(f, z_min, z_max, m_min_of_z, m_max_of_z)
-
-        return n_gal[0]
+        return int(n_gal)
 
 
+    def sampleLuminosities(self, domain, z):
 
-    def drawLuminosities(self, cosmo, domain):
+        n_gal = z.size
+        zbins = np.arange(domain.zmin, domain.zmax+0.001, 0.001)
+        zmean = zbins[1:] + zbins[:-1]
+        volume = domain.getVolume()
 
-        zmin = domain.zmin
-        zmean = domain.zmean
-        volume = domain.volume
+        nzbins = zmean.size
+        lums_gal = np.zeros(n_gal)
+        count = 0
 
-        #calculate faintest luminosity to use given
-        #the apparent magnitude limit that we want to
-        #populate to
-        lummin = self.magmin - cosmo.distanceModulus(z)
-        lums = np.linspace(-25, lummin, 10000)
+        for i in range(nzbins):
+            zlidx = z.searchsorted(zbins[i])
+            zhidx = z.searchsorted(zbins[i+1])
+            n_gal_z = zhidx - zlidx
 
-        #get the parameters at the
-        params = self.evolveParams(z)
-        number_density = self.calcNumberDensity(params, lums)
-        cdf_lum = np.cumsum(number_density)
-        cdf_lum /= p_of_lum[-1]
+            #calculate faintest luminosity to use given
+            #the apparent magnitude limit that we want to
+            #populate to
+            lummin = self.m_min_of_z(zmean[i])
 
-        n_gals = number_density[-1] * volume
-        rands = np.random.uniform(size=n_gals)
-        lum_gals = cdf_lum.searchsorted(rands)
+            lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
-        return lum_gals
+            #get the parameters at this redshift
+            params = self.evolveParams(zmean[i])
+
+            number_density = self.calcNumberDensity(params, lums)
+            cdf_lum = np.cumsum(number_density * (lums[1] - lums[0]))
+            cdf_lum /= cdf_lum[-1]
+
+            #sample from CDF
+            rands = np.random.uniform(size=n_gal_z)
+            lums_gal[count:count + n_gal_z] = lums[cdf_lum.searchsorted(rands)]
+            count += n_gal_z
+        
+        return lums_gal
 
 
 class DSGLuminosityFunction(LuminosityFunction):
 
-    def __init__(self, params=None, name=None):
+    def __init__(self, cosmo, params=None, name=None, **kwargs):
 
         if params is None:
             params = np.array([1.56000000e-02,  -1.66000000e-01,
@@ -219,7 +228,7 @@ class DSGLuminosityFunction(LuminosityFunction):
                                3.08000000e-05,
                                -2.18500000e+01,   4.84000000e-01, -1, 0])
 
-        LuminosityFunction.__init__(self, params, name='DSG')
+        LuminosityFunction.__init__(self, cosmo, params=params, name='DSG', **kwargs)
         self.unitmap = {'mag': 'magh', 'phi': 'hmpc3dex'}
 
     def evolveParams(self, z):

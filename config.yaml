@@ -1,7 +1,7 @@
 NBody :
   Domain :
     fmt : BCCLightcone
-    rmin : 0.0
+    rmin : 1.0
     rmax : 500.0
     nrbins : 1
     nside : 4
