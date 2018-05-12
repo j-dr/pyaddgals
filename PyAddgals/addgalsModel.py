@@ -85,38 +85,66 @@ class RdelModel(object):
 
         assert(self.modelfile is not None)
 
-        params = {'pmag': [], 'pz': [], 'mucmag': [], 'mufmag': [], 'mucz': [],
-                  'mufz': [], 'sigmacmag': [],
-                  'sigmacz': [], 'sigmafmag': [], 'sigmafz': []}
         mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
-        model = np.loadtxt(self.modelfile)
+        model = np.loadtxt(self.modelfile, dtype=mdtype)
 
-        for i in range(len(model['param'])):
+        idx = model['param'].argsort()
+        model = model[idx]
 
-            if model['param'][i][:2] == 'pz':
-                params['pz'].append(model['value'][i])
-            elif model['param'][i][:3] == 'cmz':
-                params['mucz'].append(model['value'][i])
-            elif model['param'][i][:3] == 'fmz':
-                params['mufz'].append(model['value'][i])
-            elif model['param'][i][:3] == 'csz':
-                params['sigmacz'].append(model['value'][i])
-            elif model['param'][i][:3] == 'fsz':
-                params['sigmafz'].append(model['value'][i])
-            elif model['param'][i][:1] == 'p':
-                params['pmag'].append(model['value'][i])
-            elif model['param'][i][:2] == 'cm':
-                params['mucmag'].append(model['value'][i])
-            elif model['param'][i][:2] == 'fm':
-                params['mufmag'].append(model['value'][i])
-            elif model['param'][i][:2] == 'cs':
-                params['sigmacmag'].append(model['value'][i])
-            elif model['param'][i][:2] == 'fs':
-                params['sigmafmag'].append(model['value'][i])
+        self.params = {}
 
-        self.params = params
+        self.params['muc'] = model['value'][:15]
+        self.params['sigmac'] = model['value'][15:30]
+        self.params['muf'] = model['value'][30:45]
+        self.params['sigmaf'] = model['value'][45:60]
+        self.params['p'] = model['value'][60:75]
 
-    def getParamsZL(self, z, mag):
+    def makeVandermonde(z, mag, bmlim, fmlim, mag_ref):
+        """Make a vandermonde matrix out of redshifts and luminosities
+
+        Parameters
+        ----------
+        z : np.array
+            Galaxy redshifts, dimension (n)
+        mag : np.array
+            Galaxy luminosities, dimension (m)
+        bmlim : float
+            Bright luminosity limit
+        fmlim : float
+            Faint luminosity limit
+        mag_ref : float
+            Reference magnitude
+
+        Returns
+        -------
+        xvec : np.array
+            vandermonde matrix of dimension (n,m)
+
+        """
+
+        mag_ref = -20.5
+        bright_mag_lim = bmlim - mag_ref
+        faint_mag_lim = fmlim - mag_ref
+
+        x = np.meshgrid(mag, z)
+
+        zv = 1 / (x[1].flatten() + 1) - 0.35
+        mv = x[0].flatten()
+        mv = mv - mag_ref
+        mv[mv < bright_mag_lim] = bright_mag_lim
+        mv[mv > faint_mag_lim] = faint_mag_lim
+
+        o = np.ones(len(zv))
+
+        # construct vandermonde matrix
+        xvec = np.array([o, mv, mv * zv, mv * zv**2, mv * zv**3,
+                         mv**2, mv**2 * zv, mv**2 * zv**2,
+                         mv**3, mv**3 * zv, mv**4, zv,
+                         zv**2, zv**3, zv**4])
+
+        return xvec
+
+    def getParamsZL(self, z, mag, magbright=-22.5, magfaint=-18., magref=-20.5):
         """Get the density pdf params for the given redshift and magnitude.
 
         Parameters
@@ -132,83 +160,39 @@ class RdelModel(object):
             Description of returned object.
 
         """
+        x = self.makeVandermonde(z, mag, magbright, magfaint, magref)
 
-        pmag = np.sum(np.array(
-            [self.params['pmag'][k] * mag**k for
-             k in range(len(self.params['pmag']))]),
-            axis=0)
-        pz = np.sum(
-            np.array([self.params['pz'][k] * z**k for
-                      k in range(len(self.params['pz']))]),
-            axis=0)
-        p = pmag + pz
+        p = np.dot(self.params['p'], x)
+        muc = np.dot(self.params['muc'], x)
+        muf = np.dot(self.params['muf'], x)
+        sigmac = np.dot(self.params['sigmac'], x)
+        sigmaf = np.dot(self.params['sigmaf'], x)
 
-        mucmag = np.sum(np.array(
-            [self.params['mucmag'][k] * mag**k for
-             k in range(len(self.params['mucmag']))]),
-            axis=0)
-        mucz = np.sum(np.array(
-            [self.params['mucz'][k] * z**k for
-             k in range(len(self.params['mucz']))]),
-            axis=0)
-        muc = mucmag + mucz
-
-        mufmag = np.sum(np.array(
-            [self.params['mufmag'][k] * mag**k for
-             k in range(len(self.params['mufmag']))]),
-            axis=0)
-        mufz = np.sum(np.array(
-            [self.params['mufz'][k] * z**k for
-             k in range(len(self.params['mufz']))]),
-            axis=0)
-        muf = mufmag + mufz
-
-        sigmacmag = np.sum(np.array(
-            [self.params['sigmacmag'][k] * mag**k for
-             k in range(len(self.params['sigmacmag']))]),
-            axis=0)
-        sigmacz = np.sum(np.array(
-            [self.params['sigmacz'][k] * z**k for
-             k in range(len(self.params['sigmacz']))]),
-            axis=0)
-        sigmac = sigmacmag + sigmacz
-
-        sigmafmag = np.sum(np.array(
-            [self.params['sigmafmag'][k] * mag**k for
-             k in range(len(self.params['sigmafmag']))]),
-            axis=0)
-        sigmafz = np.sum(np.array(
-            [self.params['sigmafz'][k] * z**k for
-             k in range(len(self.params['sigmafz']))]),
-            axis=0)
-        sigmaf = sigmafmag + sigmafz
-
-        return p, muc, sigmac, muf, sigmaf
+        return muc, sigmac, muf, sigmaf, p
 
     def pofR(self, r, z, mag):
 
         dmag = 0.05
-        weight1 = self.luminosityFunction.numberDensitySingleZL(z, mag+dmag)
-        weight2 = self.luminosityFunction.numberDensitySingleZL(z, mag-dmag)
+        weight1 = self.luminosityFunction.cumulativeNumberDensity(z, mag + dmag)
+        weight2 = self.luminosityFunction.cumulativeNumberDensity(z, mag - dmag)
 
-        pr1 = self.getParamsZL(z, mag+dmag)
-        pr2 = self.getParamsZL(z, mag-dmag)
+        pr1 = self.getParamsZL(z, mag + dmag)
+        pr2 = self.getParamsZL(z, mag - dmag)
 
         # calculate the cululative distribution of r in a range of magnitudes
         # bracketing mag
         p1 = 0.5 * (1. - pr1[4]) * (1 + erf((np.log(r) - pr1[0]) /
-                                    (pr1[1] * np.sqrt(2.0))))
+                                            (pr1[1] * np.sqrt(2.0))))
         p2 = 0.5 * pr1[4] * (1 + erf((r - pr1[2]) / (pr1[3] * np.sqrt(2.0))))
 
         p3 = 0.5 * (1. - pr2[4]) * (1 + erf((np.log(r) - pr2[0]) /
-                                    (pr2[1] * np.sqrt(2.0))))
+                                            (pr2[1] * np.sqrt(2.0))))
         p4 = 0.5 * pr2[4] * (1 + erf((r - pr2[2]) / (pr2[3] * np.sqrt(2.0))))
 
         prob = weight1 * (p1 + p2) - weight2 * (p3 + p4)
         prob /= prob[-1]
 
         return prob
-
 
     def sampleDensity(self, domain, cosmo, z, mag):
         """Draw densities for galaxies at redshifts z and magnitudes m
@@ -233,6 +217,9 @@ class RdelModel(object):
         magbins = np.arange(np.min(mag), np.max(mag) + 0.05, 0.05)
         magmean = (magbins[1:] + magbins[:-1]) / 2
 
+        nzbins = zmean.size
+        nmagbins = magmean.size
+
         # sort galaxies by redshift
         zidx = z.argsort()
         z = z[zidx]
@@ -240,7 +227,6 @@ class RdelModel(object):
 
         deltabins = np.logspace(-3., np.log10(15.), 51)
         deltamean = (deltabins[1:] + deltabins[:-1]) / 2
-        deltadelta = deltabins[1:] - deltabins[:-1]
 
         density = np.zeros(n_gal)
         count = 0
@@ -259,14 +245,11 @@ class RdelModel(object):
 
                 nij = mhidx - mlidx
 
-                params = self.getParams(zmean[i], magmean[j])
-                pdelta = self.pofDelta(deltamean, zmean[i], magmean[j])
-
-                cdf_delta = np.cumsum(pdelta * deltadelta)
-                cdf_delta /= cdf_delta[-1]
+                cdf_r = self.pofR(deltamean, zmean[i], magmean[j])
 
                 rands = np.random.uniform(size=nij)
-                density[count: count + nij] = density[cdf.searchsorted(rands)]
+                density[count: count +
+                        nij] = density[cdf_r.searchsorted(rands)]
                 count += nij
 
         return density

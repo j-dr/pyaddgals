@@ -119,6 +119,31 @@ class LuminosityFunction(object):
 
         return nd
 
+    def cumulativeNumberDensity(self, z, L):
+        """Cumulative number density at redshift z until luminosity L.
+
+        Parameters
+        ----------
+        z : type
+            Description of parameter `z`.
+        L : type
+            Description of parameter `L`.
+
+        Returns
+        -------
+        nd - np.float
+            The cumulative number density at L, z
+
+        """
+
+        f = lambda l: self.numberDensitySingleZL(z, l)
+
+        nd = quad(f, self.m_max_of_z(z), self.m_min_of_z(z))[0]
+
+        return nd
+
+
+
     def m_min_of_z(self, z):
         if (self.magmin - self.cosmo.distanceModulus(z)) < -11.:
             return self.magmin - self.cosmo.distanceModulus(z)
