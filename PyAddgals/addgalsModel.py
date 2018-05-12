@@ -70,9 +70,12 @@ class RdelModel(object):
         self.modelfile = modelfile
 
         if self.modelfile is None:
-
             for k in kwargs.keys():
                 setattr(self, k, kwargs[k])
+        else:
+            self.loadModelFile()
+
+        
 
     def loadModelFile(self):
         """Load a model from file into self.model
@@ -99,7 +102,7 @@ class RdelModel(object):
         self.params['sigmaf'] = model['value'][45:60]
         self.params['p'] = model['value'][60:75]
 
-    def makeVandermonde(z, mag, bmlim, fmlim, mag_ref):
+    def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
         """Make a vandermonde matrix out of redshifts and luminosities
 
         Parameters
@@ -249,7 +252,7 @@ class RdelModel(object):
 
                 rands = np.random.uniform(size=nij)
                 density[count: count +
-                        nij] = density[cdf_r.searchsorted(rands)]
+                        nij] = deltamean[cdf_r.searchsorted(rands)]
                 count += nij
 
         return density
