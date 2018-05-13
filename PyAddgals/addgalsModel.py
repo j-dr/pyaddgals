@@ -75,7 +75,7 @@ class RdelModel(object):
         else:
             self.loadModelFile()
 
-        
+
 
     def loadModelFile(self):
         """Load a model from file into self.model
