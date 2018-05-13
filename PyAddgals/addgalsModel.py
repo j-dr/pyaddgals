@@ -256,17 +256,19 @@ class RdelModel(object):
         density = np.zeros(n_gal)
         count = 0
 
+        idx = np.arange(n_gal)
+
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
             zhidx = z.searchsorted(zbins[i + 1])
 
             midx = mag[zlidx:zhidx].argsort()
-            z[zlidx:zhidx] = z[zlidx:zhidx][midx]
-            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
+            mi = mag[zlidx:zhidx][midx]
+            idx[zlidx:zhidx] = midx + zlidx
 
             for j in range(nmagbins):
-                mlidx = mag[zlidx:zhidx].searchsorted(magbins[j])
-                mhidx = mag[zlidx:zhidx].searchsorted(magbins[j + 1])
+                mlidx = mi.searchsorted(magbins[j])
+                mhidx = mi.searchsorted(magbins[j + 1])
 
                 nij = mhidx - mlidx
 
@@ -277,7 +279,7 @@ class RdelModel(object):
                         nij] = deltamean[cdf_r.searchsorted(rands)-1]
                 count += nij
 
-        return density
+        return density, idx
 
 
 class RedFractionModel(object):
