@@ -26,7 +26,7 @@ GalaxyModel :
       modeltype : DSGLuminosityFunction
       magmin : 25.0
     rdelModelConfig : 
-      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/DSG_0.684_0.17.yaml
+      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/DSG_0.684_0.17_global_rdelmodel.txt
     redFractionModelConfig : 
       modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
     colorModelConfig :
