@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from scipy.special import erf
+from numba import jit
 import numpy as np
 
 from .galaxyModel import GalaxyModel
@@ -75,8 +76,6 @@ class RdelModel(object):
         else:
             self.loadModelFile()
 
-
-
     def loadModelFile(self):
         """Load a model from file into self.model
 
@@ -102,6 +101,7 @@ class RdelModel(object):
         self.params['sigmaf'] = model['value'][45:60]
         self.params['p'] = model['value'][60:75]
 
+    @jit
     def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
         """Make a vandermonde matrix out of redshifts and luminosities
 
@@ -147,6 +147,7 @@ class RdelModel(object):
 
         return xvec
 
+    @jit
     def getParamsZL(self, z, mag, magbright=-22.5, magfaint=-18., magref=-20.5):
         """Get the density pdf params for the given redshift and magnitude.
 
@@ -173,9 +174,9 @@ class RdelModel(object):
 
         return muc, sigmac, muf, sigmaf, p
 
-    def pofR(self, r, z, mag):
+    @jit
+    def pofR(self, r, z, mag, dmag=0.05):
 
-        dmag = 0.05
         weight1 = self.luminosityFunction.cumulativeNumberDensity(z, mag + dmag)
         weight2 = self.luminosityFunction.cumulativeNumberDensity(z, mag - dmag)
 
@@ -192,11 +193,13 @@ class RdelModel(object):
                                             (pr2[1] * np.sqrt(2.0))))
         p4 = 0.5 * pr2[4] * (1 + erf((r - pr2[2]) / (pr2[3] * np.sqrt(2.0))))
 
+
         prob = weight1 * (p1 + p2) - weight2 * (p3 + p4)
         prob /= prob[-1]
 
         return prob
 
+    @jit
     def sampleDensity(self, domain, cosmo, z, mag):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
@@ -252,7 +255,7 @@ class RdelModel(object):
 
                 rands = np.random.uniform(size=nij)
                 density[count: count +
-                        nij] = deltamean[cdf_r.searchsorted(rands)]
+                        nij] = deltamean[cdf_r.searchsorted(rands)-1]
                 count += nij
 
         return density
