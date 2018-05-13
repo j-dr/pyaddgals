@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from scipy.integrate import quad, dblquad
 from copy import copy
-from numba import jit
 import numpy as np
 
 
@@ -33,7 +32,6 @@ class LuminosityFunction(object):
         self.magmin = float(magmin)
         self.magmax = float(magmax)
 
-    @jit
     def genLuminosityFunction(self, lums, zs):
         """Compute the luminosity function at a range of redshifts.
 
@@ -56,7 +54,7 @@ class LuminosityFunction(object):
             zp = self.evolveParams(z)
             self.lf[:, i] = self.numberDensity(zp, lums)
 
-    @jit
+
     def genLuminosityFunctionZ(self, lums, z):
         """Calculate the luminosity function at one redshift
 
@@ -83,7 +81,6 @@ class LuminosityFunction(object):
 
         return out
 
-    @jit
     def numberDensity(self, p, lums):
         """Return number density in units of Mpc^{-3} h^{3}
 
@@ -101,7 +98,6 @@ class LuminosityFunction(object):
         """
         pass
 
-    @jit
     def numberDensitySingleZL(self, z, l):
         """Calculate the number density for a single redshift and luminosity.
 
@@ -125,7 +121,6 @@ class LuminosityFunction(object):
         return nd
 
 
-    @jit
     def cumulativeNumberDensity(self, z, L):
         """Cumulative number density at redshift z until luminosity L.
 
@@ -147,14 +142,12 @@ class LuminosityFunction(object):
 
         return nd
 
-    @jit
     def m_min_of_z(self, z):
         if (self.magmin - self.cosmo.distanceModulus(z)) < -11.:
             return self.magmin - self.cosmo.distanceModulus(z)
         else:
             return -11.
 
-    @jit
     def m_max_of_z(self, z):
 
         return self.magmax - self.cosmo.distanceModulus(0.05)
@@ -176,12 +169,10 @@ class LuminosityFunction(object):
         """
         pass
 
-    @jit
     def numberDensityIntegrandZL(self, l, z):
 
         return self.numberDensitySingleZL(z, l) * self.cosmo.dVdz(z)
 
-    @jit
     def integrate(self, z_min, z_max, area):
         """Integrate the luminosity function over a redshift and luminosity
         range to give a total number of galaxies in some volume.
@@ -205,13 +196,12 @@ class LuminosityFunction(object):
 
         """
 
-        
+
         n_gal = (area / 41253.) * dblquad(self.numberDensityIntegrandZL, z_min, z_max,
                                           self.m_max_of_z, self.m_min_of_z)[0]
 
         return int(n_gal)
 
-    @jit
     def sampleLuminosities(self, domain, z):
 
         n_gal = z.size
@@ -265,7 +255,6 @@ class DSGLuminosityFunction(LuminosityFunction):
             self, cosmo, params=params, name='DSG', **kwargs)
         self.unitmap = {'mag': 'magh', 'phi': 'hmpc3dex'}
 
-    @jit
     def evolveParams(self, z):
         zp = copy(self.params)
 
@@ -278,7 +267,6 @@ class DSGLuminosityFunction(LuminosityFunction):
 
         return zp
 
-    @jit
     def numberDensity(self, p, lums):
         """
         Sum of a double schechter function and a gaussian.

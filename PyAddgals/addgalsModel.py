@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 from scipy.special import erf
-from numba import jit
 import numpy as np
 
 from .galaxyModel import GalaxyModel
@@ -62,6 +61,30 @@ class ADDGALSModel(GalaxyModel):
 
         self.catalog = None
 
+    def assignParticles(self, z, mag, density):
+        """Assign galaxies to particles with the correct redshift
+        and density.
+
+        Parameters
+        ----------
+        z : np.array
+            Array of redshifts of dimension (N)
+        mag : np.array
+            Array of magnitudes of dimension (N)
+        density : np.array
+            Array of densities of dimension (N)
+
+        Returns
+        -------
+        idx : np.array
+            Indices of particles that galaxies are assigned to.
+
+        """
+
+
+
+
+
 
 class RdelModel(object):
 
@@ -101,7 +124,6 @@ class RdelModel(object):
         self.params['sigmaf'] = model['value'][45:60]
         self.params['p'] = model['value'][60:75]
 
-    @jit
     def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
         """Make a vandermonde matrix out of redshifts and luminosities
 
@@ -147,7 +169,6 @@ class RdelModel(object):
 
         return xvec
 
-    @jit
     def getParamsZL(self, z, mag, magbright=-22.5, magfaint=-18., magref=-20.5):
         """Get the density pdf params for the given redshift and magnitude.
 
@@ -174,7 +195,6 @@ class RdelModel(object):
 
         return muc, sigmac, muf, sigmaf, p
 
-    @jit
     def pofR(self, r, z, mag, dmag=0.05):
 
         weight1 = self.luminosityFunction.cumulativeNumberDensity(z, mag + dmag)
@@ -199,7 +219,6 @@ class RdelModel(object):
 
         return prob
 
-    @jit
     def sampleDensity(self, domain, cosmo, z, mag):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
