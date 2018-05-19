@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
-from addgalsModel import ADDGALSModel
+from .addgalsModel import ADDGALSModel
 
 _available_models = ['ADDGALSModel']
 
@@ -13,7 +13,7 @@ class GalaxyCatalog(object):
     def __init__(self, nbody):
 
         self.nbody = nbody
-        self.catalog  = {}
+        self.catalog = {}
 
     def paintGalaxies(self, config):
         """Apply a galaxy model to the nbody sim

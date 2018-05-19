@@ -12,6 +12,7 @@ def readCfg(filename):
 
     return cfg
 
+
 def evalKeys(cfg):
 
     for k in cfg.keys():
@@ -20,6 +21,7 @@ def evalKeys(cfg):
 
         if k in _eval_keys:
             cfg[k] = eval(cfg[k])
+
 
 def parseConfig(filename):
 

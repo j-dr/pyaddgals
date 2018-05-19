@@ -1,9 +1,51 @@
 from __future__ import print_function, division
 from scipy.special import erf
+from numba import jit
 import numpy as np
 
 from .galaxyModel import GalaxyModel
 from . import luminosityFunction
+
+
+@jit
+def assign(mag, z, density, z_part, density_part, dz=0.01):
+
+    n_gal = mag.size
+    max_search_count = n_gal // 1000
+    max_search_d = 0.1
+
+    idx = np.zeros(n_gal, dtype=np.int)
+
+    nassigned = np.zeros(density_part.size, dtype=np.bool)
+
+    for i in range(n_gal):
+
+        pidx = density_part.searchsorted(density[i])
+        pi = 0
+
+        minz = z_part[i] - dz
+        maxz = z_part[i] + dz
+        delta_dens = 0.0
+
+        assigned = False
+
+        while ((pi < max_search_count) & (delta_dens < max_search_d) &
+               (not assigned)):
+
+            if (pidx - pi) >= 0:
+                if (nassigned[pidx - pi] & (minz < z_part[pidx - pi]) &
+                        (z_part[pidx - pi] < maxz)):
+                    idx[i] = pidx - pi
+
+            if (pidx + pi) < n_gal:
+                if (nassigned[pidx + pi] & (minz < z_part[pidx + pi]) &
+                        (z_part[pidx + pi] < maxz)):
+                    idx[i] = pidx + pi
+
+        if not assigned:
+            pass
+
+    return idx
 
 
 class ADDGALSModel(GalaxyModel):
@@ -57,9 +99,23 @@ class ADDGALSModel(GalaxyModel):
 
         z = self.drawRedshifts(n_gal)
         mag = self.luminosityFunction.sampleLuminosities(domain, z)
-        dens = self.rdelModel.sampleDensities(z, mag)
 
-        self.catalog = None
+        zidx = z.argsort()
+        z = z[zidx]
+        mag = mag[zidx]
+
+        density, idx = self.rdelModel.sampleDensities(z, mag)
+
+        z = z[idx]
+        mag = mag[idx]
+
+        pos, vel, z, density = self.assignParticles(z, mag, density)
+
+        self.catalog['pos'] = pos
+        self.catalog['vel'] = vel
+        self.catalog['z'] = z
+        self.catalog['mag'] = mag
+        self.catalog['rnn'] = density
 
     def assignParticles(self, z, mag, density):
         """Assign galaxies to particles with the correct redshift
@@ -76,14 +132,35 @@ class ADDGALSModel(GalaxyModel):
 
         Returns
         -------
-        idx : np.array
-            Indices of particles that galaxies are assigned to.
-
+        pos : np.array
+            Positions of galaxies
+        vel : np.array
+            Velocities of galaxies
+        z : np.array
+            Redshifts of galaxies
+        density : np.array
+            Densities of galaxies
         """
 
+        midx = mag.argsort()
+        z = z[midx]
+        mag = mag[midx]
+        density = density[midx]
 
+        density_part = self.nbody.catalog['rnn']
+        z_part = self.nbody.catalog['z']
 
+        didx = density_part.argsort()
+        density_part = density_part[didx]
+        z_part = z_part[didx]
 
+        idx = assign(mag, z, density, z_part, density_part)
+        pos = self.nbody.particleCatalog['pos'][idx]
+        vel = self.nbody.particleCatalog['vel'][idx]
+        z = self.nbody.particleCatalog['z'][idx]
+        density = self.nbody.particleCatalog['rnn'][idx]
+
+        return pos, vel, z, density
 
 
 class RdelModel(object):
@@ -197,8 +274,10 @@ class RdelModel(object):
 
     def pofR(self, r, z, mag, dmag=0.05):
 
-        weight1 = self.luminosityFunction.cumulativeNumberDensity(z, mag + dmag)
-        weight2 = self.luminosityFunction.cumulativeNumberDensity(z, mag - dmag)
+        weight1 = self.luminosityFunction.cumulativeNumberDensity(
+            z, mag + dmag)
+        weight2 = self.luminosityFunction.cumulativeNumberDensity(
+            z, mag - dmag)
 
         pr1 = self.getParamsZL(z, mag + dmag)
         pr2 = self.getParamsZL(z, mag - dmag)
@@ -212,7 +291,6 @@ class RdelModel(object):
         p3 = 0.5 * (1. - pr2[4]) * (1 + erf((np.log(r) - pr2[0]) /
                                             (pr2[1] * np.sqrt(2.0))))
         p4 = 0.5 * pr2[4] * (1 + erf((r - pr2[2]) / (pr2[3] * np.sqrt(2.0))))
-
 
         prob = weight1 * (p1 + p2) - weight2 * (p3 + p4)
         prob /= prob[-1]
@@ -256,19 +334,17 @@ class RdelModel(object):
         density = np.zeros(n_gal)
         count = 0
 
-        idx = np.arange(n_gal)
-
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
             zhidx = z.searchsorted(zbins[i + 1])
 
             midx = mag[zlidx:zhidx].argsort()
-            mi = mag[zlidx:zhidx][midx]
-            idx[zlidx:zhidx] = midx + zlidx
+            z[zlidx:zhidx] = z[zlidx:zhidx][midx]
+            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
 
             for j in range(nmagbins):
-                mlidx = mi.searchsorted(magbins[j])
-                mhidx = mi.searchsorted(magbins[j + 1])
+                mlidx = mag[zlidx:zhidx].searchsorted(magbins[j])
+                mhidx = mag[zlidx:zhidx].searchsorted(magbins[j + 1])
 
                 nij = mhidx - mlidx
 
@@ -276,10 +352,10 @@ class RdelModel(object):
 
                 rands = np.random.uniform(size=nij)
                 density[count: count +
-                        nij] = deltamean[cdf_r.searchsorted(rands)-1]
+                        nij] = deltamean[cdf_r.searchsorted(rands) - 1]
                 count += nij
 
-        return density, idx
+        return density
 
 
 class RedFractionModel(object):
