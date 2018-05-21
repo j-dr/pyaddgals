@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from mpi4py import MPI
 import numpy as np
-import pyccl as ccl
 import argparse
 
 from .config import parseConfig
