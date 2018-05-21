@@ -1,58 +1,84 @@
 from __future__ import print_function, division
 from scipy.special import erf
-from numba import jit
+from numba import jit, boolean
 import numpy as np
 
 from .galaxyModel import GalaxyModel
 from . import luminosityFunction
 
 
-@jit
-def assign(mag, z, density, z_part, density_part, dz=0.01):
+@jit(nopython=True)
+def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
-    n_gal = mag.size
-    max_search_count = n_gal // 1000
+    n_gal = magnitude.size
+    n_part = density_part.size
+
+    max_search_count = n_part // 1000
     max_search_d = 0.1
 
-    idx = np.zeros(n_gal, dtype=np.int)
-
-    nassigned = np.zeros(density_part.size, dtype=np.bool)
+    idx_part = np.zeros(n_gal, dtype=np.int32)
+    bad = np.zeros(n_gal, dtype=boolean)
+    nassigned = np.ones(density_part.size, dtype=boolean)
 
     for i in range(n_gal):
 
-        pidx = density_part.searchsorted(density[i])
+        pidx = np.searchsorted(density_part, density[i])
+        pidx -= 1
         pi = 0
 
-        minz = z_part[i] - dz
-        maxz = z_part[i] + dz
+        minz = redshift[i] - dz
+        maxz = redshift[i] + dz
         delta_dens = 0.0
-
         assigned = False
 
-        while ((pi < max_search_count) & (delta_dens < max_search_d) &
-               (not assigned)):
+        while ((not assigned) & (pi < max_search_count) &
+                (delta_dens < (max_search_d))):
 
-            if (pidx - pi) >= 0:
+            if ((pidx - pi) >= 0) & ((pidx - pi) < n_part):
+                if np.abs(density_part[pidx - pi] - density[i]) > delta_dens:
+                    delta_dens = np.abs(density_part[pidx - pi] - density[i])
+
                 if (nassigned[pidx - pi] & (minz < z_part[pidx - pi]) &
                         (z_part[pidx - pi] < maxz)):
-                    idx[i] = pidx - pi
+                    idx_part[i] = pidx - pi
+                    nassigned[pidx - pi] = False
+                    assigned = True
 
-            if (pidx + pi) < n_gal:
+            if ((pidx + pi) < n_part) & ((pidx + pi) >= 0):
+                if (np.abs(density_part[pidx + pi] - density[i])) > delta_dens:
+                    delta_dens = np.abs(density_part[pidx + pi] - density[i])
+
                 if (nassigned[pidx + pi] & (minz < z_part[pidx + pi]) &
                         (z_part[pidx + pi] < maxz)):
-                    idx[i] = pidx + pi
+                    idx_part[i] = pidx + pi
+                    nassigned[pidx + pi] = False
+                    assigned = True
+
+            pi += 1
 
         if not assigned:
-            pass
+            bad[i] = True
+            while (not assigned):
+                if (pidx - pi) >= 0:
+                    if nassigned[pidx - pi]:
+                        idx_part[i] = pidx - pi
+                        assigned = True
 
-    return idx
+                if (pidx + pi) < n_part:
+                    if nassigned[pidx + pi]:
+                        idx_part[i] = pidx + pi
+                        assigned = True
+
+                pi += 1
+
+    return idx_part
 
 
 class ADDGALSModel(GalaxyModel):
 
     def __init__(self, nbody, luminosityFunctionConfig=None,
                  rdelModelConfig=None,
-                 redFractionModelConfig=None, colorModelConfig=None):
+                 colorModelConfig=None):
 
         self.nbody = nbody
 
@@ -109,15 +135,17 @@ class ADDGALSModel(GalaxyModel):
         z = z[idx]
         mag = mag[idx]
 
-        pos, vel, z, density = self.assignParticles(z, mag, density)
+        pos, vel, z, density, mag, _ = self.assignParticles(z, mag, density)
 
-        self.catalog['pos'] = pos
-        self.catalog['vel'] = vel
-        self.catalog['z'] = z
-        self.catalog['mag'] = mag
-        self.catalog['rnn'] = density
+        self.nbody.galacyCatalog.catalog['pos'] = pos
+        self.nbody.galaxyCatalog.catalog['vel'] = vel
+        self.nbody.galaxyCatalog.catalog['z'] = z
+        self.nbody.galaxyCatalog.catalog['mag'] = mag
+        self.nbody.galaxyCatalog.catalog['rnn'] = density
 
-    def assignParticles(self, z, mag, density):
+        id_train, coeff = self.colorModel.assignSEDs(mag, z, pos)
+
+    def assignParticles(self, redshift, magnitude, density):
         """Assign galaxies to particles with the correct redshift
         and density.
 
@@ -142,9 +170,9 @@ class ADDGALSModel(GalaxyModel):
             Densities of galaxies
         """
 
-        midx = mag.argsort()
-        z = z[midx]
-        mag = mag[midx]
+        midx = magnitude.argsort()
+        redshift = redshift[midx]
+        magnitude = magnitude[midx]
         density = density[midx]
 
         density_part = self.nbody.catalog['rnn']
@@ -154,13 +182,13 @@ class ADDGALSModel(GalaxyModel):
         density_part = density_part[didx]
         z_part = z_part[didx]
 
-        idx = assign(mag, z, density, z_part, density_part)
-        pos = self.nbody.particleCatalog['pos'][idx]
-        vel = self.nbody.particleCatalog['vel'][idx]
-        z = self.nbody.particleCatalog['z'][idx]
-        density = self.nbody.particleCatalog['rnn'][idx]
+        idx = assign(magnitude, redshift, density, z_part, density_part)
+        pos = self.nbody.particleCatalog.catalog['pos'][didx][idx]
+        vel = self.nbody.particleCatalog.catalog['vel'][didx][idx]
+        z_asn = z_part[idx]
+        density_asn = density_part[idx]
 
-        return pos, vel, z, density
+        return pos, vel, z_asn, density_asn, redshift, magnitude
 
 
 class RdelModel(object):
