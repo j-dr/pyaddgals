@@ -293,6 +293,12 @@ class RdelModel(object):
         sigmac = np.dot(self.params['sigmac'], x)
         sigmaf = np.dot(self.params['sigmaf'], x)
 
+        p[p < 0] = 0.
+        p[p > 1] = 1.
+        muf[muf < 0] = 0.
+        sigmac[sigmac < 0] = 0.0001
+        sigmaf[sigmaf < 0] = 0.0001
+
         return muc, sigmac, muf, sigmaf, p
 
     def pofR(self, r, z, mag, dmag=0.05):
@@ -320,7 +326,8 @@ class RdelModel(object):
 
         return prob
 
-    def sampleDensity(self, domain, cosmo, z, mag):
+    def sampleDensity(self, domain, cosmo, z, mag, dz=0.005, dm=0.05,
+                      n_dens_bins=50):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
         Parameters
@@ -337,10 +344,10 @@ class RdelModel(object):
 
         """
         n_gal = z.size
-        zbins = np.arange(domain.zmin, domain.zmax + 0.001, 0.001)
+        zbins = np.arange(domain.zmin, domain.zmax + dz, dz)
         zmean = zbins[1:] + zbins[:-1]
 
-        magbins = np.arange(np.min(mag), np.max(mag) + 0.05, 0.05)
+        magbins = np.arange(np.min(mag), np.max(mag) + dm, dm)
         magmean = (magbins[1:] + magbins[:-1]) / 2
 
         nzbins = zmean.size
@@ -351,23 +358,25 @@ class RdelModel(object):
         z = z[zidx]
         mag = mag[zidx]
 
-        deltabins = np.logspace(-3., np.log10(15.), 51)
+        deltabins = np.logspace(-3., np.log10(15.), n_dens_bins + 1)
         deltamean = (deltabins[1:] + deltabins[:-1]) / 2
 
         density = np.zeros(n_gal)
         count = 0
+
+        idx = np.arange(n_gal)
 
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
             zhidx = z.searchsorted(zbins[i + 1])
 
             midx = mag[zlidx:zhidx].argsort()
-            z[zlidx:zhidx] = z[zlidx:zhidx][midx]
-            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
+            mi = mag[zlidx:zhidx][midx]
+            idx[zlidx:zhidx] = midx + zlidx
 
             for j in range(nmagbins):
-                mlidx = mag[zlidx:zhidx].searchsorted(magbins[j])
-                mhidx = mag[zlidx:zhidx].searchsorted(magbins[j + 1])
+                mlidx = mi.searchsorted(magbins[j])
+                mhidx = mi.searchsorted(magbins[j + 1])
 
                 nij = mhidx - mlidx
 
@@ -378,7 +387,7 @@ class RdelModel(object):
                         nij] = deltamean[cdf_r.searchsorted(rands) - 1]
                 count += nij
 
-        return density
+        return density, idx
 
 
 class RedFractionModel(object):
