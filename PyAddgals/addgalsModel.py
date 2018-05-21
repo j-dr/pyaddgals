@@ -398,5 +398,84 @@ class RedFractionModel(object):
 
 class ColorModel(object):
 
-    def __init__(self, modelfile, **kwargs):
-        pass
+    def __init__(self, trainingSetCoeffs=None, redFractionModelFile=None,
+                 trainingSetMagZ=None, **kwargs):
+
+        if trainingSetCoeffs is None:
+            raise(ValueError('ColorModel model must define trainingSetCoeffs'))
+
+        if redFractionModelFile is None:
+            raise(ValueError('ColorModel model must define redFractionModelFile'))
+
+        if trainingSetMagZ is None:
+            raise(ValueError('ColorModel model must define trainingSetMagZ'))
+
+        self.trainingSetCoeffs = trainingSetCoeffs
+        self.redFractionModelFile = redFractionModelFile
+        self.trainingSetMagZ = trainingSetMagZ
+
+    def loadModel(self):
+        """Load color training model information.
+
+        Returns
+        -------
+        None
+
+        """
+        # Load color training set
+        tsdtype = np.dtype([('Mag_r_sdss', np.float), ('z', np.float),
+                            ('sigma5', np.float), ('red', np.bool)])
+
+        self.trainingSetCoeffs = np.loadtxt(self.trainingSetCoeffs)
+        self.trainingSetMagZ = np.loadtxt(self.trainingSetMagZ, dtype=tsdtype)
+
+        mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
+        model = np.loadtxt(self.redFractionModelfile, dtype=mdtype)
+
+        idx = model['param'].argsort()
+        model = model[idx]
+
+        self.redFractionParams = model['value']
+
+    def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
+        """Make a vandermonde matrix out of redshifts and luminosities
+
+        Parameters
+        ----------
+        z : np.array
+            Galaxy redshifts, dimension (n)
+        mag : np.array
+            Galaxy luminosities, dimension (m)
+        bmlim : float
+            Bright luminosity limit
+        fmlim : float
+            Faint luminosity limit
+        mag_ref : float
+            Reference magnitude
+
+        Returns
+        -------
+        xvec : np.array
+            vandermonde matrix of dimension (n,m)
+
+        """
+
+        bright_mag_lim = bmlim - mag_ref
+        faint_mag_lim = fmlim - mag_ref
+
+        x = np.meshgrid(mag, z)
+
+        zv = 1 / (x[1].flatten() + 1) - 0.47
+        mv = x[0].flatten()
+        mv = mv - mag_ref
+        mv[mv < bright_mag_lim] = bright_mag_lim
+        mv[mv > faint_mag_lim] = faint_mag_lim
+
+        o = np.ones(len(zv))
+
+        # construct vandermonde matrix
+        xvec = np.array([o, mv, mv * zv, mv * zv**2, mv**2,
+                         mv**2 * zv, mv**3, zv,
+                         zv**2, zv**3])
+
+        return xvec

@@ -1,8 +1,8 @@
 from __future__ import print_function, division
-import numpy as np
 from .addgalsModel import ADDGALSModel
 
 _available_models = ['ADDGALSModel']
+
 
 class GalaxyCatalog(object):
     """

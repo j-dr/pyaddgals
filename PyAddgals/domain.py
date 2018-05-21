@@ -10,7 +10,6 @@ class Domain(object):
     is responsible for.
     """
 
-
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
                  pixlist=None):
@@ -97,25 +96,24 @@ class Domain(object):
 
         """
 
-        if octant==0:
-            vert = [[1,0,0], [0,1,0], [0,0,1]]
-        elif octant==1:
-            vert = [[-1,0,0], [0,1,0], [0,0,1]]
-        elif octant==2:
-            vert = [[-1,0,0], [0,-1,0], [0,0,1]]
-        elif octant==3:
-            vert = [[1,0,0], [0,-1,0], [0,0,1]]
-        elif octant==4:
-            vert = [[1,0,0], [0,1,0], [0,0,-1]]
-        elif octant==5:
-            vert = [[-1,0,0], [0,1,0], [0,0,-1]]
-        elif octant==6:
-            vert = [[-1,0,0], [0,-1,0], [0,0,-1]]
-        elif octant==7:
-            vert = [[1,0,0], [0,-1,0], [0,0,-1]]
+        if octant == 0:
+            vert = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        elif octant == 1:
+            vert = [[-1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        elif octant == 2:
+            vert = [[-1, 0, 0], [0, -1, 0], [0, 0, 1]]
+        elif octant == 3:
+            vert = [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
+        elif octant == 4:
+            vert = [[1, 0, 0], [0, 1, 0], [0, 0, -1]]
+        elif octant == 5:
+            vert = [[-1, 0, 0], [0, 1, 0], [0, 0, -1]]
+        elif octant == 6:
+            vert = [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]
+        elif octant == 7:
+            vert = [[1, 0, 0], [0, -1, 0], [0, 0, -1]]
 
         return vert
-
 
     def decomp(self, comm, rank, ntasks):
         """Perform domain decomposition, creating domain objects for each process. Store information within object.
@@ -141,40 +139,41 @@ class Domain(object):
         self.domain_counter = 0
 
         if self.fmt == 'BCCLightcone':
-            #get the pixels that overlap with the octants that we're using
+            # get the pixels that overlap with the octants that we're using
             allpix = []
 
-            #high resolution nside that we'll use to calculate areas of pixels
-            #that overlap with the octants in question.
+            # high resolution nside that we'll use to calculate areas of pixels
+            # that overlap with the octants in question.
             hrnside = 2048
-            #for now only use two octants
+            # for now only use two octants
             for i in range(2):
                 vec = self.octVert(i)
 
-                #only want pixels whose centers fall within the octants
+                # only want pixels whose centers fall within the octants
                 allpix.append(hp.query_polygon(hrnside, vec,
-                                                    inclusive=False,
-                                                    nest=self.nest))
+                                               inclusive=False,
+                                               nest=self.nest))
 
             allpix = np.hstack(allpix)
             allpix = np.unique(allpix)
 
-            #get pixels at actual nside we want to use
+            # get pixels at actual nside we want to use
             if self.nest:
-                ud_map = hp.ud_grade(np.arange(12*self.nside**2), hrnside,
-                                        order_in='NESTED', order_out='NESTED')
+                ud_map = hp.ud_grade(np.arange(12 * self.nside**2), hrnside,
+                                     order_in='NESTED', order_out='NESTED')
             else:
-                ud_map = hp.ud_grade(np.arange(12*self.nside**2), hrnside)
+                ud_map = hp.ud_grade(np.arange(12 * self.nside**2), hrnside)
 
             allpix = ud_map[allpix]
 
-            #calculate fraction of area
-            pcounts, e = np.histogram(allpix, np.arange(12*self.nside**2 + 1))
+            # calculate fraction of area
+            pcounts, e = np.histogram(
+                allpix, np.arange(12 * self.nside**2 + 1))
             self.allpix = np.unique(allpix)
             self.allpix.sort()
 
             self.fracarea = pcounts[self.allpix] / 2 ** (2 * np.log2(hrnside /
-                                                            self.nside))
+                                                                     self.nside))
 
             if self.pixlist is not None:
                 idx = np.in1d(self.allpix, self.pixlist)
@@ -183,19 +182,19 @@ class Domain(object):
                 self.allpix = self.allpix[idx]
                 self.fracarea = self.fracarea[idx]
 
-            #get radial bins s.t. each bin has equal volume
+            # get radial bins s.t. each bin has equal volume
 
 #            NEED TO DEAL WITH OVERLAPS!
 
             dl = self.rmax - self.rmin
-            r1 = dl / (self.nrbins)**(1/3)
-            self.rbins = np.arange(self.nrbins+1)**(1/3) * r1 + self.rmin
+            r1 = dl / (self.nrbins)**(1 / 3)
+            self.rbins = np.arange(self.nrbins + 1)**(1 / 3) * r1 + self.rmin
 
-            #product of pixels and radial bins are all domains
-            self.domains = list(product(np.arange(self.nrbins,dtype=np.int),
+            # product of pixels and radial bins are all domains
+            self.domains = list(product(np.arange(self.nrbins, dtype=np.int),
                                         self.allpix))
 
-            #divide up domains
+            # divide up domains
             self.domains_task = self.domains[self.rank::self.ntasks]
             self.ndomains_task = len(self.domains_task)
 
@@ -209,18 +208,19 @@ class Domain(object):
         for i in range(self.ndomains_task):
             d = copy(self)
 
-            if self.fmt=='BCCLightcone':
+            if self.fmt == 'BCCLightcone':
                 d.rbin = self.domains_task[i][0]
-                d.pix  = self.domains_task[i][1]
+                d.pix = self.domains_task[i][1]
 
                 d.rmin = self.rbins[d.rbin]
-                d.rmax = self.rbins[d.rbin+1]
+                d.rmax = self.rbins[d.rbin + 1]
                 d.zmin = self.cosmo.zofR(d.rmin)
                 d.zmax = self.cosmo.zofR(d.rmax)
-                d.rmean = 0.75 * (d.rmax - d.rmin) # volume weighted average radius
+                # volume weighted average radius
+                d.rmean = 0.75 * (d.rmax - d.rmin)
                 d.zmean = self.cosmo.zofR(d.rmean)
 
-            elif self.fmt=='Snapshot':
+            elif self.fmt == 'Snapshot':
                 d.subbox = self.domains_task[i]
 
             yield d
@@ -236,7 +236,6 @@ class Domain(object):
             self.pixarea *= self.fracarea[pidx]
 
         return self.pixarea
-
 
     def getVolume(self):
         """Get the volume of this domain in comoving Mpc/h
@@ -259,14 +258,13 @@ class Domain(object):
             pixarea = hp.nside2pixarea(self.nside, degrees=True)
             pixarea *= self.fracarea[pidx]
 
-            self.volume = 4 * np.pi * (pixarea / 41253.) * (self.rmax ** 3
-                                                        - self.rmin **3 ) / 3
+            self.volume = 4 * np.pi * (pixarea / 41253.) * (self.rmax ** 3 -
+                                                            self.rmin ** 3) / 3
         elif self.fmt == 'Snapshot':
 
             self.volume = self.lbox ** 3 / self.nbox ** 3
 
         else:
             raise(ValueError('Cannot calculate volumes for fmt {}'.format(self.fmt)))
-
 
         return self.volume
