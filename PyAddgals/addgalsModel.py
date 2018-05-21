@@ -88,9 +88,6 @@ class ADDGALSModel(GalaxyModel):
         if rdelModelConfig is None:
             raise(ValueError('ADDGALS model must define rdelModelConfig'))
 
-        if redFractionModelConfig is None:
-            raise(ValueError('ADDGALS model must define redFractionModelConfig'))
-
         if colorModelConfig is None:
             raise(ValueError('ADDGALS model must define colorModelConfig'))
 
@@ -101,7 +98,6 @@ class ADDGALSModel(GalaxyModel):
             nbody.cosmo, **luminosityFunctionConfig)
 
         self.rdelModel = RdelModel(self.luminosityFunction, **rdelModelConfig)
-        self.redFractionModel = RedFractionModel(**redFractionModelConfig)
         self.colorModel = ColorModel(**colorModelConfig)
 
     def paintGalaxies(self):
@@ -252,7 +248,6 @@ class RdelModel(object):
 
         """
 
-        mag_ref = -20.5
         bright_mag_lim = bmlim - mag_ref
         faint_mag_lim = fmlim - mag_ref
 
