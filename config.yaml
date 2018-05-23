@@ -11,6 +11,7 @@ NBody :
   denspath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/calcrnn/
   hinfopath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
   halofile : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/cut_reform_out_0.parents
+  halodensfile : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/rnn_cut_reform_out_0.parents
 
 Cosmology:
   omega_m : 0.286
@@ -24,10 +25,14 @@ GalaxyModel :
   ADDGALSModel :
     luminosityFunctionConfig : 
       modeltype : DSGLuminosityFunction
-      magmin : 25.0
+      magmin : 27.0
     rdelModelConfig : 
-      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/DSG_0.684_0.17_global_rdelmodel.txt
-    redFractionModelConfig : 
-      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
+      rdelModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/DSG_0.684_0.17_global_rdelmodel.txt
+      lcenModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/C400_DSG_0.684_0.17_lcenmass.fits
+      lcenMassMin : 3162277660168
+      useSubhalos : False
+      scatter: 0.17
     colorModelConfig :
-      modelfile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/combined_dr6_cooper.dat
+      redFractionModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
+      trainingSetMagZ : /u/ki/jderose/ki23/SkyFactory-config/Addgals/dr6_cooper_id_w_red.dat
+      trainingSetCoeffs : /Users/jderose/projects/SkyFactory-config/Addgals/combined_dr6_cooper.dat
