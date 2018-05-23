@@ -9,7 +9,7 @@ class NBody(object):
     """
 
     def __init__(self, cosmo, domain, partpath=None, denspath=None,
-                 hinfopath=None, halofile=None):
+                 hinfopath=None, halofile=None, halodensfile=None):
         """Create NBody object.
 
         Parameters
@@ -40,6 +40,7 @@ class NBody(object):
         self.denspath = denspath
         self.hinfopath = hinfopath
         self.halofile = halofile
+        self.halodensfile = halodensfile
 
         if not self.partpath:
             raise(ValueError("partpath, path to particle data must be defined for nbody"))
@@ -55,6 +56,10 @@ class NBody(object):
         if not self.halofile:
             raise(ValueError(
                 "halofile, path to input halo catalog must be defined for nbody"))
+
+        if not self.halodensfile:
+            raise(ValueError(
+                "halodensfile, path to density measurements for halo catalog must be defined for nbody"))
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)

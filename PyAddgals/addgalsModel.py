@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from scipy.special import erf
 from numba import jit, boolean
 import numpy as np
+import fitsio
 
 from .galaxyModel import GalaxyModel
 from . import luminosityFunction
@@ -43,6 +44,8 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
                     idx_part[i] = pidx - pi
                     nassigned[pidx - pi] = False
                     assigned = True
+                    pi += 1
+                    continue
 
             if ((pidx + pi) < n_part) & ((pidx + pi) >= 0):
                 if (np.abs(density_part[pidx + pi] - density[i])) > delta_dens:
@@ -53,6 +56,8 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
                     idx_part[i] = pidx + pi
                     nassigned[pidx + pi] = False
                     assigned = True
+                    pi += 1
+                    continue
 
             pi += 1
 
@@ -72,6 +77,97 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
                 pi += 1
 
     return idx_part
+
+
+@jit(nopython=True)
+def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
+               params, scatter, dMr=0.15):
+
+    n_halo = z_halo.size
+    n_gal = redshift.size
+    m0 = params[0]
+    mc = params[1]
+    a = params[2]
+    b = params[3]
+    k = params[3]
+
+    mr0 = m0 - 2.5 * (a * np.log10(mass_halo / mc) - b *
+                      np.log10(1. + (mass_halo / mc)**(k / b)))
+    mr0 = mr0 + np.random.randn(n_halo) * (2.5 * scatter)
+
+    bad = np.zeros(n_halo, dtype=boolean)
+
+    # made this as large as possible to avoid not assigning halos
+    max_search_count = n_gal
+
+    assigned = np.zeros(n_gal, dtype=boolean)
+
+    for i in range(n_halo):
+
+        magmin = mr0[i] - dMr
+        magmax = mr0[i] + dMr
+
+        pidx = np.searchsorted(density, density_halo[i])
+        pidx -= 1
+        pi = 0
+
+        halo_assigned = False
+
+        while ((not halo_assigned) & (pi < max_search_count)):
+
+            if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
+
+                if ((not assigned[pidx - pi]) & (magmin < magnitude[pidx - pi]) &
+                        (magnitude[pidx - pi] < magmax)):
+                    assigned[pidx - pi] = True
+                    halo_assigned = True
+                    pi += 1
+                    continue
+
+            if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
+
+                if ((not assigned[pidx + pi]) & (magmin < magnitude[pidx + pi]) &
+                        (magnitude[pidx + pi] < magmax)):
+                    assigned[pidx + pi] = True
+                    halo_assigned = True
+                    pi += 1
+                    continue
+
+            pi += 1
+
+            if (pi > max_search_count):
+                bad[i] = True
+
+        # if not assigned with fiducial magniude window, make larger
+        if not halo_assigned:
+
+            pi = 0
+            magmin = mr0[i] - 3 * dMr
+            magmax = mr0[i] + 3 * dMr
+
+            while ((not halo_assigned) & (pi < max_search_count)):
+
+                if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
+
+                    if ((not assigned[pidx - pi]) & (magmin < magnitude[pidx - pi]) &
+                            (magnitude[pidx - pi] < magmax)):
+                        assigned[pidx - pi] = True
+                        halo_assigned = True
+                        pi += 1
+                        continue
+
+                if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
+
+                    if ((not assigned[pidx + pi]) & (magmin < magnitude[pidx + pi]) &
+                            (magnitude[pidx + pi] < magmax)):
+                        assigned[pidx + pi] = True
+                        halo_assigned = True
+                        pi += 1
+                        continue
+
+                pi += 1
+
+    return assigned, mr0, bad
 
 
 class ADDGALSModel(GalaxyModel):
@@ -126,20 +222,107 @@ class ADDGALSModel(GalaxyModel):
         z = z[zidx]
         mag = mag[zidx]
 
-        density, idx = self.rdelModel.sampleDensities(z, mag)
+        density, idx = self.rdelModel.sampleDensity(domain, z, mag)
 
         z = z[idx]
         mag = mag[idx]
 
-        pos, vel, z, density, mag, _ = self.assignParticles(z, mag, density)
+        mag_cen, assigned = self.assignHalos(z, mag, density)
+        pos, vel, z, density, mag, rhalo, haloid, halomass = self.assignParticles(
+            z[~assigned], mag[~assigned], density[~assigned])
 
-        self.nbody.galacyCatalog.catalog['pos'] = pos
+        n_halo = mag_cen.size
+
+        pos = np.vstack([self.nbody.haloCatalog.catalog['pos'], pos])
+        vel = np.vstack([self.nbody.haloCatalog.catalog['vel'], vel])
+        z = np.hstack([self.nbody.haloCatalog.catalog['z'], z])
+        mag = np.hstack([mag_cen, mag])
+        density = np.hstack([self.nbody.haloCatalog.catalog['rnn'], density])
+        halomass = np.hstack([self.nbody.haloCatalog.catalog['mass'], halomass])
+        rhalo = np.hstack([np.zeros(n_halo), rhalo])
+        central = np.zeros(rhalo.size)
+        central[:n_halo] = 1
+        haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
+
+        self.nbody.galaxyCatalog.catalog['pos'] = pos
         self.nbody.galaxyCatalog.catalog['vel'] = vel
         self.nbody.galaxyCatalog.catalog['z'] = z
         self.nbody.galaxyCatalog.catalog['mag'] = mag
         self.nbody.galaxyCatalog.catalog['rnn'] = density
+        self.nbody.galaxyCatalog.catalog['halomass'] = halomass
+        self.nbody.galaxyCatalog.catalog['rhalo'] = rhalo
+        self.nbody.galaxyCatalog.catalog['haloid'] = haloid
+        self.nbody.galaxyCatalog.catalog['central'] = central
+#        id_train, coeff = self.colorModel.assignSEDs(mag, z, pos)
 
-        id_train, coeff = self.colorModel.assignSEDs(mag, z, pos)
+    def assignHalos(self, z, mag, dens):
+        """Assign central galaxies to resolved halos. Halo catalog
+        will be cut to minimum mass and subhalos removed if they
+        are not used
+
+        Parameters
+        ----------
+        z : np.array
+            Array of redshifts of dimension (N)
+        mag : np.array
+            Array of magnitudes of dimension (N)
+        dens : np.array
+            Array of densities of dimension (N)
+
+        Returns
+        -------
+        lcen : np.array
+            Magniutdes of galaxies assigned to halos
+        assigned : np.array
+            Whether or not a (magnitude, z, density) tuple has been assigned
+            to a halo or not
+
+        """
+
+        # cut out low mass and subhalos if necessary
+        idx = self.nbody.haloCatalog.catalog['mass'] >= self.rdelModel.lcenMassMin
+        if not self.rdelModel.useSubhalos:
+            idx &= (self.nbody.haloCatalog.catalog['pid'] == -1)
+
+        for k in self.nbody.haloCatalog.catalog.keys():
+            self.nbody.haloCatalog.catalog[k] = self.nbody.haloCatalog.catalog[k][idx]
+
+        # sort halos by density
+        idx = self.nbody.haloCatalog.catalog['rnn'].argsort()
+
+        for k in self.nbody.haloCatalog.catalog.keys():
+            self.nbody.haloCatalog.catalog[k] = self.nbody.haloCatalog.catalog[k][idx]
+
+        mass_halo = self.nbody.haloCatalog.catalog['mass']
+        density_halo = self.nbody.haloCatalog.catalog['rnn']
+        z_halo = self.nbody.haloCatalog.catalog['z']
+
+        # sort galaxies by density
+        idx = dens.argsort()
+        z = z[idx]
+        mag = mag[idx]
+        dens = dens[idx]
+
+        amean = 1 / (self.nbody.domain.zmean + 1)
+
+        idx = self.rdelModel.lcenModel['scale'].searchsorted(amean) - 1
+
+        if idx < 0:
+            idx = 0
+
+        # numba doesn't like record arrays
+        params = [self.rdelModel.lcenModel['M0'][idx],
+                  self.rdelModel.lcenModel['Mc'][idx],
+                  self.rdelModel.lcenModel['a'][idx],
+                  self.rdelModel.lcenModel['b'][idx],
+                  self.rdelModel.lcenModel['k'][idx]]
+
+        assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
+                                         z_halo, params, self.rdelModel.scatter)
+
+        print('n_bad: {}'.format(np.sum(bad)))
+
+        return lcen, assigned
 
     def assignParticles(self, redshift, magnitude, density):
         """Assign galaxies to particles with the correct redshift
@@ -157,13 +340,21 @@ class ADDGALSModel(GalaxyModel):
         Returns
         -------
         pos : np.array
-            Positions of galaxies
+            Positions of particles assigned to galaxies
         vel : np.array
-            Velocities of galaxies
-        z : np.array
-            Redshifts of galaxies
-        density : np.array
-            Densities of galaxies
+            Velocities of particles assigned to galaxies
+        z_asn : np.array
+            Redshifts of particles assigned to galaxies
+        density_asn : np.array
+            Densities of particles assigned to galaxies
+        magnitude : np.array
+            Sorted galaxy magnitudes
+        rhalo : np.array
+            Distance to nearest halo for particles assigned to galaxies
+        haloid : np.array
+            Haloid of nearest halo for particles assigned to galaxies
+        halomass : np.array
+            Mass of nearest halo for particles assigned to galaxies
         """
 
         midx = magnitude.argsort()
@@ -171,8 +362,8 @@ class ADDGALSModel(GalaxyModel):
         magnitude = magnitude[midx]
         density = density[midx]
 
-        density_part = self.nbody.catalog['rnn']
-        z_part = self.nbody.catalog['z']
+        density_part = self.nbody.particleCatalog.catalog['rnn']
+        z_part = self.nbody.particleCatalog.catalog['z']
 
         didx = density_part.argsort()
         density_part = density_part[didx]
@@ -181,27 +372,41 @@ class ADDGALSModel(GalaxyModel):
         idx = assign(magnitude, redshift, density, z_part, density_part)
         pos = self.nbody.particleCatalog.catalog['pos'][didx][idx]
         vel = self.nbody.particleCatalog.catalog['vel'][didx][idx]
+        rhalo = self.nbody.particleCatalog.catalog['rhalo'][didx][idx]
+        haloid = self.nbody.particleCatalog.catalog['haloid'][didx][idx]
+        halomass = self.nbody.particleCatalog.catalog['mass'][didx][idx]
         z_asn = z_part[idx]
         density_asn = density_part[idx]
 
-        return pos, vel, z_asn, density_asn, redshift, magnitude
+        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass
 
 
 class RdelModel(object):
 
-    def __init__(self, lf, modelfile=None, **kwargs):
+    def __init__(self, lf, rdelModelFile=None, lcenModelFile=None,
+                 lcenMassMin=None, useSubhalos=False, scatter=None):
+
+        if lcenModelFile is None:
+            raise(ValueError('rdel model must define lcenModelFile'))
+
+        if scatter is None:
+            raise(ValueError('rdel model must define scatter'))
+
+        if rdelModelFile is None:
+            raise(ValueError('rdel model must define rdelModelFile'))
 
         self.luminosityFunction = lf
-        self.modelfile = modelfile
+        self.rdelModelFile = rdelModelFile
+        self.lcenModelFile = lcenModelFile
+        self.lcenMassMin = float(lcenMassMin)
+        self.useSubhalos = useSubhalos
+        self.scatter = float(scatter)
 
-        if self.modelfile is None:
-            for k in kwargs.keys():
-                setattr(self, k, kwargs[k])
-        else:
-            self.loadModelFile()
+        self.loadModelFile()
 
     def loadModelFile(self):
-        """Load a model from file into self.model
+        """Load the rdel and lcen model files and parse them
+        into a format usable by the rest of the code
 
         Returns
         -------
@@ -209,10 +414,8 @@ class RdelModel(object):
 
         """
 
-        assert(self.modelfile is not None)
-
         mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
-        model = np.loadtxt(self.modelfile, dtype=mdtype)
+        model = np.loadtxt(self.rdelModelFile, dtype=mdtype)
 
         idx = model['param'].argsort()
         model = model[idx]
@@ -224,6 +427,9 @@ class RdelModel(object):
         self.params['muf'] = model['value'][30:45]
         self.params['sigmaf'] = model['value'][45:60]
         self.params['p'] = model['value'][60:75]
+
+        self.lcenModel = fitsio.read(self.lcenModelFile)
+        self.lcenModel['Mc'] = 10**self.lcenModel['Mc']
 
     def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
         """Make a vandermonde matrix out of redshifts and luminosities
@@ -326,8 +532,8 @@ class RdelModel(object):
 
         return prob
 
-    def sampleDensity(self, domain, cosmo, z, mag, dz=0.005, dm=0.05,
-                      n_dens_bins=50):
+    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.05,
+                      n_dens_bins=200):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
         Parameters
@@ -343,6 +549,7 @@ class RdelModel(object):
             Sampled densities
 
         """
+
         n_gal = z.size
         zbins = np.arange(domain.zmin, domain.zmax + dz, dz)
         zmean = zbins[1:] + zbins[:-1]
