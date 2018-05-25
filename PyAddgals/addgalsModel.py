@@ -14,7 +14,7 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
     n_gal = magnitude.size
     n_part = density_part.size
 
-    max_search_count = n_part // 1000
+    max_search_count = n_part // 50
     max_search_d = 0.1
 
     idx_part = np.zeros(n_gal, dtype=np.int32)
@@ -76,7 +76,7 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
                 pi += 1
 
-    return idx_part
+    return idx_part, bad
 
 
 @jit(nopython=True)
@@ -369,7 +369,7 @@ class ADDGALSModel(GalaxyModel):
         density_part = density_part[didx]
         z_part = z_part[didx]
 
-        idx = assign(magnitude, redshift, density, z_part, density_part)
+        idx, bad = assign(magnitude, redshift, density, z_part, density_part)
         pos = self.nbody.particleCatalog.catalog['pos'][didx][idx]
         vel = self.nbody.particleCatalog.catalog['vel'][didx][idx]
         rhalo = self.nbody.particleCatalog.catalog['rhalo'][didx][idx]
@@ -377,6 +377,8 @@ class ADDGALSModel(GalaxyModel):
         halomass = self.nbody.particleCatalog.catalog['mass'][didx][idx]
         z_asn = z_part[idx]
         density_asn = density_part[idx]
+
+        print('number of bad assignments: {}'.format(np.sum(bad)))
 
         return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass
 
@@ -532,7 +534,7 @@ class RdelModel(object):
 
         return prob
 
-    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.05,
+    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.1,
                       n_dens_bins=200):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
