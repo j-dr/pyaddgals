@@ -101,7 +101,25 @@ class Cosmology(object):
         distance_modulus = ccl.distance_modulus(self._cosmo, 1 / (z + 1.))
         return distance_modulus
 
-    def comovingVolume(self,z):
+    def angularDiameterDistance(self, z):
+        """Compute the distance modulus as a function of redshift
+
+        Parameters
+        ----------
+        z : array
+            redshifts to compute angular diameter distance at
+
+        Returns
+        -------
+        d_a : array
+            comoving angular diameter distance at input redshifts
+
+        """
+
+        d_a = ccl.comoving_angular_distance(self._cosmo, 1 / (z + 1.))
+        return d_a
+
+    def comovingVolume(self, z):
         """Comoving Volume out to redshift z
 
         Parameters

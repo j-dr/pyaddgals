@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from scipy.special import erf
 from numba import jit, boolean
+from fast3tree import fast3tree
 import numpy as np
 import fitsio
 
@@ -238,7 +239,8 @@ class ADDGALSModel(GalaxyModel):
         z = np.hstack([self.nbody.haloCatalog.catalog['z'], z])
         mag = np.hstack([mag_cen, mag])
         density = np.hstack([self.nbody.haloCatalog.catalog['rnn'], density])
-        halomass = np.hstack([self.nbody.haloCatalog.catalog['mass'], halomass])
+        halomass = np.hstack(
+            [self.nbody.haloCatalog.catalog['mass'], halomass])
         rhalo = np.hstack([np.zeros(n_halo), rhalo])
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
@@ -639,14 +641,14 @@ class ColorModel(object):
         self.trainingSetMagZ = np.loadtxt(self.trainingSetMagZ, dtype=tsdtype)
 
         mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
-        model = np.loadtxt(self.redFractionModelfile, dtype=mdtype)
+        model = np.loadtxt(self.redFractionModelFile, dtype=mdtype)
 
         idx = model['param'].argsort()
         model = model[idx]
 
         self.redFractionParams = model['value']
 
-    def makeVandermonde(self, z, mag, bmlim, fmlim, mag_ref):
+    def makeVandermondeRF(self, z, mag, bmlim, fmlim, mag_ref):
         """Make a vandermonde matrix out of redshifts and luminosities
 
         Parameters
@@ -672,10 +674,10 @@ class ColorModel(object):
         bright_mag_lim = bmlim - mag_ref
         faint_mag_lim = fmlim - mag_ref
 
-        x = np.meshgrid(mag, z)
+        x = np.meshgrid(z, mag)
 
-        zv = 1 / (x[1].flatten() + 1) - 0.47
-        mv = x[0].flatten()
+        zv = 1 / (x[0].flatten() + 1) - 0.47
+        mv = x[1].flatten()
         mv = mv - mag_ref
         mv[mv < bright_mag_lim] = bright_mag_lim
         mv[mv > faint_mag_lim] = faint_mag_lim
@@ -688,3 +690,107 @@ class ColorModel(object):
                          zv**2, zv**3])
 
         return xvec
+
+    def computeRedFraction(self, z, mag, dz=0.01, dm=0.1, bmlim=-22.,
+                           fmlim=-18., mag_ref=-20):
+        rf = np.zeros(z.size)
+
+        zbins = np.arange(np.min(z), np.max(z) + dz, dz)
+        magbins = np.arange(np.min(mag), np.max(mag) + dm, dm)
+
+        nzbins = zbins.size - 1
+        nmagbins = magbins.size - 1
+
+        zmean = (zbins[1:] + zbins[:-1]) / 2
+        magmean = (magbins[1:] + magbins[:-1]) / 2
+
+        xvec = self.makeVandermondeRF(zmean, magmean, bmlim, fmlim, mag_ref)
+
+        # calculate red fraction for mag, z bins
+        rfgrid = np.dot(xvec.T, self.redFractionParams)
+        rfgrid = rfgrid.reshape(nmagbins, nzbins)
+        rfgrid[rfgrid > 1] = 1.
+        rfgrid[rfgrid < 0] = 0
+
+        # get red fraction for each galaxy, idx keeps track of
+        # sorted galaxy positions
+        idx = np.argsort(z)
+        z = z[idx]
+        mag = mag[idx]
+
+        for i in range(nzbins):
+            zlidx = z.searchsorted(zbins[i])
+            zhidx = z.searchsorted(zbins[i + 1])
+
+            midx = np.argsort(mag[zlidx:zhidx])
+            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
+            idx[zlidx:zhidx] = idx[zlidx:zhidx][midx]
+
+            for j in range(nmagbins):
+
+                mlidx = mag[zlidx:zhidx].searchsorted(magbins[j])
+                mhidx = mag[zlidx:zhidx].searchsorted(magbins[j + 1])
+
+                rf[zlidx + mlidx: zlidx + mhidx] = rfgrid[j][i]
+
+        return rf, idx
+
+    def rankSigma5(self, z, magnitude, sigma5, zwindow, magwindow):
+
+        dsigma5 = np.max(sigma5) - np.min(sigma5)
+        ranksigma5 = np.zeros(len(z))
+
+        pos = np.zeros((len(z), 3))
+        pos[:, 0] = z
+        pos[:, 1] = magnitude
+        pos[:, 2] = sigma5
+
+        max_distances = np.array([zwindow, magwindow, dsigma5])
+        neg_max_distances = -1.0 * max_distances
+
+        with fast3tree(pos) as tree:
+
+            for i, p in enumerate(pos):
+
+                tpos = tree.query_box(
+                    p + neg_max_distances, p + max_distances, output='pos')
+                tpos = tpos[:, 2]
+                tpos.sort()
+                ranksigma5[i] = tpos.searchsorted(pos[i, 2]) / (len(tpos) + 1)
+
+        return ranksigma5
+
+    def computeRankSigma5(self, cosmo, z, mag, pos_gals):
+
+        pos_bright_gals = pos_gals[mag < -19.8]
+
+        max_distances = np.array([1.5, 1.5, 1000])
+        neg_max_distances = -1.0 * max_distances
+
+        sigma5 = np.zeros(len(pos_gals))
+
+        with fast3tree(pos_bright_gals) as tree:
+
+            for i, p in enumerate(pos_gals):
+
+                tpos = tree.query_box(
+                    p + neg_max_distances, p + max_distances, output='pos')
+                dtheta = np.abs(tpos - p)
+                dtheta = 2 * np.arcsin(np.sqrt(np.sin(dtheta[:, 0] / 2)**2 + np.cos(
+                    p[0] * np.cos(tpos[:, 0])) * np.sin(dtheta[:, 1] / 2)**2))
+                dtheta.sort()
+                try:
+                    sigma5[i] = dtheta[4]
+                except IndexError as e:
+                    sigma5[i] = -1
+
+        sigma5 = sigma5 * cosmo.angularDiameterDistance(z)
+        ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
+
+        return sigma5, ranksigma5
+
+    def assignSEDs(self, cosmo, pos, vel, mag, z):
+
+        sigma5, ranksigma5 = self.computeRankSigma5(cosmo, z, mag, pos)
+        rf, idx = self.computeRedFraction(z, mag)
+#        tidx, coeffs = assign
