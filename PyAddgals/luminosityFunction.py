@@ -196,7 +196,6 @@ class LuminosityFunction(object):
 
         """
 
-
         n_gal = (area / 41253.) * dblquad(self.numberDensityIntegrandZL, z_min, z_max,
                                           self.m_max_of_z, self.m_min_of_z)[0]
 

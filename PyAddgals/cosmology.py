@@ -3,11 +3,12 @@ import pyccl as ccl
 from scipy.misc import derivative
 import numpy as np
 
+
 class Cosmology(object):
 
     def __init__(self, omega_m=None, omega_b=None, n_s=None, h=None,
-                    sigma8=None, a_s=None, w=-1.0, n_eff=3.046, n_nu_mass=0.0,
-                    m_nu=0.0):
+                 sigma8=None, a_s=None, w=-1.0, n_eff=3.046, n_nu_mass=0.0,
+                 m_nu=0.0):
 
         if omega_m is None:
             raise(ValueError("Must define omega_m"))
@@ -64,7 +65,6 @@ class Cosmology(object):
 
         return z
 
-
     def rofZ(self, z):
         """Calculate comoving radial distance from redshift.
 
@@ -97,8 +97,11 @@ class Cosmology(object):
             distance modulus at input redshifts
 
         """
+        amax = 1 / (1e-7 + 1.)
+        a = 1 / (z + 1.)
+        a[a > amax] = amax
 
-        distance_modulus = ccl.distance_modulus(self._cosmo, 1 / (z + 1.))
+        distance_modulus = ccl.distance_modulus(self._cosmo, a)
         return distance_modulus
 
     def angularDiameterDistance(self, z):
@@ -154,8 +157,7 @@ class Cosmology(object):
 
         """
 
-
-        f = lambda z : self.comovingVolume(z)
+        def f(z): return self.comovingVolume(z)
         dVdz = derivative(f, z, dx=1e-6)
 
         return dVdz

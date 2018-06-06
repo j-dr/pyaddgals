@@ -6,6 +6,7 @@ import numpy as np
 import fitsio
 
 from .galaxyModel import GalaxyModel
+from .kcorrect import KCorrect, k_reconstruct_maggies
 from . import luminosityFunction
 
 
@@ -195,7 +196,7 @@ class ADDGALSModel(GalaxyModel):
             nbody.cosmo, **luminosityFunctionConfig)
 
         self.rdelModel = RdelModel(self.luminosityFunction, **rdelModelConfig)
-        self.colorModel = ColorModel(**colorModelConfig)
+        self.colorModel = ColorModel(self.nbody.cosmo, **colorModelConfig)
 
     def paintGalaxies(self):
         """Paint galaxies into nbody using ADDGALS
@@ -255,7 +256,10 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['rhalo'] = rhalo
         self.nbody.galaxyCatalog.catalog['haloid'] = haloid
         self.nbody.galaxyCatalog.catalog['central'] = central
-#        id_train, coeff = self.colorModel.assignSEDs(mag, z, pos)
+
+        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
+        sigma5, ranksigma5, redfraction, \
+            sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
 
     def assignHalos(self, z, mag, dens):
         """Assign central galaxies to resolved halos. Halo catalog
@@ -537,7 +541,7 @@ class RdelModel(object):
         return prob
 
     def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.1,
-                      n_dens_bins=200):
+                      n_dens_bins=1e5):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
         Parameters
@@ -569,7 +573,7 @@ class RdelModel(object):
         z = z[zidx]
         mag = mag[zidx]
 
-        deltabins = np.logspace(-3., np.log10(15.), n_dens_bins + 1)
+        deltabins = np.linspace(0.01, 15, n_dens_bins + 1)
         deltamean = (deltabins[1:] + deltabins[:-1]) / 2
 
         density = np.zeros(n_gal)
@@ -601,29 +605,26 @@ class RdelModel(object):
         return density, idx
 
 
-class RedFractionModel(object):
-
-    def __init__(self, modelfile=None, **kwargs):
-        pass
-
-
 class ColorModel(object):
 
-    def __init__(self, trainingSetCoeffs=None, redFractionModelFile=None,
-                 trainingSetMagZ=None, **kwargs):
-
-        if trainingSetCoeffs is None:
-            raise(ValueError('ColorModel model must define trainingSetCoeffs'))
+    def __init__(self, cosmo, trainingSetFile=None, redFractionModelFile=None,
+                 filters=None, band_shift=0.1, **kwargs):
 
         if redFractionModelFile is None:
-            raise(ValueError('ColorModel model must define redFractionModelFile'))
+            raise(ValueError('ColorModel must define redFractionModelFile'))
 
-        if trainingSetMagZ is None:
-            raise(ValueError('ColorModel model must define trainingSetMagZ'))
+        if trainingSetFile is None:
+            raise(ValueError('ColorModel must define trainingSetFile'))
 
-        self.trainingSetCoeffs = trainingSetCoeffs
+        if filters is None:
+            raise(ValueError('ColorModel must define filters'))
+
         self.redFractionModelFile = redFractionModelFile
-        self.trainingSetMagZ = trainingSetMagZ
+        self.trainingSetFile = trainingSetFile
+        self.filters = filters
+        self.band_shift = band_shift
+
+        self.loadModel()
 
     def loadModel(self):
         """Load color training model information.
@@ -633,12 +634,8 @@ class ColorModel(object):
         None
 
         """
-        # Load color training set
-        tsdtype = np.dtype([('Mag_r_sdss', np.float), ('z', np.float),
-                            ('sigma5', np.float), ('red', np.bool)])
 
-        self.trainingSetCoeffs = np.loadtxt(self.trainingSetCoeffs)
-        self.trainingSetMagZ = np.loadtxt(self.trainingSetMagZ, dtype=tsdtype)
+        self.trainingSet = fitsio.read(self.trainingSetFile)
 
         mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
         model = np.loadtxt(self.redFractionModelFile, dtype=mdtype)
@@ -733,7 +730,12 @@ class ColorModel(object):
 
                 rf[zlidx + mlidx: zlidx + mhidx] = rfgrid[j][i]
 
-        return rf, idx
+        # reorder red fractions to match order of inputs
+        temp = np.zeros_like(rf)
+        temp[idx] = rf
+        rf = temp
+
+        return rf
 
     def rankSigma5(self, z, magnitude, sigma5, zwindow, magwindow):
 
@@ -748,7 +750,10 @@ class ColorModel(object):
         max_distances = np.array([zwindow, magwindow, dsigma5])
         neg_max_distances = -1.0 * max_distances
 
-        with fast3tree(pos) as tree:
+        tree_dsidx = np.random.choice(np.arange(len(z)), size=len(z) // 10)
+        tree_pos = pos[tree_dsidx]
+
+        with fast3tree(tree_pos) as tree:
 
             for i, p in enumerate(pos):
 
@@ -760,7 +765,7 @@ class ColorModel(object):
 
         return ranksigma5
 
-    def computeRankSigma5(self, cosmo, z, mag, pos_gals):
+    def computeRankSigma5(self, z, mag, pos_gals):
 
         pos_bright_gals = pos_gals[mag < -19.8]
 
@@ -784,13 +789,146 @@ class ColorModel(object):
                 except IndexError as e:
                     sigma5[i] = -1
 
-        sigma5 = sigma5 * cosmo.angularDiameterDistance(z)
+        sigma5 = sigma5 * self.cosmo.angularDiameterDistance(z)
         ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
 
         return sigma5, ranksigma5
 
-    def assignSEDs(self, cosmo, pos, vel, mag, z):
+    def matchTrainingSet(self, mag, ranksigma5, redfraction, dm=0.1, ds=0.01):
 
-        sigma5, ranksigma5 = self.computeRankSigma5(cosmo, z, mag, pos)
-        rf, idx = self.computeRedFraction(z, mag)
-#        tidx, coeffs = assign
+        mag_train = self.trainingSet['ABSMAG'][:, 2]
+        ranksigma5_train = self.trainingSet['PSIGMA5']
+        isred_train = self.trainingSet['ISRED']
+
+        pos = np.zeros((mag.size, 3))
+        pos_train = np.zeros((mag_train.size, 3))
+
+        n_gal = mag.size
+        rand = np.random.rand(n_gal)
+
+        pos[:, 0] = mag
+        pos[:, 1] = ranksigma5
+        pos[:, 2] = redfraction
+
+        pos[pos[:, 0] < np.min(mag_train), 0] = np.min(mag_train)
+        pos[pos[:, 0] > np.max(mag_train), 0] = np.max(mag_train)
+
+        pos_train[:, 0] = mag_train
+        pos_train[:, 1] = ranksigma5_train
+        pos_train[:, 2] = isred_train
+
+        # max distance in isred direction large enough to select all
+        # make search distance in mag direction larger as we go fainter
+        # as there are fewer galaxies in the training set there
+
+        def max_distances(m): return np.array([(22.5 + m) * dm, ds, 1.1])
+
+        def neg_max_distances(m): return -1. * \
+            np.array([(22.5 + m) * dm, ds, 1.1])
+
+        sed_idx = np.zeros(n_gal, dtype=np.int)
+        bad = np.zeros(n_gal, dtype=np.bool)
+
+        with fast3tree(pos_train) as tree:
+
+            for i, p in enumerate(pos):
+
+                idx, tpos = tree.query_box(
+                    p + neg_max_distances(p[0]), p + max_distances(p[0]), output='both')
+                rf = np.sum(tpos[:, 2]) / len(tpos)
+                isred = rand[i] < (rf * redfraction[i])
+                idx = idx[tpos[:, 2] == int(isred)]
+                tpos = tpos[tpos[:, 2] == int(isred)]
+                tpos -= p
+                dt = np.abs(np.sum(tpos**2, axis=1))
+                try:
+                    sed_idx[i] = idx[np.argmin(dt)]
+                except Exception as e:
+                    bad[i] = True
+
+            isbad = np.where(bad)
+
+            def max_distances(m): return np.array(
+                [10 * (22.5 + m)**2 * dm, ds, 0.4])
+
+            def neg_max_distances(m): return -1. * \
+                np.array([10 * (22.5 + m)**2 * dm, ds, 0.4])
+
+            for i, p in enumerate(pos[bad]):
+                idx, tpos = tree.query_box(
+                    p + neg_max_distances(p[0]), p + max_distances(p[0]), output='both')
+                tpos -= p
+                dt = np.abs(np.sum(tpos**2, axis=1))
+                try:
+                    sed_idx[isbad[i]] = idx[np.argmin(dt)]
+                except Exception as e:
+                    bad[i] = True
+
+        return sed_idx, bad
+
+    def computeMagnitudes(self, mag, z, coeffs, filters):
+        """Compute observed and absolute magnitudes in the
+        given filters for galaxies.
+
+        Parameters
+        ----------
+        mag : np.array
+            SDSS z=0.1 frame r-band absolute magnitudes.
+        z : np.array
+            Redshifts of galaxies.
+        coeffs : np.array
+            Kcorrect coefficients of all galaxies.
+        filters : list
+            List of filter files to calculate magnitudes for.
+
+        Returns
+        -------
+        omag : np.array
+            Array of observed magnitudes of shape (n_gal, nk) where
+            nk is number of filters observed.
+        amag : np.array
+            Array of absolute magnitudes of shape (n_gal, nk) where
+            nk is number of filters observed.
+
+        """
+
+        kcorr = KCorrect()
+
+        # calculate sdss r band absolute magnitude in order
+        # to renormalize the kcorrect coefficients to give
+        # the correct absolute magnitudes for the simulated
+        # galaxies
+        sdss_r_name = ['sdss/sdss_r0.par']
+        filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
+
+        rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
+        amag = k_reconstruct_maggies(rmatrix, coeffs, z, kcorr.zvals)
+
+        dm = self.cosmo.distanceModulus(z)
+        amag = -2.5 * np.log10(amag) - dm
+
+        # renormalize coeffs
+        coeffs *= 10 ** ((mag - amag) / -2.5)
+
+        # Calculate observed and absolute magnitudes magnitudes
+
+        filter_lambda, filter_pass = kcorr.load_filters(filters)
+        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
+        rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda,
+                                           self.band_shift)
+        amag = k_reconstruct_maggies(rmatrix, coeffs, z, kcorr.zvals)
+        omag = k_reconstruct_maggies(rmatrix0, coeffs, z, kcorr.zvals)
+
+        omag = -2.5 * np.log10(omag)
+        amag = -2.5 * np.log10(amag) - dm
+
+        return omag, amag
+
+    def assignSEDs(self, pos, mag, z, z_rsd):
+        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, pos)
+        redfraction = self.computeRedFraction(z, mag)
+        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction)
+        coeffs = self.trainingSet[sed_idx]['COEFFS']
+        omag, amag = self.computeMagnitudes(mag, z_rsd, coeffs, self.filters)
+
+        return sigma5, ranksigma5, redfraction, sed_idx, omag, amag
