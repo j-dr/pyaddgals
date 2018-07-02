@@ -97,11 +97,8 @@ class Cosmology(object):
             distance modulus at input redshifts
 
         """
-        amax = 1 / (1e-7 + 1.)
-        a = 1 / (z + 1.)
-        a[a > amax] = amax
 
-        distance_modulus = ccl.distance_modulus(self._cosmo, a)
+        distance_modulus = ccl.distance_modulus(self._cosmo, 1 / (1. + z))
         return distance_modulus
 
     def angularDiameterDistance(self, z):

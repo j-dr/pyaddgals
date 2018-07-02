@@ -1,4 +1,7 @@
 from __future__ import print_function, division
+import numpy as np
+import fitsio
+
 from .addgalsModel import ADDGALSModel
 
 _available_models = ['ADDGALSModel']
@@ -29,17 +32,17 @@ class GalaxyCatalog(object):
         None
         """
 
-        model_class = config.keys()[0]
+        model_class = list(config.keys())[0]
 
         if not (model_class in _available_models):
             raise(ValueError("Model {} is not implemented".format(model_class)))
 
         if model_class == 'ADDGALSModel':
-            model = ADDGALSModel(**config['ADDGALSModel'])
+            model = ADDGALSModel(self.nbody, **config['ADDGALSModel'])
 
-        model.paintGalaxies(self.lightcone)
+        model.paintGalaxies()
 
-    def writeCatalog(self):
+    def write(self, filename):
         """Write galaxy catalog to disk.
 
         Returns
@@ -47,7 +50,18 @@ class GalaxyCatalog(object):
         None
         """
 
-        pass
+        cdtype = np.dtype(list(zip(self.catalog.keys(),
+                                   [(self.catalog[k].dtype.type,
+                                    self.catalog[k].shape[1])
+                                    if len(self.catalog[k].shape) > 1
+                                    else self.catalog[k].dtype.type
+                                    for k in self.catalog.keys()])))
+
+        out = np.zeros(len(self.catalog[list(self.catalog.keys())[0]]), dtype=cdtype)
+        for k in self.catalog.keys():
+            out[k] = self.catalog[k]
+
+        fitsio.write(filename, out)
 
     def delete(self):
         """Delete galaxy catalog
@@ -58,6 +72,7 @@ class GalaxyCatalog(object):
 
         """
 
-        for k in self.catalog.keys():
+        keys = list(self.catalog.keys())
 
+        for k in keys:
             del self.catalog[k]

@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
+
 class GalaxyModel(object):
 
     __metaclass__ = ABCMeta
@@ -11,15 +12,12 @@ class GalaxyModel(object):
         pass
 
     @abstractmethod
-    def paintGalaxies(self, nbody):
-        """Abstract method taking in an nbody object and
-            populating the galaxyCatalog.catalog 
+    def paintGalaxies(self):
+        """Abstract method that populates the galaxyCatalog.catalog.
 
         Parameters
         ----------
-        nbody : NBody
-            A Nbody object containing DM and halo information for the simulation
-            to populate with galaxies
+        None
 
         Returns
         -------
@@ -47,7 +45,7 @@ class GalaxyModel(object):
         rmax = self.nbody.domain.rmax
 
         rands = np.random.uniform(size=n_gal)
-        z = ((rmax ** 3 - rmin ** 3) * rands + rmin ** 3) ** (1/3)
+        z = ((rmax ** 3 - rmin ** 3) * rands + rmin ** 3) ** (1 / 3)
         z = self.nbody.cosmo.zofR(z)
 
         return z

@@ -2,8 +2,10 @@ from __future__ import print_function, division
 from scipy.special import erf
 from numba import jit, boolean
 from fast3tree import fast3tree
+from copy import copy
 import numpy as np
 import fitsio
+import sys
 
 from .galaxyModel import GalaxyModel
 from .kcorrect import KCorrect, k_reconstruct_maggies
@@ -199,12 +201,20 @@ class ADDGALSModel(GalaxyModel):
         self.colorModel = ColorModel(self.nbody.cosmo, **colorModelConfig)
 
     def paintGalaxies(self):
-        """Paint galaxies into nbody using ADDGALS
+        """Paint galaxy positions, luminosities and SEDs into nbody.
+        Saves them in self.galaxyCatalog.catalog.
 
-        Parameters
-        ----------
-        nbody : NBody
-            The nbody object to paint galaxies into.
+        Returns
+        -------
+        None
+        """
+
+        self.paintPositions()
+        self.paintSEDs()
+
+    def paintPositions(self):
+        """Paint galaxy positions and luminosity in one band
+        into nbody using ADDGALS method.
 
         Returns
         -------
@@ -246,10 +256,12 @@ class ADDGALSModel(GalaxyModel):
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
+        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
 
         self.nbody.galaxyCatalog.catalog['pos'] = pos
         self.nbody.galaxyCatalog.catalog['vel'] = vel
         self.nbody.galaxyCatalog.catalog['z'] = z
+        self.nbody.galaxyCatalog.catalog['z_rsd'] = z_rsd
         self.nbody.galaxyCatalog.catalog['mag'] = mag
         self.nbody.galaxyCatalog.catalog['rnn'] = density
         self.nbody.galaxyCatalog.catalog['halomass'] = halomass
@@ -257,9 +269,29 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['haloid'] = haloid
         self.nbody.galaxyCatalog.catalog['central'] = central
 
-        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
+    def paintSEDs(self):
+        """Paint SEDs onto galaxies after positions and luminosities have
+        already been assigned.
+
+        Returns
+        -------
+        None
+
+        """
+
+        pos = self.nbody.galaxyCatalog.catalog['pos']
+        mag = self.nbody.galaxyCatalog.catalog['mag']
+        z = self.nbody.galaxyCatalog.catalog['z']
+        z_rsd = self.nbody.galaxyCatalog.catalog['z_rsd']
+
         sigma5, ranksigma5, redfraction, \
             sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
+
+        self.nbody.galaxyCatalog.catalog['sigma5'] = sigma5
+        self.nbody.galaxyCatalog.catalog['ranksigma5'] = ranksigma5
+        self.nbody.galaxyCatalog.catalog['sed_index'] = sed_idx
+        self.nbody.galaxyCatalog.catalog['omag'] = omag
+        self.nbody.galaxyCatalog.catalog['amag'] = amag
 
     def assignHalos(self, z, mag, dens):
         """Assign central galaxies to resolved halos. Halo catalog
@@ -619,6 +651,7 @@ class ColorModel(object):
         if filters is None:
             raise(ValueError('ColorModel must define filters'))
 
+        self.cosmo = cosmo
         self.redFractionModelFile = redFractionModelFile
         self.trainingSetFile = trainingSetFile
         self.filters = filters
@@ -789,7 +822,10 @@ class ColorModel(object):
                 except IndexError as e:
                     sigma5[i] = -1
 
-        sigma5 = sigma5 * self.cosmo.angularDiameterDistance(z)
+        z_a = copy(z)
+        z_a[z_a<1e-6] = 1e-6
+
+        sigma5 = sigma5 * self.cosmo.angularDiameterDistance(z_a)
         ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
 
         return sigma5, ranksigma5
@@ -902,22 +938,61 @@ class ColorModel(object):
         filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
 
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
-        amag = k_reconstruct_maggies(rmatrix, coeffs, z, kcorr.zvals)
-
-        dm = self.cosmo.distanceModulus(z)
+        print('computed rmatrix')
+        sys.stdout.flush()
+        amag = k_reconstruct_maggies(rmatrix.astype(np.float64),
+                                     coeffs.astype(np.float64),
+                                     z.astype(np.float64),
+                                     kcorr.zvals.astype(np.float64))
+        print('reconstructed mag_r_sdss')
+        sys.stdout.flush()
+        a = 1 / (1 + z)
+        amax = 1 / (1 + 1e-7)
+        a[a > amax] = amax
+        print(np.min(a))
+        print(np.max(a))
+        print(np.isfinite(a).all())
+        print(np.min(1 / a - 1))
+        print(np.max(1 / a - 1))
+        print(np.isfinite(1 / a - 1).all())
+        sys.stdout.flush()
+        dm = self.cosmo.distanceModulus(1 / a - 1)
+        print('computed dm')
+        sys.stdout.flush()
+        print(dm)
+        sys.stdout.flush()
+        print(amag)
         amag = -2.5 * np.log10(amag) - dm
-
+        print('computed amag')
+        sys.stdout.flush()
         # renormalize coeffs
         coeffs *= 10 ** ((mag - amag) / -2.5)
-
+        print('renormalized coeffs')
+        sys.stdout.flush()
         # Calculate observed and absolute magnitudes magnitudes
 
         filter_lambda, filter_pass = kcorr.load_filters(filters)
+        print('loaded filters')
+        sys.stdout.flush()
         rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
+        print('computed rmatrix0')
+        sys.stdout.flush()
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda,
                                            self.band_shift)
-        amag = k_reconstruct_maggies(rmatrix, coeffs, z, kcorr.zvals)
-        omag = k_reconstruct_maggies(rmatrix0, coeffs, z, kcorr.zvals)
+        print('computed rmatrix')
+        sys.stdout.flush()
+        amag = k_reconstruct_maggies(rmatrix,
+                                     coeffs.astype(np.float64),
+                                     z.astype(np.float64),
+                                     kcorr.zvals)
+        print('reconstructed amag')
+        sys.stdout.flush()
+        omag = k_reconstruct_maggies(rmatrix0,
+                                     coeffs.astype(np.float64),
+                                     z.astype(np.float64),
+                                     kcorr.zvals)
+        print('reconstructed omag')
+        sys.stdout.flush()
 
         omag = -2.5 * np.log10(omag)
         amag = -2.5 * np.log10(amag) - dm
@@ -929,6 +1004,11 @@ class ColorModel(object):
         redfraction = self.computeRedFraction(z, mag)
         sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction)
         coeffs = self.trainingSet[sed_idx]['COEFFS']
-        omag, amag = self.computeMagnitudes(mag, z_rsd, coeffs, self.filters)
+
+        # make sure we don't have any negative redshifts
+        z_a = copy(z_rsd)
+        z_a[z_a < 1e-6] = 1e-6
+
+        omag, amag = self.computeMagnitudes(mag, z_a, coeffs, self.filters)
 
         return sigma5, ranksigma5, redfraction, sed_idx, omag, amag

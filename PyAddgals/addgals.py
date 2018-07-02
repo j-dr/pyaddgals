@@ -21,6 +21,7 @@ def main():
 
     cc = config['Cosmology']
     nb_config = config['NBody']
+    runtime_config = config['Runtime']
 
     cosmo = Cosmology(**cc)
 
@@ -33,6 +34,7 @@ def main():
         nbody.read()
 
         nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
-        nbody.galaxyCatalog.write()
+        nbody.galaxyCatalog.write('{}.{}'.format(runtime_config['outpath'],
+                                                 d.pix))
 
         nbody.delete()

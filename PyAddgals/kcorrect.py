@@ -44,7 +44,7 @@ def k_reconstruct_maggies(rmatrix, coeffs, z, zvals):
 
 class KCorrect(object):
 
-    def __init__(self, minz=0.0, maxz=3.0, nz=10000, template_name='default'):
+    def __init__(self, minz=0.0, maxz=3.0, nz=1500, template_name='default'):
         """Initialize KCorrect object
 
         Parameters
@@ -78,11 +78,17 @@ class KCorrect(object):
         None
 
         """
-
+        # Get base directory containing all templates
         template_dir = os.path.dirname(config.__file__)
+        tds = template_dir.split('/')
+        tds[-1] = 'data'
+        tds.append('templates')
+        template_dir = '/'.join(tds)
+
         self.templates = np.genfromtxt('{}/vmatrix.{}.dat'.format(template_dir, self.template_name),
                                        skip_header=1).reshape(5, 10000)
-        self.wvlngth = np.genfromtxt('{}/lambda.{}.dat', skip_header=1)
+        self.template_lambda = np.genfromtxt('{}/lambda.{}.dat'.format(template_dir, self.template_name),
+                                             skip_header=1)
 
     def load_filters(self, filter_names):
         """Load a list of filters.
@@ -99,6 +105,15 @@ class KCorrect(object):
         filter_pass : list
             List of nk sets of filter transmissions
         """
+
+        # get base directory containing all filters
+        filter_dir = os.path.dirname(config.__file__)
+        fds = filter_dir.split('/')
+        fds[-1] = 'data'
+        fds.append('filters')
+        filter_dir = '/'.join(fds)
+
+        filter_names = ['{}/{}'.format(filter_dir, f) for f in filter_names]
 
         filter_lambda = []
         filter_pass = []
