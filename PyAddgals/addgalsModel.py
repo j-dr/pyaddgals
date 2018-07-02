@@ -191,7 +191,7 @@ class ADDGALSModel(GalaxyModel):
         if colorModelConfig is None:
             raise(ValueError('ADDGALS model must define colorModelConfig'))
 
-        lf_type = luminosityFunctionConfig.pop('modeltype')
+        lf_type = luminosityFunctionConfig['modeltype']
 
         self.luminosityFunction = getattr(luminosityFunction, lf_type)
         self.luminosityFunction = self.luminosityFunction(

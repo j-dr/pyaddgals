@@ -25,7 +25,7 @@ def main():
 
     cosmo = Cosmology(**cc)
 
-    domain = Domain(cosmo, **nb_config.pop('Domain'))
+    domain = Domain(cosmo, **nb_config['Domain'])
     domain.decomp(comm, comm.rank, comm.size)
 
     for d in domain.yieldDomains():
