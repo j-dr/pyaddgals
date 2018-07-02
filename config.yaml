@@ -1,9 +1,12 @@
+Runtime :
+  outpath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/pyaddgals/Buzzard-0
 NBody :
   Domain :
     fmt : BCCLightcone
+    lbox : [1050, 2600, 4000]
     rmin : 1.0
-    rmax : 500.0
-    nrbins : 1
+    rmax : 600.0
+    nrbins : 2
     nside : 4
     nest : True
     pixlist : [0]
@@ -23,10 +26,10 @@ Cosmology:
 
 GalaxyModel :
   ADDGALSModel :
-    luminosityFunctionConfig : 
+    luminosityFunctionConfig :
       modeltype : DSGLuminosityFunction
-      magmin : 27.0
-    rdelModelConfig : 
+      magmin : 25.0
+    rdelModelConfig :
       rdelModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/DSG_0.684_0.17_global_rdelmodel.txt
       lcenModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/C400_DSG_0.684_0.17_lcenmass.fits
       lcenMassMin : 3162277660168
@@ -34,5 +37,11 @@ GalaxyModel :
       scatter: 0.17
     colorModelConfig :
       redFractionModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
-      trainingSetMagZ : /u/ki/jderose/ki23/SkyFactory-config/Addgals/dr6_cooper_id_w_red.dat
-      trainingSetCoeffs : /Users/jderose/projects/SkyFactory-config/Addgals/combined_dr6_cooper.dat
+      trainingSetFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/sdss_vagc_kcorr_r177_z02_wdens.fits
+      filters :
+        - desy3/desy3std_g.par
+        - desy3/desy3std_r.par
+        - desy3/desy3std_i.par
+        - desy3/desy3std_z.par
+        - desy3/desy3_Y.par
+      band_shift : 0.1
