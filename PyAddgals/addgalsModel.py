@@ -938,64 +938,37 @@ class ColorModel(object):
         filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
 
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
-        print('computed rmatrix')
-        sys.stdout.flush()
         amag = k_reconstruct_maggies(rmatrix.astype(np.float64),
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals.astype(np.float64))
-        print('reconstructed mag_r_sdss')
-        sys.stdout.flush()
+
         a = 1 / (1 + z)
         amax = 1 / (1 + 1e-7)
         a[a > amax] = amax
-        print(np.min(a))
-        print(np.max(a))
-        print(np.isfinite(a).all())
-        print(np.min(1 / a - 1))
-        print(np.max(1 / a - 1))
-        print(np.isfinite(1 / a - 1).all())
-        sys.stdout.flush()
         dm = self.cosmo.distanceModulus(1 / a - 1)
-        print('computed dm')
-        sys.stdout.flush()
-        print(dm)
-        sys.stdout.flush()
-        print(amag)
-        amag = -2.5 * np.log10(amag) - dm
-        print('computed amag')
-        sys.stdout.flush()
-        # renormalize coeffs
-        coeffs *= 10 ** ((mag - amag) / -2.5)
-        print('renormalized coeffs')
-        sys.stdout.flush()
-        # Calculate observed and absolute magnitudes magnitudes
+        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
 
+        # renormalize coeffs
+        coeffs *= 10 ** ((mag.reshape(-1, 1) - amag) / -2.5)
+
+        # Calculate observed and absolute magnitudes magnitudes
         filter_lambda, filter_pass = kcorr.load_filters(filters)
-        print('loaded filters')
-        sys.stdout.flush()
+
         rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
-        print('computed rmatrix0')
-        sys.stdout.flush()
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda,
                                            self.band_shift)
-        print('computed rmatrix')
-        sys.stdout.flush()
         amag = k_reconstruct_maggies(rmatrix,
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals)
-        print('reconstructed amag')
-        sys.stdout.flush()
         omag = k_reconstruct_maggies(rmatrix0,
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals)
-        print('reconstructed omag')
-        sys.stdout.flush()
 
         omag = -2.5 * np.log10(omag)
-        amag = -2.5 * np.log10(amag) - dm
+        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
 
         return omag, amag
 

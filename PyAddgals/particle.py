@@ -45,9 +45,10 @@ class ParticleCatalog(object):
 
         """
 
-        for k in self.catalog.keys():
-            del self.catalog[k]
+        keys = list(self.catalog.keys())
 
+        for k in keys:
+            del self.catalog[k]
 
     def getFilePixels(self, r):
         """Given a healpix cell and radius for a given nside, figure out which
