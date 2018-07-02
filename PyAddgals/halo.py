@@ -38,7 +38,9 @@ class HaloCatalog(object):
 
         """
 
-        for k in self.catalog.keys():
+        keys = list(self.catalog.keys())
+
+        for k in keys:
             del self.catalog[k]
 
     def getColumnDict(self, fmt):
