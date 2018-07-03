@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import numpy as np
 import fitsio
+import os
 
 from .addgalsModel import ADDGALSModel
 
@@ -61,7 +62,12 @@ class GalaxyCatalog(object):
         for k in self.catalog.keys():
             out[k] = self.catalog[k]
 
-        fitsio.write(filename, out)
+        if os.path.exists(filename):
+            with fitsio.FITS(filename, 'rw') as f:
+                f[-1].append(out)
+        else:
+            fitsio.write(filename, out)
+
 
     def delete(self):
         """Delete galaxy catalog

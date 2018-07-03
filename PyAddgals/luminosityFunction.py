@@ -6,7 +6,7 @@ import numpy as np
 
 class LuminosityFunction(object):
 
-    def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10.):
+    def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10., **kwargs):
         """Initialize LuminosityFunction object.
 
         Parameters
@@ -311,7 +311,7 @@ def read_tabulated_bbgs_lf(filename):
 
 class BBGSLuminosityFunction(LuminosityFunction):
 
-    def __init__(self, Q, P):
+    def __init__(self, Q, P, **kwargs):
 
         self.lf = read_tabulated_bbgs_lf(
             '/home/jderose/projects/l-addgals/src/training/rdel/LF_r_z0.1_bright_end_evol.txt')
@@ -319,7 +319,7 @@ class BBGSLuminosityFunction(LuminosityFunction):
         self.P = P
         self.unitmap = {'mag': 'mag', 'phi': 'hmpc3dex'}
 
-        LuminosityFunction.__init__(self, np.array([Q, P]), name='BBGS')
+        LuminosityFunction.__init__(self, np.array([Q, P]), name='BBGS', **kwargs)
 
     def evolveParams(self, z):
         return self.params, z
@@ -348,7 +348,7 @@ class BBGSLuminosityFunction(LuminosityFunction):
 
 class CapozziLuminosityFunction(LuminosityFunction):
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, **kwargs):
 
         if params is None:
 
@@ -375,7 +375,7 @@ class CapozziLuminosityFunction(LuminosityFunction):
 
 class BernardiLuminosityFunction(LuminosityFunction):
 
-    def __init__(self, Q):
+    def __init__(self, Q, **kwargs):
 
         self.lf = read_tabulated_loglf(
             '/nfs/slac/g/ki/ki23/des/jderose/amatch/bernardi-test/anc/LF_SerExp.dat')
@@ -383,7 +383,7 @@ class BernardiLuminosityFunction(LuminosityFunction):
         self.Q = Q
         self.unitmap = {'mag': 'mag', 'phi': 'mpc3dex'}
 
-        LuminosityFunction.__init__(self, Q, name='Bernardi')
+        LuminosityFunction.__init__(self, Q, name='Bernardi', **kwargs)
 
     def evolveParams(self, z):
         return self.Q, z
@@ -410,7 +410,7 @@ class ReddickLuminosityFunction(LuminosityFunction):
         self.Q = Q
         self.unitmap = {'mag': 'magh', 'phi': 'hmpc3dex'}
 
-        LuminosityFunction.__init__(self, Q, name='Reddick')
+        LuminosityFunction.__init__(self, Q, name='Reddick', **kwargs)
 
     def evolveParams(self, z):
         return self.Q, z
