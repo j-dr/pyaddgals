@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
+import healpy as hp
 import fitsio
 import os
 
@@ -56,6 +57,8 @@ class GalaxyCatalog(object):
         None
         """
 
+        domain = self.nbody.domain
+
         cdtype = np.dtype(list(zip(self.catalog.keys(),
                                    [(self.catalog[k].dtype.type,
                                     self.catalog[k].shape[1])
@@ -63,16 +66,25 @@ class GalaxyCatalog(object):
                                     else self.catalog[k].dtype.type
                                     for k in self.catalog.keys()])))
 
-        out = np.zeros(len(self.catalog[list(self.catalog.keys())[0]]), dtype=cdtype)
+        out = np.zeros(len(self.catalog[list(self.catalog.keys())[0]]),
+                       dtype=cdtype)
         for k in self.catalog.keys():
             out[k] = self.catalog[k]
 
+        r = np.sqrt(out['px']**2 + out['py']**2 + out['pz']**2)
+        pix = hp.vec2pix(domain.nside, out['px'], out['py'], out['pz'],
+                         nest=domain.nest)
+
+        # cut off buffer region, make sure we only have the pixel we want
+        idx = ((domain.rbins[domain.rbin] <= r) &
+               (r < domain.rbins[domain.rbin + 1]) &
+               (domain.pix == pix))
+
         if os.path.exists(filename):
             with fitsio.FITS(filename, 'rw') as f:
-                f[-1].append(out)
+                f[-1].append(out[idx])
         else:
-            fitsio.write(filename, out)
-
+            fitsio.write(filename, out[idx])
 
     def delete(self):
         """Delete galaxy catalog
