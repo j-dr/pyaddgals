@@ -4,6 +4,7 @@ from .particle import ParticleCatalog
 from .halo import HaloCatalog
 from .galaxy import GalaxyCatalog
 
+
 class NBody(object):
     """Object which stores all nbody data.
     """
@@ -36,34 +37,43 @@ class NBody(object):
 
         self.cosmo = cosmo
         self.domain = domain
-        self.partpath = partpath
-        self.denspath = denspath
-        self.hinfopath = hinfopath
-        self.halofile = halofile
-        self.halodensfile = halodensfile
 
-        if not self.partpath:
+        if not partpath:
             raise(ValueError("partpath, path to particle data must be defined for nbody"))
 
-        if not self.denspath:
+        if not denspath:
             raise(ValueError(
                 "denspath, path to particle and halo density data must be defined for nbody"))
 
-        if not self.hinfopath:
+        if not hinfopath:
             raise(ValueError(
                 "hinfopath, path to particle-halo data must be defined for nbody"))
 
-        if not self.halofile:
+        if not halofile:
             raise(ValueError(
                 "halofile, path to input halo catalog must be defined for nbody"))
 
-        if not self.halodensfile:
+        if not halodensfile:
             raise(ValueError(
                 "halodensfile, path to density measurements for halo catalog must be defined for nbody"))
+
+        # make all lists so we can deal with stitching together lightcones
+        if isinstance(partpath, str):
+            self.partpath = [partpath]
+        if isinstance(denspath, str):
+            self.denspath = [denspath]
+        if isinstance(hinfopath, str):
+            self.hinfopath = [hinfopath]
+        if isinstance(halofile, str):
+            self.halofile = [halofile]
+        if isinstance(halodensfile, str):
+            self.halodensfile = [halodensfile]
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)
         self.galaxyCatalog = GalaxyCatalog(self)
+
+        self.boxnum = self.domain.boxnum
 
     def read(self):
 

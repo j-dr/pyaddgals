@@ -1,8 +1,6 @@
 from __future__ import print_function, division
 from pixlc.pixLC import read_radial_bin, nest2peano
-from glob import glob
 import healpy as hp
-import pyccl as ccl
 import numpy as np
 import struct
 
@@ -67,7 +65,7 @@ class ParticleCatalog(object):
             List of the peano indices of particles that need to be read
         """
 
-        partpath = self.nbody.partpath
+        partpath = self.nbody.partpath[self.nbody.boxnum]
         nside = self.nbody.domain.nside
         pix = self.nbody.domain.pix
 
@@ -118,7 +116,7 @@ class ParticleCatalog(object):
         Npart = 0
 
         if self.nbody.domain.fmt == 'BCCLightcone':
-            partpath = self.nbody.partpath
+            partpath = self.nbody.partpath[self.nbody.boxnum]
             pix = self.nbody.domain.pix
             nside = self.nbody.domain.nside
             rpmin = int(self.nbody.domain.rmin//25.)
@@ -297,9 +295,9 @@ class ParticleCatalog(object):
 
         """
 
-        partpath = self.nbody.partpath
-        denspath = self.nbody.denspath
-        hinfopath = self.nbody.hinfopath
+        partpath = self.nbody.partpath[self.nbody.boxnum]
+        denspath = self.nbody.denspath[self.nbody.boxnum]
+        hinfopath = self.nbody.hinfopath[self.nbody.boxnum]
         pix = self.nbody.domain.pix
         nside = self.nbody.domain.nside
 

@@ -20,7 +20,6 @@ class Domain(object):
         if fmt == 'BCCLightcone':
 
             self.subbox = None
-            self.lbox = None
 
             if pixlist is not None:
                 self.pixlist = [int(p) for p in pixlist]
@@ -29,6 +28,9 @@ class Domain(object):
 
             if rmin is None:
                 raise(ValueError("rmin must be defined for BCCLightcone domain"))
+
+            if not lbox:
+                raise(ValueError("lbox must be defined for BCCLightcone domain"))
 
             if rmax is None:
                 raise(ValueError("rmax must be defined for BCCLightcone domain"))
@@ -42,9 +44,15 @@ class Domain(object):
             if nest is None:
                 raise(ValueError("nest must be defined for BCCLightcone domain"))
 
-            self.rmin = rmin
-            self.rmax = rmax
-            self.nrbins = nrbins
+            if isinstance(lbox, str) | isinstance(lbox, (int, float, complex)):
+                self.lbox = [int(lbox)]
+            if isinstance(rmin, str) | isinstance(rmin, (int, float, complex)):
+                self.rmin = [float(rmin)]
+            if isinstance(rmax, str) | isinstance(rmax, (int, float, complex)):
+                self.rmax = [float(rmax)]
+            if isinstance(nrbins, str) | isinstance(nrbins, (int, float, complex)):
+                self.nrbins = [int(nrbins)]
+
             self.nside = nside
             self.nest = nest
 
@@ -54,11 +62,13 @@ class Domain(object):
             self.nest = None
 
             if not lbox:
-                raise(ValueError("lbox, must be defined for Snapshot domain"))
+                raise(ValueError("lbox must be defined for Snapshot domain"))
             if not nbox:
-                raise(ValueError("subbox, must be defined for Snapshot domain"))
+                raise(ValueError("subbox must be defined for Snapshot domain"))
 
-            self.lbox = lbox
+            if isinstance(lbox, str) | isinstance(lbox, (int, float, complex)):
+                self.lbox = [float(lbox)]
+
             self.nbox = nbox
 
     def getRadialLimits(self):
@@ -116,6 +126,14 @@ class Domain(object):
         return vert
 
     def decomp(self, comm, rank, ntasks):
+
+        for i, lb in enumerate(self.lbox):
+            if i > 0:
+                assert(self.rmin[i] == self.rmax[i - 1])
+
+            self.decompSingleBox(comm, rank, ntasks, i)
+
+    def decompSingleBox(self, comm, rank, ntasks, boxnum):
         """Perform domain decomposition, creating domain objects for each process. Store information within object.
 
         Parameters
@@ -126,7 +144,8 @@ class Domain(object):
             This task's rank.
         ntasks : int
             Total number of tasks being used.
-
+        i : int
+            Index of the box that is currently being decomposed
         Returns
         -------
         None
@@ -138,7 +157,15 @@ class Domain(object):
         self.comm = comm
         self.domain_counter = 0
 
+        if boxnum == 0:
+            self.domains = []
+            self.domains_boxnum = []
+            self.domains_task = []
+            self.domains_boxnum_task = []
+            self.ndomains_task = 0
+
         if self.fmt == 'BCCLightcone':
+
             # get the pixels that overlap with the octants that we're using
             allpix = []
 
@@ -183,25 +210,27 @@ class Domain(object):
                 self.fracarea = self.fracarea[idx]
 
             # get radial bins s.t. each bin has equal volume
-
-#            NEED TO DEAL WITH OVERLAPS!
-
-            dl = self.rmax - self.rmin
-            r1 = dl / (self.nrbins)**(1 / 3)
-            self.rbins = np.arange(self.nrbins + 1)**(1 / 3) * r1 + self.rmin
+            dl = self.rmax[boxnum] - self.rmin[boxnum]
+            r1 = dl / (self.nrbins[boxnum])**(1 / 3)
+            self.rbins = np.arange(self.nrbins[boxnum] + 1)**(1 / 3) * r1 + self.rmin[boxnum]
 
             # product of pixels and radial bins are all domains
-            self.domains = list(product(np.arange(self.nrbins, dtype=np.int),
-                                        self.allpix))
+            self.domains.extend(list(product(np.arange(self.nrbins[boxnum],
+                                             dtype=np.int),
+                                             self.allpix)))
+            self.domains_boxnum.extend([boxnum] * len(self.domains))
 
             # divide up domains
-            self.domains_task = self.domains[self.rank::self.ntasks]
-            self.ndomains_task = len(self.domains_task)
+            self.domains_task.extend(self.domains[self.rank::self.ntasks])
+            self.domains_boxnum_task.extend(self.domains_boxnum[self.rank::self.ntasks])
+            self.ndomains_task += len(self.domains_task)
 
         if self.fmt == 'Snapshot':
-            self.domains = np.arange(self.nbox**3)
-            self.domains_task = self.domains[self.rank::self.ntasks]
-            self.ndomains_task = len(self.domains_task)
+            self.domains.extend(np.arange(self.nbox**3))
+            self.domains_boxnum.extend([boxnum] * len(self.domains))
+            self.domains_task.extend(self.domains[self.rank::self.ntasks])
+            self.domains_boxnum_task.extend(self.domains_boxnum[self.rank::self.ntasks])
+            self.ndomains_task += len(self.domains_task)
 
     def yieldDomains(self):
 
@@ -209,11 +238,18 @@ class Domain(object):
             d = copy(self)
 
             if self.fmt == 'BCCLightcone':
+
+                radial_buffer = 100.
+                d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
 
-                d.rmin = self.rbins[d.rbin]
-                d.rmax = self.rbins[d.rbin + 1]
+                d.rmin = self.rbins[d.rbin] - radial_buffer
+                d.rmax = self.rbins[d.rbin + 1] + radial_buffer
+
+                if d.rmin < 0:
+                    d.rmin = 1.
+
                 d.zmin = self.cosmo.zofR(d.rmin)
                 d.zmax = self.cosmo.zofR(d.rmax)
                 # volume weighted average radius

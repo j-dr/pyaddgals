@@ -58,11 +58,11 @@ class HaloCatalog(object):
 
         cdict = self.getColumnDict(self.nbody.domain.fmt)
 
-        reader = TabularAsciiReader(self.nbody.halofile, cdict)
+        reader = TabularAsciiReader(self.nbody.halofile[self.nbody.boxnum], cdict)
         catalog = reader.read_ascii()
         names = catalog.dtype.names
 
-        rnn = np.loadtxt(self.nbody.halodensfile)
+        rnn = np.loadtxt(self.nbody.halodensfile[self.nbody.boxnum])
 
         # get the part of the catalog for this task
         r = np.sqrt(catalog['x']**2 + catalog['y']**2 + catalog['z']**2)
