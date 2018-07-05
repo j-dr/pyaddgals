@@ -3,7 +3,7 @@ Runtime :
 NBody :
   Domain :
     fmt : BCCLightcone
-    lbox : [1050, 2600, 4000]
+    lbox : 1050
     rmin : 1.0
     rmax : 950.0
     nrbins : 7
