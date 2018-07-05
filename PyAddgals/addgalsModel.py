@@ -258,11 +258,15 @@ class ADDGALSModel(GalaxyModel):
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
         z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
 
-        self.nbody.galaxyCatalog.catalog['pos'] = pos
-        self.nbody.galaxyCatalog.catalog['vel'] = vel
-        self.nbody.galaxyCatalog.catalog['z'] = z
-        self.nbody.galaxyCatalog.catalog['z_rsd'] = z_rsd
-        self.nbody.galaxyCatalog.catalog['mag'] = mag
+        self.nbody.galaxyCatalog.catalog['px'] = pos[:, 0]
+        self.nbody.galaxyCatalog.catalog['py'] = pos[:, 1]
+        self.nbody.galaxyCatalog.catalog['pz'] = pos[:, 2]
+        self.nbody.galaxyCatalog.catalog['vx'] = vel[:, 0]
+        self.nbody.galaxyCatalog.catalog['vy'] = vel[:, 1]
+        self.nbody.galaxyCatalog.catalog['vz'] = vel[:, 2]
+        self.nbody.galaxyCatalog.catalog['z_cos'] = z
+        self.nbody.galaxyCatalog.catalog['z'] = z_rsd
+        self.nbody.galaxyCatalog.catalog['mag_r'] = mag
         self.nbody.galaxyCatalog.catalog['rnn'] = density
         self.nbody.galaxyCatalog.catalog['halomass'] = halomass
         self.nbody.galaxyCatalog.catalog['rhalo'] = rhalo
@@ -279,10 +283,12 @@ class ADDGALSModel(GalaxyModel):
 
         """
 
-        pos = self.nbody.galaxyCatalog.catalog['pos']
-        mag = self.nbody.galaxyCatalog.catalog['mag']
+        pos = np.vstack([self.nbody.galaxyCatalog.catalog['px'],
+                         self.nbody.galaxyCatalog.catalog['py'],
+                         self.nbody.galaxyCatalog.catalog['pz']]).T
+        mag = self.nbody.galaxyCatalog.catalog['mag_r']
         z = self.nbody.galaxyCatalog.catalog['z']
-        z_rsd = self.nbody.galaxyCatalog.catalog['z_rsd']
+        z_rsd = self.nbody.galaxyCatalog.catalog['z']
 
         sigma5, ranksigma5, redfraction, \
             sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
