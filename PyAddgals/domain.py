@@ -239,7 +239,7 @@ class Domain(object):
 
             if self.fmt == 'BCCLightcone':
 
-                radial_buffer = 100.
+                radial_buffer = 50.
                 d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
