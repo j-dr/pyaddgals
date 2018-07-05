@@ -41,6 +41,11 @@ class GalaxyCatalog(object):
         if model_class == 'ADDGALSModel':
             model = ADDGALSModel(self.nbody, **config['ADDGALSModel'])
 
+        print('Painting galaxies to domain with z_min, z_max, pix, nside: {}, {}, {}, {}'.format(self.nbody.domain.zmin,
+                                                                                                 self.nbody.domain.zmax,
+                                                                                                 self.nbody.domain.pix,
+                                                                                                 self.nbody.domain.nside))
+
         model.paintGalaxies()
 
     def write(self, filename):

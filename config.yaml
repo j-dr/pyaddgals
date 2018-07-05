@@ -5,8 +5,8 @@ NBody :
     fmt : BCCLightcone
     lbox : [1050, 2600, 4000]
     rmin : 1.0
-    rmax : 600.0
-    nrbins : 2
+    rmax : 950.0
+    nrbins : 7
     nside : 4
     nest : True
     pixlist : [0]
