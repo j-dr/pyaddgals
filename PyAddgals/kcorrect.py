@@ -79,11 +79,7 @@ class KCorrect(object):
 
         """
         # Get base directory containing all templates
-        template_dir = os.path.dirname(config.__file__)
-        tds = template_dir.split('/')
-        tds[-1] = 'data'
-        tds.append('templates')
-        template_dir = '/'.join(tds)
+        template_dir = '{}/data/templates/'.format(os.path.dirname(config.__file__))
 
         self.templates = np.genfromtxt('{}/vmatrix.{}.dat'.format(template_dir, self.template_name),
                                        skip_header=1).reshape(5, 10000)
@@ -107,12 +103,7 @@ class KCorrect(object):
         """
 
         # get base directory containing all filters
-        filter_dir = os.path.dirname(config.__file__)
-        fds = filter_dir.split('/')
-        fds[-1] = 'data'
-        fds.append('filters')
-        filter_dir = '/'.join(fds)
-
+        filter_dir = '{}/data/filters/'.format(os.path.dirname(config.__file__))
         filter_names = ['{}/{}'.format(filter_dir, f) for f in filter_names]
 
         filter_lambda = []
