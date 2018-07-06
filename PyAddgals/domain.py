@@ -250,6 +250,8 @@ class Domain(object):
                 if d.rmin < 0:
                     d.rmin = 1.
 
+                print(d.rmin, d.rmax)
+
                 d.zmin = self.cosmo.zofR(d.rmin)
                 d.zmax = self.cosmo.zofR(d.rmax)
                 # volume weighted average radius

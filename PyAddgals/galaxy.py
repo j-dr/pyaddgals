@@ -76,6 +76,9 @@ class GalaxyCatalog(object):
                          nest=domain.nest)
 
         # cut off buffer region, make sure we only have the pixel we want
+        print('Cutting catalog to {} <= r < {}'.format(domain.rbins[domain.rbin], 
+                                                       domain.rbins[domain.rbin + 1]))
+        sys.stdout.flush()
         idx = ((domain.rbins[domain.rbin] <= r) &
                (r < domain.rbins[domain.rbin + 1]) &
                (domain.pix == pix))

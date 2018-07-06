@@ -302,7 +302,7 @@ class ParticleCatalog(object):
         nside = self.nbody.domain.nside
 
         rmin, rmax = self.nbody.domain.getRadialLimits()
-
+        print(rmin, rmax)
         rpmin = int(rmin // 25)
         rpmax = int(rmax // 25)
 
