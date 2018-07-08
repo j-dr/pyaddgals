@@ -3,6 +3,7 @@ import numpy as np
 import healpy as hp
 import fitsio
 import os
+import sys
 
 from .addgalsModel import ADDGALSModel
 
@@ -76,7 +77,7 @@ class GalaxyCatalog(object):
                          nest=domain.nest)
 
         # cut off buffer region, make sure we only have the pixel we want
-        print('Cutting catalog to {} <= r < {}'.format(domain.rbins[domain.rbin], 
+        print('Cutting catalog to {} <= r < {}'.format(domain.rbins[domain.rbin],
                                                        domain.rbins[domain.rbin + 1]))
         sys.stdout.flush()
         idx = ((domain.rbins[domain.rbin] <= r) &

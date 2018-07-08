@@ -75,8 +75,8 @@ class ParticleCatalog(object):
         hdr, idx = read_radial_bin(f)
         hdr = dict(zip(header_fmt, hdr))
 
-        nside_file = hdr['nside_file']
-        pix = hp.ring2nest(nside, pix)
+        if not self.nbody.domain.nest:
+            pix = hp.ring2nest(nside, pix)
 
         # this assumes that nside < nside_index which should always be true
         idxmap = hp.ud_grade(np.arange(12 * nside**2), hdr['nside_index'],
@@ -103,7 +103,6 @@ class ParticleCatalog(object):
 
         return pix_file, peano_idx
 
-
     def getNpartAll(self):
         """Get number of particles to be read from nbody.
 
@@ -117,10 +116,8 @@ class ParticleCatalog(object):
 
         if self.nbody.domain.fmt == 'BCCLightcone':
             partpath = self.nbody.partpath[self.nbody.boxnum]
-            pix = self.nbody.domain.pix
-            nside = self.nbody.domain.nside
-            rpmin = int(self.nbody.domain.rmin//25.)
-            rpmax = int(self.nbody.domain.rmax//25.)
+            rpmin = int(self.nbody.domain.rmin // 25.)
+            rpmax = int(self.nbody.domain.rmax // 25.)
 
             for r in range(rpmin, rpmax + 1):
 
@@ -137,9 +134,8 @@ class ParticleCatalog(object):
 
         return Npart
 
-
     def readPartialRadialBin(self, filename, peano_inds, read_pos=False,
-                                read_vel=False, read_ids=False):
+                             read_vel=False, read_ids=False):
         """
         Read in a radial/hpix cell
 
@@ -221,8 +217,10 @@ class ParticleCatalog(object):
                             np.fromstring(
                                 fp.read(int(npart_read[j] * item_per_row[i] * fmt[i].itemsize)), fmt[i])
 
-                    fp.seek(
-                        int(item_per_row[i] * fmt[i].itemsize * (npart - npart_read_cum[-1])), 1)
+                    fp.seek(int(npart * item_per_row[i] * fmt[i].itemsize) + counter, 0)
+                    counter += int(npart * item_per_row[i] * fmt[i].itemsize)
+                # fp.seek(
+                #         int(item_per_row[i] * fmt[i].itemsize * (npart - npart_read_cum[-1])), 1)
                     data.append(d)
                 else:
                     fp.seek(int(npart * item_per_row[i] * fmt[i].itemsize), 1)
@@ -298,8 +296,6 @@ class ParticleCatalog(object):
         partpath = self.nbody.partpath[self.nbody.boxnum]
         denspath = self.nbody.denspath[self.nbody.boxnum]
         hinfopath = self.nbody.hinfopath[self.nbody.boxnum]
-        pix = self.nbody.domain.pix
-        nside = self.nbody.domain.nside
 
         rmin, rmax = self.nbody.domain.getRadialLimits()
         print(rmin, rmax)
