@@ -228,6 +228,7 @@ class ADDGALSModel(GalaxyModel):
                                                   domain.getArea())
 
         z = self.drawRedshifts(n_gal)
+        z.sort()
         mag = self.luminosityFunction.sampleLuminosities(domain, z)
 
         zidx = z.argsort()
