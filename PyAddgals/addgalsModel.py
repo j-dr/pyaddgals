@@ -90,7 +90,7 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
     n_halo = z_halo.size
     n_gal = redshift.size
     m0 = params[0]
-    mc = params[1]
+    mc = 10**params[1]
     a = params[2]
     b = params[3]
     k = params[3]
