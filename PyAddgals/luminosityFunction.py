@@ -205,7 +205,8 @@ class LuminosityFunction(object):
 
         n_gal = z.size
         zbins = np.arange(domain.zmin, domain.zmax + 0.001, 0.001)
-        zmean = zbins[1:] + zbins[:-1]
+
+        zmean = (zbins[1:] + zbins[:-1]) / 2
         volume = domain.getVolume()
 
         nzbins = zmean.size
@@ -221,7 +222,6 @@ class LuminosityFunction(object):
             # the apparent magnitude limit that we want to
             # populate to
             lummin = self.m_min_of_z(zmean[i])
-
             lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
             # get the parameters at this redshift
