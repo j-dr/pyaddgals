@@ -90,10 +90,10 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
     n_halo = z_halo.size
     n_gal = redshift.size
     m0 = params[0]
-    mc = 10**params[1]
+    mc = params[1]
     a = params[2]
     b = params[3]
-    k = params[3]
+    k = params[4]
 
     mr0 = m0 - 2.5 * (a * np.log10(mass_halo / mc) - b *
                       np.log10(1. + (mass_halo / mc)**(k / b)))
@@ -362,9 +362,19 @@ class ADDGALSModel(GalaxyModel):
                   self.rdelModel.lcenModel['b'][idx],
                   self.rdelModel.lcenModel['k'][idx]]
 
+        print(params)
+        print(np.min(mag))
+        print(np.max(mag))
+        print(np.min(mass_halo))
+        print(np.max(mass_halo))
+        print(self.rdelModel.scatter)
+        print(np.min(z_halo))
+        print(np.max(z_halo))
+
         assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
                                          z_halo, params, self.rdelModel.scatter)
 
+        print(lcen)
         print('n_bad: {}'.format(np.sum(bad)))
 
         return lcen, assigned

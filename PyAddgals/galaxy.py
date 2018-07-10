@@ -59,6 +59,7 @@ class GalaxyCatalog(object):
         """
 
         domain = self.nbody.domain
+        catalog['zmean'] = domain.zmean
 
         cdtype = np.dtype(list(zip(self.catalog.keys(),
                                    [(self.catalog[k].dtype.type,
@@ -72,23 +73,27 @@ class GalaxyCatalog(object):
         for k in self.catalog.keys():
             out[k] = self.catalog[k]
 
-        r = np.sqrt(out['px']**2 + out['py']**2 + out['pz']**2)
-        pix = hp.vec2pix(domain.nside, out['px'], out['py'], out['pz'],
-                         nest=domain.nest)
+
+#        r = np.sqrt(out['px']**2 + out['py']**2 + out['pz']**2)
+#        pix = hp.vec2pix(domain.nside, out['px'], out['py'], out['pz'],
+#                         nest=domain.nest)
 
         # cut off buffer region, make sure we only have the pixel we want
-        print('Cutting catalog to {} <= r < {}'.format(domain.rbins[domain.rbin],
-                                                       domain.rbins[domain.rbin + 1]))
-        sys.stdout.flush()
-        idx = ((domain.rbins[domain.rbin] <= r) &
-               (r < domain.rbins[domain.rbin + 1]) &
-               (domain.pix == pix))
+        print('Cutting catalog to {} <= z < {}'.format(self.nbody.cosmo.zofR(domain.rbins[domain.rbin]),
+                                                       self.nbody.cosmo.zofR(domain.rbins[domain.rbin + 1])))
+        
+#        sys.stdout.flush()
+#        idx = ((domain.rbins[domain.rbin] <= r) &
+#               (r < domain.rbins[domain.rbin + 1]) &
+#               (domain.pix == pix))
 
         if os.path.exists(filename):
             with fitsio.FITS(filename, 'rw') as f:
-                f[-1].append(out[idx])
+#                f[-1].append(out[idx])
+                f[-1].append(out)
         else:
-            fitsio.write(filename, out[idx])
+#            fitsio.write(filename, out[idx])
+            fitsio.write(filename,out)
 
     def delete(self):
         """Delete galaxy catalog

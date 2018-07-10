@@ -16,8 +16,9 @@ def main():
     parser.add_argument('config_file', type=np.str, help='Config file')
     args = parser.parse_args()
     config_file = args.config_file
-
+    print(config_file)
     config = parseConfig(config_file)
+    print(config)
     comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
