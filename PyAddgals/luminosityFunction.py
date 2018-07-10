@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from scipy.integrate import quad, dblquad
+from scipy.interpolate import interp1d
 from copy import copy
 import numpy as np
 
@@ -197,9 +198,29 @@ class LuminosityFunction(object):
         """
 
         n_gal = (area / 41253.) * dblquad(self.numberDensityIntegrandZL, z_min, z_max,
-                                          self.m_max_of_z, self.m_min_of_z)[0]
+                                          self.m_max_of_z, self.m_min_of_z,
+                                          epsabs=1e-2, epsrel=1e-2)[0]
 
         return int(n_gal)
+
+    def drawRedshifts(self, z_min, z_max):
+
+        z_bins, nd_cumu = self.redshiftCDF(z_min, z_max)
+        nd_spl = interp1d(z_bins, nd_cumu)
+        z_fine = np.linspace(z_min, z_max, 10000)
+        nd = nd_spl(z_fine)
+        cdf = nd / nd[-1]
+        rand = np.random.rand(int(nd[-1]))
+        z_samp = np.linspace(z_min, z_max, 10000)[cdf.searchsorted(rand) - 1]
+
+        return z_samp
+
+
+    def redshiftCDF(self, z_min, z_max):
+
+        zbins = np.linspace(z_min, z_max, 100)
+        n_gal_cum = [self.integrate(z_min, z, domain.getArea()) for zc in zbins]
+        return zbins, np.array(n_gal_cum)
 
     def sampleLuminosities(self, domain, z):
 

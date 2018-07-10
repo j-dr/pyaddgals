@@ -154,7 +154,9 @@ class Cosmology(object):
 
         """
 
-        def f(z): return self.comovingVolume(z)
+        def f(z):
+            return self.comovingVolume(z)
+
         dVdz = derivative(f, z, dx=1e-6)
 
         return dVdz
