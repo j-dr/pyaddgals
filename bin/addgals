@@ -9,6 +9,8 @@ from PyAddgals.cosmology import Cosmology
 from PyAddgals.domain import Domain
 from PyAddgals.nBody import NBody
 
+tags = {'write': 0, 'fwrite': 1, 'exit': 2}
+
 
 def main():
 
@@ -16,10 +18,10 @@ def main():
     parser.add_argument('config_file', type=np.str, help='Config file')
     args = parser.parse_args()
     config_file = args.config_file
-    print(config_file)
     config = parseConfig(config_file)
-    print(config)
+
     comm = MPI.COMM_WORLD
+    size = comm.size
 
     cc = config['Cosmology']
     nb_config = config['NBody']
@@ -27,16 +29,70 @@ def main():
 
     cosmo = Cosmology(**cc)
 
-    domain = Domain(cosmo, **nb_config['Domain'])
-    domain.decomp(comm, comm.rank, comm.size)
+    domain = Domain(cosmo, **nb_config.pop('Domain'))
 
-    for d in domain.yieldDomains():
-        nbody = NBody(cosmo, d, **nb_config)
+    if comm.rank == 0:
+        wwaiting = []
+        writing = []
+        done = []
 
-        nbody.read()
+        message = None
+        status = None
 
-        nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
-        nbody.galaxyCatalog.write('{}.{}'.format(runtime_config['outpath'],
-                                                 d.pix))
+        while True:
+            # are we done?
+            if len(done) == (size - 1):
+                break
 
-        nbody.delete()
+            remove = []
+            # see if any write requests can be filled
+            if len(wwaiting) > 0:
+                for w in wwaiting:
+                    write = True
+                    if w[1][0] in writing:
+                        write = False
+
+                    if write:
+                        comm.send(message, tag=tags['write'], dest=w[0])
+                        writing.append(w[1][0])
+                        remove.append(w)
+
+            for r in remove:
+                wwaiting.remove(r)
+
+            message = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
+            tag = status.Get_tag()
+
+            if tag == tags['write']:
+                wwaiting.append([status.Get_source(), message])
+            if tag == tags['fwrite']:
+                writing.remove(message[0])
+            elif tag == tags['done']:
+                done.append(status.Get_source)
+
+    else:
+        domain.decomp(comm, comm.rank - 1, comm.size - 1)
+
+        for d in domain.yieldDomains():
+            nbody = NBody(cosmo, d, **nb_config)
+
+            nbody.read()
+
+            nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
+
+            # request permission to write
+            comm.send([d.pix], 0, tag=tags['write'])
+            message = comm.recv(tag=tags['write'])
+
+            nbody.galaxyCatalog.write('{}.{}'.format(runtime_config['outpath'],
+                                                     d.pix))
+
+            comm.send([d.pix], 0, tag=tags['fwrite'])
+
+            nbody.delete()
+
+        comm.send(message, 0, tag=tags['exit'])
+
+
+if __name__ == '__main__':
+    main()
