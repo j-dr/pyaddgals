@@ -203,9 +203,12 @@ class LuminosityFunction(object):
 
         return int(n_gal)
 
-    def drawRedshifts(self, z_min, z_max):
+    def drawRedshifts(self, domain):
 
-        z_bins, nd_cumu = self.redshiftCDF(z_min, z_max)
+        z_min = domain.zmin
+        z_max = domain.zmax
+
+        z_bins, nd_cumu = self.redshiftCDF(z_min, z_max, domain)
         nd_spl = interp1d(z_bins, nd_cumu)
         z_fine = np.linspace(z_min, z_max, 10000)
         nd = nd_spl(z_fine)
@@ -216,10 +219,10 @@ class LuminosityFunction(object):
         return z_samp
 
 
-    def redshiftCDF(self, z_min, z_max):
+    def redshiftCDF(self, z_min, z_max, domain):
 
         zbins = np.linspace(z_min, z_max, 100)
-        n_gal_cum = [self.integrate(z_min, z, domain.getArea()) for zc in zbins]
+        n_gal_cum = [self.integrate(z_min, zc, domain.getArea()) for zc in zbins]
         return zbins, np.array(n_gal_cum)
 
     def sampleLuminosities(self, domain, z):
