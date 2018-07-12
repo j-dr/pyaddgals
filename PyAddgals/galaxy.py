@@ -83,8 +83,8 @@ class GalaxyCatalog(object):
                                                        self.nbody.cosmo.zofR(domain.rbins[boxnum][domain.rbin + 1])))
         
         sys.stdout.flush()
-        idx = ((domain.rbins[domain.rbin] <= r) &
-               (r < domain.rbins[domain.rbin + 1]) &
+        idx = ((domain.rbins[boxnum][domain.rbin] <= r) &
+               (r < domain.rbins[boxnum][domain.rbin + 1]) &
                (domain.pix == pix))
 
         if os.path.exists(filename):
