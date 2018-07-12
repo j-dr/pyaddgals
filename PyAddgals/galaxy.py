@@ -76,10 +76,11 @@ class GalaxyCatalog(object):
         r = np.sqrt(out['px']**2 + out['py']**2 + out['pz']**2)
         pix = hp.vec2pix(domain.nside, out['px'], out['py'], out['pz'],
                          nest=domain.nest)
-
+        
+        boxnum = domain.boxnum
         # cut off buffer region, make sure we only have the pixel we want
-        print('Cutting catalog to {} <= z < {}'.format(self.nbody.cosmo.zofR(domain.rbins[domain.rbin]),
-                                                       self.nbody.cosmo.zofR(domain.rbins[domain.rbin + 1])))
+        print('Cutting catalog to {} <= z < {}'.format(self.nbody.cosmo.zofR(domain.rbins[boxnum][domain.rbin]),
+                                                       self.nbody.cosmo.zofR(domain.rbins[boxnum][domain.rbin + 1])))
         
         sys.stdout.flush()
         idx = ((domain.rbins[domain.rbin] <= r) &

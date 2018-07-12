@@ -325,7 +325,7 @@ class ADDGALSModel(GalaxyModel):
         """
 
         # cut out low mass and subhalos if necessary
-        idx = self.nbody.haloCatalog.catalog['mass'] >= self.rdelModel.lcenMassMin
+        idx = self.nbody.haloCatalog.catalog['mass'] >= self.rdelModel.lcenMassMin[self.nbody.domain.boxnum]
         if not self.rdelModel.useSubhalos:
             idx &= (self.nbody.haloCatalog.catalog['pid'] == -1)
 
@@ -446,9 +446,14 @@ class RdelModel(object):
         self.luminosityFunction = lf
         self.rdelModelFile = rdelModelFile
         self.lcenModelFile = lcenModelFile
-        self.lcenMassMin = float(lcenMassMin)
+        self.lcenMassMin = lcenMassMin
         self.useSubhalos = useSubhalos
         self.scatter = float(scatter)
+
+        if isinstance(self.lcenMassMin, str):
+            self.lcenMassMin = [float(self.lcenMassMin)]
+        else:
+            self.lcenMassMin = [float(lcm) for lcm in self.lcenMassMin]
 
         self.loadModelFile()
 

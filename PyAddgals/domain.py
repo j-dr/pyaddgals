@@ -46,12 +46,23 @@ class Domain(object):
 
             if isinstance(lbox, str) | isinstance(lbox, (int, float, complex)):
                 self.lbox = [int(lbox)]
+            else:
+                self.lbox = lbox
+
             if isinstance(rmin, str) | isinstance(rmin, (int, float, complex)):
                 self.rmin = [float(rmin)]
+            else:
+                self.rmin = rmin
+
             if isinstance(rmax, str) | isinstance(rmax, (int, float, complex)):
                 self.rmax = [float(rmax)]
+            else:
+                self.rmax = rmax
+
             if isinstance(nrbins, str) | isinstance(nrbins, (int, float, complex)):
                 self.nrbins = [int(nrbins)]
+            else:
+                self.nrbins = nrbins
 
             self.nside = nside
             self.nest = nest
@@ -158,6 +169,7 @@ class Domain(object):
         self.domain_counter = 0
 
         if boxnum == 0:
+            self.rbins = []
             self.domains = []
             self.domains_boxnum = []
             self.domains_task = []
@@ -212,25 +224,31 @@ class Domain(object):
             # get radial bins s.t. each bin has equal volume
             dl = self.rmax[boxnum] - self.rmin[boxnum]
             r1 = dl / (self.nrbins[boxnum])**(1 / 3)
-            self.rbins = np.arange(self.nrbins[boxnum] + 1)**(1 / 3) * r1 + self.rmin[boxnum]
+            self.rbins.append(np.arange(self.nrbins[boxnum] + 1)**(1 / 3) * r1 + self.rmin[boxnum])
 
             # product of pixels and radial bins are all domains
-            self.domains.extend(list(product(np.arange(self.nrbins[boxnum],
-                                             dtype=np.int),
-                                             self.allpix)))
-            self.domains_boxnum.extend([boxnum] * len(self.domains))
+            domains = list(product(np.arange(self.nrbins[boxnum],
+                                   dtype=np.int),
+                                   self.allpix))
+            domains_boxnum = [boxnum] * len(domains)
 
             # divide up domains
-            self.domains_task.extend(self.domains[self.rank::self.ntasks])
-            self.domains_boxnum_task.extend(self.domains_boxnum[self.rank::self.ntasks])
-            self.ndomains_task += len(self.domains_task)
+            self.domains_task.extend(domains[self.rank::self.ntasks])
+            self.domains_boxnum_task.extend(domains_boxnum[self.rank::self.ntasks])
+            self.ndomains_task += len(domains[self.rank::self.ntasks])
+
+            self.domains.extend(domains)
+            self.domains_boxnum.extend(domains_boxnum)
 
         if self.fmt == 'Snapshot':
-            self.domains.extend(np.arange(self.nbox**3))
-            self.domains_boxnum.extend([boxnum] * len(self.domains))
-            self.domains_task.extend(self.domains[self.rank::self.ntasks])
-            self.domains_boxnum_task.extend(self.domains_boxnum[self.rank::self.ntasks])
-            self.ndomains_task += len(self.domains_task)
+            domains = np.arange(self.nbox**3)
+            domains_boxnum = [boxnum] * len(domains)
+            self.domains_task.extend(domains[self.rank::self.ntasks])
+            self.domains_boxnum_task.extend(domains_boxnum[self.rank::self.ntasks])
+            self.ndomains_task += len(domains[self.rank::self.size])
+            
+            self.domains.extend(domains)
+            self.domains_boxnum.extend(domains_boxnum)
 
     def yieldDomains(self):
 
@@ -244,8 +262,8 @@ class Domain(object):
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
 
-                d.rmin = self.rbins[d.rbin] - radial_buffer
-                d.rmax = self.rbins[d.rbin + 1] + radial_buffer
+                d.rmin = self.rbins[d.boxnum][d.rbin] - radial_buffer
+                d.rmax = self.rbins[d.boxnum][d.rbin + 1] + radial_buffer
 
                 if d.rmin < 0:
                     d.rmin = 1.

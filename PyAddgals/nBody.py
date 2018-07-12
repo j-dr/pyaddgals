@@ -60,14 +60,28 @@ class NBody(object):
         # make all lists so we can deal with stitching together lightcones
         if isinstance(partpath, str):
             self.partpath = [partpath]
+        else:
+            self.partpath = partpath
+
         if isinstance(denspath, str):
             self.denspath = [denspath]
+        else:
+            self.denspath = denspath
+
         if isinstance(hinfopath, str):
             self.hinfopath = [hinfopath]
+        else:
+            self.hinfopath = hinfopath
+
         if isinstance(halofile, str):
             self.halofile = [halofile]
+        else:
+            self.halofile = halofile
+
         if isinstance(halodensfile, str):
             self.halodensfile = [halodensfile]
+        else:
+            self.halodensfile = halodensfile
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)
