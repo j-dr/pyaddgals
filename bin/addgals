@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
+from time import time
 from mpi4py import MPI
 import numpy as np
 import argparse
+import sys
 
 from PyAddgals.config import parseConfig
 from PyAddgals.cosmology import Cosmology
@@ -75,15 +77,28 @@ def main():
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
-
+            print('Rank {}: working on pixel, rmin, rmax: {}, {}, {}'.format(comm.rank, d.pix, d.rmin, d.rmax))
+            sys.stdout.flush()
+            
+            start = time()
             nbody.read()
-
+            end = time()
+            print('Rank {}: reading data took {} s'.format(comm.rank, end - start))
+                  
+            start = time()
             nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
+            end = time()
+            print('Rank {}: adding galaxies took {} s'.format(comm.rank, end - start))
 
             # request permission to write
+            wstart = time()
+            print('Rank {}: waiting to write pix {}'.format(comm.rank, d.pix))
+            sys.stdout.flush()
             comm.send([d.pix], 0, tag=tags['write'])
             message = comm.recv(tag=tags['write'])
-
+            wend = time()
+            print('Rank {}: writing to pix {}, waited {} s'.format(comm.rank, d.pix, wend-wstart))
+            sys.stdout.flush()
             nbody.galaxyCatalog.write('{}.{}'.format(runtime_config['outpath'],
                                                      d.pix))
 
