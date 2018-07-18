@@ -222,9 +222,12 @@ class Domain(object):
                 self.fracarea = self.fracarea[idx]
 
             # get radial bins s.t. each bin has equal volume
-            dl = self.rmax[boxnum] - self.rmin[boxnum]
-            r1 = dl / (self.nrbins[boxnum])**(1 / 3)
-            self.rbins.append(np.arange(self.nrbins[boxnum] + 1)**(1 / 3) * r1 + self.rmin[boxnum])
+            vtot = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3)
+            v = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3) / np.array(self.nrbins)
+            vmin = np.hstack([[0], vtot])
+
+            cumvol = np.arange(self.nrbins[boxnum] + 1) * v[boxnum] + vmin[boxnum]
+            self.rbins.append((cumvol / (4 * np.pi / 3)) ** (1 / 3))
 
             # product of pixels and radial bins are all domains
             domains = list(product(np.arange(self.nrbins[boxnum],
@@ -246,7 +249,7 @@ class Domain(object):
             self.domains_task.extend(domains[self.rank::self.ntasks])
             self.domains_boxnum_task.extend(domains_boxnum[self.rank::self.ntasks])
             self.ndomains_task += len(domains[self.rank::self.size])
-            
+
             self.domains.extend(domains)
             self.domains_boxnum.extend(domains_boxnum)
 
