@@ -59,6 +59,12 @@ class GalaxyCatalog(object):
         """
 
         domain = self.nbody.domain
+        if os.path.exists(filename):
+            f = fitsio.FITS(filename)
+            ngal = f[-1].read_header()['NAXIS2']
+            f.close()
+
+        self.catalog['ID'] = (domain.pix * 1e9 + np.arange(len(self.catalog['PX'])) + ngal).astype(np.int64)
 
         cdtype = np.dtype(list(zip(self.catalog.keys(),
                                    [(self.catalog[k].dtype.type,
@@ -73,8 +79,8 @@ class GalaxyCatalog(object):
             out[k] = self.catalog[k]
 
 
-        r = np.sqrt(out['px']**2 + out['py']**2 + out['pz']**2)
-        pix = hp.vec2pix(domain.nside, out['px'], out['py'], out['pz'],
+        r = np.sqrt(out['PX']**2 + out['PY']**2 + out['PZ']**2)
+        pix = hp.vec2pix(domain.nside, out['PX'], out['PY'], out['PZ'],
                          nest=domain.nest)
         
         boxnum = domain.boxnum

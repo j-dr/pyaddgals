@@ -90,9 +90,9 @@ class NBody(object):
         self.boxnum = self.domain.boxnum
 
     def read(self):
-
-        self.particleCatalog.read()
         self.haloCatalog.read()
+        self.particleCatalog.read()
+
 
     def delete(self):
         self.particleCatalog.delete()
