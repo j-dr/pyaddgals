@@ -297,8 +297,9 @@ class ParticleCatalog(object):
         denspath = self.nbody.denspath[self.nbody.boxnum]
         hinfopath = self.nbody.hinfopath[self.nbody.boxnum]
 
-        rmin, rmax = self.nbody.domain.getRadialLimits()
-        print(rmin, rmax)
+        rmin = self.nbody.domain.rmin
+        rmax = self.nbody.domain.rmax
+
         rpmin = int(rmin // 25)
         rpmax = int(rmax // 25)
 
