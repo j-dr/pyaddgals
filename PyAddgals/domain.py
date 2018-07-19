@@ -233,7 +233,8 @@ class Domain(object):
                 self.allpix = self.allpix[idx]
                 self.fracarea = self.fracarea[idx]
 
-            # get radial bins s.t. each bin has equal volume
+            # get radial bins s.t. each bin has equal volume or equal
+            # number of gals if given a luminosity function
 
             if not self.numberDensityDomainDecomp:
                 vtot = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3)
@@ -241,7 +242,9 @@ class Domain(object):
                 vmin = np.hstack([[0], vtot])
 
                 cumvol = np.arange(self.nrbins[boxnum] + 1) * v[boxnum] + vmin[boxnum]
-                self.rbins.append((cumvol / (4 * np.pi / 3)) ** (1 / 3))
+                rbins = (cumvol / (4 * np.pi / 3)) ** (1 / 3)
+                rbins[-1] = self.rmax[boxnum]
+                self.rbins.append(rbins)
             else:
                 zmin = self.cosmo.zofR(self.rmin[boxnum])
                 zmax = self.cosmo.zofR(self.rmax[boxnum])
@@ -255,7 +258,7 @@ class Domain(object):
                                                                    self.nrbins[boxnum] - 1))]
                 rbins_domain = self.cosmo.rofZ(zbins_domain)
                 rbins = np.hstack([[self.rmin[boxnum]], rbins_domain,
-                                    [self.rmax[boxnum]]])
+                                  [self.rmax[boxnum]]])
                 self.rbins.append(rbins)
 
             # product of pixels and radial bins are all domains
@@ -289,21 +292,20 @@ class Domain(object):
 
             if self.fmt == 'BCCLightcone':
 
-                radial_buffer = 50.
+                #                radial_buffer = 50.
                 d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
 
-                d.rmin = self.rbins[d.boxnum][d.rbin] - radial_buffer
-                d.rmax = self.rbins[d.boxnum][d.rbin + 1] + radial_buffer
+                d.rmin = self.rbins[d.boxnum][d.rbin]
+                d.rmax = self.rbins[d.boxnum][d.rbin + 1]
 
-                if d.rmin < 0:
-                    d.rmin = 1.
+                d.zmin = self.cosmo.zofR(d.rmin) - 0.015
+                d.zmax = self.cosmo.zofR(d.rmax) + 0.015
 
-                print(d.rmin, d.rmax)
+                d.rmin = self.cosmo.rofZ(d.zmin)
+                d.rmax = self.cosmo.rofZ(d.zmax)
 
-                d.zmin = self.cosmo.zofR(d.rmin)
-                d.zmax = self.cosmo.zofR(d.rmax)
                 # volume weighted average radius
                 d.rmean = 0.75 * (d.rmax - d.rmin)
                 d.zmean = self.cosmo.zofR(d.rmean)
