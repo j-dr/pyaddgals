@@ -311,7 +311,7 @@ class ADDGALSModel(GalaxyModel):
 
         sigma5, ranksigma5, redfraction, \
             sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
-        
+
         self.nbody.galaxyCatalog.catalog['SIGMA5'] = sigma5
         self.nbody.galaxyCatalog.catalog['PSIGMA5'] = ranksigma5
         self.nbody.galaxyCatalog.catalog['SEDID'] = sed_idx
@@ -868,11 +868,11 @@ class ColorModel(object):
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
         end = time()
         print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
-        
+
         start = time()
         ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
         end = time()
-        print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
         return sigma5, ranksigma5
 
@@ -984,16 +984,27 @@ class ColorModel(object):
         filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
 
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
+        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
+
         amag = k_reconstruct_maggies(rmatrix.astype(np.float64),
+                                     coeffs.astype(np.float64),
+                                     np.zeros_like(z).astype(np.float64),
+                                     kcorr.zvals.astype(np.float64))
+
+        omag = k_reconstruct_maggies(rmatrix0.astype(np.float64),
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals.astype(np.float64))
 
+        kc = 2.5 * np.log10(amag / omag)
+
         a = 1 / (1 + z)
         amax = 1 / (1 + 1e-7)
         a[a > amax] = amax
+
+        omag = -2.5 * np.log10(omag)
         dm = self.nbody.cosmo.distanceModulus(1 / a - 1)
-        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
+        amag = omag - dm.reshape(-1, 1) - kc
 
         # renormalize coeffs
         coeffs *= 10 ** ((mag.reshape(-1, 1) - amag) / -2.5)
@@ -1006,24 +1017,25 @@ class ColorModel(object):
                                            self.band_shift)
         amag = k_reconstruct_maggies(rmatrix,
                                      coeffs.astype(np.float64),
-                                     z.astype(np.float64),
+                                     np.zeros_like(z).astype(np.float64),
                                      kcorr.zvals)
         omag = k_reconstruct_maggies(rmatrix0,
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals)
 
+        kc = 2.5 * np.log10(amag / omag)
         omag = -2.5 * np.log10(omag)
-        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
+        amag = omag - dm.reshape(-1, 1) - kc
 
         return omag, amag
 
     def assignSEDs(self, pos, mag, z, z_rsd):
-        
+
         start = time()
         sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, pos)
         end = time()
-        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
@@ -1032,7 +1044,7 @@ class ColorModel(object):
         coeffs = self.trainingSet[sed_idx]['COEFFS']
         end = time()
 
-        print('[{}] Finished assigning SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished assigning SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         # make sure we don't have any negative redshifts
@@ -1043,7 +1055,7 @@ class ColorModel(object):
         omag, amag = self.computeMagnitudes(mag, z_a, coeffs, self.filters)
         end = time()
 
-        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         return sigma5, ranksigma5, redfraction, sed_idx, omag, amag
