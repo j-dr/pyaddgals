@@ -245,14 +245,14 @@ class ADDGALSModel(GalaxyModel):
         sys.stdout.flush()
 
         start = time()
-        mag_cen, assigned = self.assignHalos(z, mag, density)
+        mag_cen, assigned, bad_cen = self.assignHalos(z, mag, density)
         end = time()
 
         print('[{}] Finished assigning galaxies to halos. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
-        pos, vel, z, density, mag, rhalo, haloid, halomass = self.assignParticles(
+        pos, vel, z, density, mag, rhalo, haloid, halomass, bad = self.assignParticles(
             z[~assigned], mag[~assigned], density[~assigned])
         end = time()
 
@@ -273,6 +273,7 @@ class ADDGALSModel(GalaxyModel):
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
         z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
+        bad = np.hstack([bad_cen, bad])
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
         self.nbody.galaxyCatalog.catalog['PY'] = pos[:, 1]
@@ -288,6 +289,7 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['R200'] = rhalo
         self.nbody.galaxyCatalog.catalog['HALOID'] = haloid
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
+        self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
 
     def paintSEDs(self):
         """Paint SEDs onto galaxies after positions and luminosities have
@@ -392,7 +394,7 @@ class ADDGALSModel(GalaxyModel):
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
 
-        return lcen, assigned
+        return lcen, assigned, bad
 
     def assignParticles(self, redshift, magnitude, density):
         """Assign galaxies to particles with the correct redshift
@@ -448,10 +450,10 @@ class ADDGALSModel(GalaxyModel):
         z_asn = z_part[idx]
         density_asn = density_part[idx]
 
-        print('number of bad assignments: {}'.format(np.sum(bad)))
+        print('[{}] number of bad assignments: {}'.format(self.nbody.domain.rank, np.sum(bad)))
         sys.stdout.flush()
 
-        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass
+        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass, bad
 
 
 class RdelModel(object):

@@ -63,6 +63,8 @@ class GalaxyCatalog(object):
             f = fitsio.FITS(filename)
             ngal = f[-1].read_header()['NAXIS2']
             f.close()
+        else:
+            ngal = 0
 
         self.catalog['ID'] = (domain.pix * 1e9 + np.arange(len(self.catalog['PX'])) + ngal).astype(np.int64)
 

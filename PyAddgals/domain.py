@@ -303,6 +303,9 @@ class Domain(object):
                 d.zmin = self.cosmo.zofR(d.rmin) - 0.015
                 d.zmax = self.cosmo.zofR(d.rmax) + 0.015
 
+                if d.zmin < 0:
+                    d.zmin = 1.e-4
+
                 d.rmin = self.cosmo.rofZ(d.zmin)
                 d.rmax = self.cosmo.rofZ(d.zmax)
 
