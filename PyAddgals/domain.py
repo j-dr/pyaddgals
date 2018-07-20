@@ -244,6 +244,7 @@ class Domain(object):
                 cumvol = np.arange(self.nrbins[boxnum] + 1) * v[boxnum] + vmin[boxnum]
                 rbins = (cumvol / (4 * np.pi / 3)) ** (1 / 3)
                 rbins[-1] = self.rmax[boxnum]
+                rbins[0] = self.rmin[boxnum]
                 self.rbins.append(rbins)
             else:
                 zmin = self.cosmo.zofR(self.rmin[boxnum])
