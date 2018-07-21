@@ -681,7 +681,8 @@ class RdelModel(object):
 class ColorModel(object):
 
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
-                 filters=None, band_shift=0.1, **kwargs):
+                 filters=None, band_shift=0.1, use_redfraction=True, 
+                 dm_rank=0.1, ds=0.05, dm_sed=0.1, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -697,6 +698,10 @@ class ColorModel(object):
         self.trainingSetFile = trainingSetFile
         self.filters = filters
         self.band_shift = band_shift
+        self.use_redfraction = bool(use_redfraction)
+        self.dm_rank = float(dm_rank)
+        self.ds = float(ds)
+        self.dm_sed = float(dm_sed)
 
         self.loadModel()
 
@@ -872,7 +877,7 @@ class ColorModel(object):
         print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
         start = time()
-        ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
+        ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, self.dm_rank)
         end = time()
         print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
@@ -893,7 +898,6 @@ class ColorModel(object):
         pos[:, 0] = mag
         pos[:, 1] = ranksigma5
         pos[:, 2] = redfraction
-#        pos[:, 2] = np.ones_like(mag)
 
         pos[pos[:, 0] < np.min(mag_train), 0] = np.min(mag_train)
         pos[pos[:, 0] > np.max(mag_train), 0] = np.max(mag_train)
@@ -1043,8 +1047,12 @@ class ColorModel(object):
         sys.stdout.flush()
 
         start = time()
-        redfraction = self.computeRedFraction(z, mag)
-        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction)
+        if self.use_redfraction:
+            redfraction = self.computeRedFraction(z, mag)
+        else:
+            redfraction = np.ones_like(z)
+
+        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction, self.dm_sed, self.ds)
         coeffs = self.trainingSet[sed_idx]['COEFFS']
         end = time()
 
