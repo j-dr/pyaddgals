@@ -878,7 +878,7 @@ class ColorModel(object):
 
         return sigma5, ranksigma5
 
-    def matchTrainingSet(self, mag, ranksigma5, redfraction, dm=0.1, ds=0.01):
+    def matchTrainingSet(self, mag, ranksigma5, redfraction, dm=0.1, ds=0.05):
 
         mag_train = self.trainingSet['ABSMAG'][:, 2]
         ranksigma5_train = self.trainingSet['PSIGMA5']
@@ -893,6 +893,7 @@ class ColorModel(object):
         pos[:, 0] = mag
         pos[:, 1] = ranksigma5
         pos[:, 2] = redfraction
+#        pos[:, 2] = np.ones_like(mag)
 
         pos[pos[:, 0] < np.min(mag_train), 0] = np.min(mag_train)
         pos[pos[:, 0] > np.max(mag_train), 0] = np.max(mag_train)
@@ -931,6 +932,7 @@ class ColorModel(object):
                     bad[i] = True
 
             isbad = np.where(bad)
+            print('Number of bad SED assignments: {}'.format(len(isbad)))
 
             def max_distances(m): return np.array(
                 [10 * (22.5 + m)**2 * dm, ds, 0.4])
