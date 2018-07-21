@@ -235,10 +235,8 @@ class ADDGALSModel(GalaxyModel):
         z = z[zidx]
         mag = mag[zidx]
 
-        density, idx = self.rdelModel.sampleDensity(domain, z, mag)
+        density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
 
-        z = z[idx]
-        mag = mag[idx]
         end = time()
 
         print('[{}] Finished drawing mag, z, dens. Took {}s'.format(self.nbody.domain.rank, end - start))
@@ -652,15 +650,14 @@ class RdelModel(object):
         density = np.zeros(n_gal)
         count = 0
 
-        idx = np.arange(n_gal)
-
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
             zhidx = z.searchsorted(zbins[i + 1])
 
             midx = mag[zlidx:zhidx].argsort()
-            mi = mag[zlidx:zhidx][midx]
-            idx[zlidx:zhidx] = midx + zlidx
+            z[zlidx:zhidx] = z[zlidx:zhidx][midx]
+            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
+            mi = mag[zlidx:zhidx]
 
             for j in range(nmagbins):
                 mlidx = mi.searchsorted(magbins[j])
@@ -675,7 +672,7 @@ class RdelModel(object):
                         nij] = deltamean[cdf_r.searchsorted(rands) - 1]
                 count += nij
 
-        return density, idx
+        return density, z, mag
 
 
 class ColorModel(object):
