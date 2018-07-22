@@ -5,6 +5,7 @@ from fast3tree import fast3tree
 from copy import copy
 from time import time
 import numpy as np
+import healpy as hp
 import fitsio
 import sys
 
@@ -200,6 +201,7 @@ class ADDGALSModel(GalaxyModel):
 
         self.rdelModel = RdelModel(self.nbody, self.luminosityFunction, **rdelModelConfig)
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
+        self.c = 3e5
 
     def paintGalaxies(self):
         """Paint galaxy positions, luminosities and SEDs into nbody.
@@ -699,6 +701,7 @@ class ColorModel(object):
         self.dm_rank = float(dm_rank)
         self.ds = float(ds)
         self.dm_sed = float(dm_sed)
+        self.c = 3e5
 
         self.loadModel()
 
@@ -873,6 +876,27 @@ class ColorModel(object):
         return sigma5
 
     def computeRankSigma5(self, z, mag, pos_gals):
+        """Calculate the ranked \Sigma_5 values for galaxies,
+        where \Sigma_5 is the projected radius to the 5th nearest neighbor,
+        and rank \Sigma_5 is the rank of \Sigma_5 in r-band magnitude and
+        redshift bins.
+
+        Parameters
+        ----------
+        z : np.array
+            Redshifts of the galaxies (with RSD).
+        mag : np.array
+            Absolute r-band magnitudes of galaxies.
+        pos_gals : np.array
+            Angular/redshift space coordinates. Should be (N,3) shape, with
+            first column being theta, second being phi (in radians) and third
+            being z_rsd.
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
 
         start = time()
         sigma5 = self.computeSigma5(z, mag, pos_gals)
@@ -1044,7 +1068,10 @@ class ColorModel(object):
     def assignSEDs(self, pos, mag, z, z_rsd):
 
         start = time()
-        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, pos)
+
+        theta, phi = hp.vec2ang(pos)
+        rspos = np.vstack([theta, phi, self.c * z_rsd]).T
+        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
         end = time()
         print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
