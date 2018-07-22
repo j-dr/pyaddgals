@@ -678,7 +678,7 @@ class RdelModel(object):
 class ColorModel(object):
 
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
-                 filters=None, band_shift=0.1, use_redfraction=True, 
+                 filters=None, band_shift=0.1, use_redfraction=True,
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, **kwargs):
 
         if redFractionModelFile is None:
@@ -841,9 +841,8 @@ class ColorModel(object):
 
         return ranksigma5
 
-    def computeRankSigma5(self, z, mag, pos_gals):
+    def computeSigma5(self, z, mag, pos_gals):
 
-        start = time()
         pos_bright_gals = pos_gals[mag < -19.8]
 
         max_distances = np.array([1.5, 1.5, 1000])
@@ -867,9 +866,16 @@ class ColorModel(object):
                     sigma5[i] = -1
 
         z_a = copy(z)
-        z_a[z_a<1e-6] = 1e-6
+        z_a[z_a < 1e-6] = 1e-6
 
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
+
+        return sigma5
+
+    def computeRankSigma5(self, z, mag, pos_gals):
+
+        start = time()
+        sigma5 = self.computeSigma5(z, mag, pos_gals)
         end = time()
         print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
