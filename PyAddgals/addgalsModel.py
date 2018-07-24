@@ -899,7 +899,7 @@ class ColorModel(object):
         """
 
         start = time()
-        dtheta = self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
+        dtheta = 100./self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
         if dtheta > 1.5:
             dtheta = 1.5
         sigma5 = self.computeSigma5(z, mag, pos_gals, dt=dtheta)
