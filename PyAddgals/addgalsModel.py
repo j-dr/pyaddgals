@@ -844,11 +844,11 @@ class ColorModel(object):
 
         return ranksigma5
 
-    def computeSigma5(self, z, mag, pos_gals):
+    def computeSigma5(self, z, mag, pos_gals, dt=1.5):
 
         pos_bright_gals = pos_gals[mag < -19.8]
 
-        max_distances = np.array([1.5, 1.5, 1000])
+        max_distances = np.array([dt, dt, 1000])
         neg_max_distances = -1.0 * max_distances
 
         sigma5 = np.zeros(len(pos_gals))
@@ -899,7 +899,10 @@ class ColorModel(object):
         """
 
         start = time()
-        sigma5 = self.computeSigma5(z, mag, pos_gals)
+        dtheta = self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
+        if dtheta > 1.5:
+            dtheta = 1.5
+        sigma5 = self.computeSigma5(z, mag, pos_gals, dtheta=dtheta)
         end = time()
         print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
