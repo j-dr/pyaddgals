@@ -55,7 +55,6 @@ class LuminosityFunction(object):
             zp = self.evolveParams(z)
             self.lf[:, i] = self.numberDensity(zp, lums)
 
-
     def genLuminosityFunctionZ(self, lums, z):
         """Calculate the luminosity function at one redshift
 
@@ -121,7 +120,6 @@ class LuminosityFunction(object):
 
         return nd
 
-
     def cumulativeNumberDensity(self, z, L):
         """Cumulative number density at redshift z until luminosity L.
 
@@ -139,15 +137,16 @@ class LuminosityFunction(object):
 
         """
 
-        nd = quad(self.numberDensityIntegrandZL, self.m_max_of_z(z), L, args=z)[0]
+        nd = quad(self.numberDensityIntegrandZL,
+                  self.m_max_of_z(z), L, args=z)[0]
 
         return nd
 
     def m_min_of_z(self, z):
-        if (self.magmin - self.cosmo.distanceModulus(z)) < -11.:
+        if (self.magmin - self.cosmo.distanceModulus(z)) < -5:
             return self.magmin - self.cosmo.distanceModulus(z)
         else:
-            return -11.
+            return -5.
 
     def m_max_of_z(self, z):
 
@@ -218,11 +217,11 @@ class LuminosityFunction(object):
 
         return z_samp
 
-
     def redshiftCDF(self, z_min, z_max, domain):
 
         zbins = np.linspace(z_min, z_max, 100)
-        n_gal_cum = [self.integrate(z_min, zc, domain.getArea()) for zc in zbins]
+        n_gal_cum = [self.integrate(z_min, zc, domain.getArea())
+                     for zc in zbins]
         return zbins, np.array(n_gal_cum)
 
     def sampleLuminosities(self, domain, z):
@@ -268,11 +267,11 @@ class DSGLuminosityFunction(LuminosityFunction):
     def __init__(self, cosmo, params=None, name=None, **kwargs):
 
         if params is None:
-            params = np.array([1.56000000e-02,  -1.66000000e-01,
+            params = np.array([1.56000000e-02, -1.66000000e-01,
                                6.71000000e-03,
-                               -1.52300000e+00,  -2.00100000e+01,
+                               -1.52300000e+00, -2.00100000e+01,
                                3.08000000e-05,
-                               -2.18500000e+01,   4.84000000e-01, -1, 0])
+                               -2.18500000e+01, 4.84000000e-01, -1, 0])
 
         LuminosityFunction.__init__(
             self, cosmo, params=params, name='DSG', **kwargs)
@@ -343,7 +342,8 @@ class BBGSLuminosityFunction(LuminosityFunction):
         self.P = P
         self.unitmap = {'mag': 'mag', 'phi': 'hmpc3dex'}
 
-        LuminosityFunction.__init__(self, np.array([Q, P]), name='BBGS', **kwargs)
+        LuminosityFunction.__init__(
+            self, np.array([Q, P]), name='BBGS', **kwargs)
 
     def evolveParams(self, z):
         return self.params, z

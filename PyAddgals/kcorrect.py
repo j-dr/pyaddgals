@@ -262,7 +262,7 @@ class KCorrect(object):
             filter_pass_interp = filter_pass_spline(template_lambda_mean)
             scale = 1 / np.sum(filter_pass_interp *
                                dlambda * self.abfnu * self.c / template_lambda_mean)
-
+            print(scale)
             for i in range(nz):
                 z = zvals[i]
                 filter_pass_interp = filter_pass_spline(

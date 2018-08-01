@@ -1,8 +1,11 @@
 from __future__ import print_function, division
 from itertools import product
+from scipy.interpolate import interp1d
 from copy import copy
 import healpy as hp
 import numpy as np
+
+from . import luminosityFunction
 
 
 class Domain(object):
@@ -12,7 +15,7 @@ class Domain(object):
 
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
-                 pixlist=None):
+                 pixlist=None, luminosityFunctionConfig=None):
 
         self.fmt = fmt
         self.cosmo = cosmo
@@ -43,6 +46,15 @@ class Domain(object):
 
             if nest is None:
                 raise(ValueError("nest must be defined for BCCLightcone domain"))
+
+            if luminosityFunctionConfig is None:
+                self.numberDensityDomainDecomp = False
+            else:
+                self.numberDensityDomainDecomp = True
+                lf_type = luminosityFunctionConfig['modeltype']
+
+                self.luminosityFunction = getattr(luminosityFunction, lf_type)
+                self.luminosityFunction = self.luminosityFunction(cosmo, **luminosityFunctionConfig)
 
             if isinstance(lbox, str) | isinstance(lbox, (int, float, complex)):
                 self.lbox = [int(lbox)]
@@ -221,13 +233,34 @@ class Domain(object):
                 self.allpix = self.allpix[idx]
                 self.fracarea = self.fracarea[idx]
 
-            # get radial bins s.t. each bin has equal volume
-            vtot = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3)
-            v = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3) / np.array(self.nrbins)
-            vmin = np.hstack([[0], vtot])
+            # get radial bins s.t. each bin has equal volume or equal
+            # number of gals if given a luminosity function
 
-            cumvol = np.arange(self.nrbins[boxnum] + 1) * v[boxnum] + vmin[boxnum]
-            self.rbins.append((cumvol / (4 * np.pi / 3)) ** (1 / 3))
+            if not self.numberDensityDomainDecomp:
+                vtot = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3)
+                v = 4 * np.pi / 3 * (np.array(self.rmax)**3 - np.array(self.rmin)**3) / np.array(self.nrbins)
+                vmin = np.hstack([[0], vtot])
+
+                cumvol = np.arange(self.nrbins[boxnum] + 1) * v[boxnum] + vmin[boxnum]
+                rbins = (cumvol / (4 * np.pi / 3)) ** (1 / 3)
+                rbins[-1] = self.rmax[boxnum]
+                rbins[0] = self.rmin[boxnum]
+                self.rbins.append(rbins)
+            else:
+                zmin = self.cosmo.zofR(self.rmin[boxnum])
+                zmax = self.cosmo.zofR(self.rmax[boxnum])
+                z_bins, nd_cumu = self.luminosityFunction.redshiftCDF(zmin, zmax, self)
+                nd_spl = interp1d(z_bins, nd_cumu)
+                z_fine = np.linspace(zmin, zmax, 10000)
+                nd = nd_spl(z_fine)
+                cdf = nd / nd[-1]
+                zbins_domain = z_fine[cdf.searchsorted(np.linspace(1 / self.nrbins[boxnum],
+                                                                   1 - 1 / self.nrbins[boxnum],
+                                                                   self.nrbins[boxnum] - 1))]
+                rbins_domain = self.cosmo.rofZ(zbins_domain)
+                rbins = np.hstack([[self.rmin[boxnum]], rbins_domain,
+                                  [self.rmax[boxnum]]])
+                self.rbins.append(rbins)
 
             # product of pixels and radial bins are all domains
             domains = list(product(np.arange(self.nrbins[boxnum],
@@ -260,21 +293,23 @@ class Domain(object):
 
             if self.fmt == 'BCCLightcone':
 
-                radial_buffer = 50.
+                #                radial_buffer = 50.
                 d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
 
-                d.rmin = self.rbins[d.boxnum][d.rbin] - radial_buffer
-                d.rmax = self.rbins[d.boxnum][d.rbin + 1] + radial_buffer
+                d.rmin = self.rbins[d.boxnum][d.rbin]
+                d.rmax = self.rbins[d.boxnum][d.rbin + 1]
 
-                if d.rmin < 0:
-                    d.rmin = 1.
+                d.zmin = self.cosmo.zofR(d.rmin) - 0.015
+                d.zmax = self.cosmo.zofR(d.rmax) + 0.015
 
-                print(d.rmin, d.rmax)
+                if d.zmin < 0:
+                    d.zmin = 1.e-4
 
-                d.zmin = self.cosmo.zofR(d.rmin)
-                d.zmax = self.cosmo.zofR(d.rmax)
+                d.rmin = self.cosmo.rofZ(d.zmin)
+                d.rmax = self.cosmo.rofZ(d.zmax)
+
                 # volume weighted average radius
                 d.rmean = 0.75 * (d.rmax - d.rmin)
                 d.zmean = self.cosmo.zofR(d.rmean)
@@ -289,10 +324,12 @@ class Domain(object):
         if hasattr(self, 'area'):
             return self.pixarea
 
-        else:
+        elif hasattr(self, 'pix'):
             pidx = self.allpix.searchsorted(self.pix)
             self.pixarea = hp.nside2pixarea(self.nside, degrees=True)
             self.pixarea *= self.fracarea[pidx]
+        else:
+            return 1
 
         return self.pixarea
 
@@ -303,7 +340,6 @@ class Domain(object):
         -------
         volume : float
             The volume of the simulation domain
-
         """
 
         if hasattr(self, 'volume'):

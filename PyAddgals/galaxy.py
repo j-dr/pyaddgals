@@ -50,7 +50,7 @@ class GalaxyCatalog(object):
 
         model.paintGalaxies()
 
-    def write(self, filename):
+    def write(self, filename, nside_output, write_pos=False):
         """Write galaxy catalog to disk.
 
         Returns
@@ -59,12 +59,15 @@ class GalaxyCatalog(object):
         """
 
         domain = self.nbody.domain
-        if os.path.exists(filename):
-            f = fitsio.FITS(filename)
-            ngal = f[-1].read_header()['NAXIS2']
-            f.close()
 
-        self.catalog['ID'] = (domain.pix * 1e9 + np.arange(len(self.catalog['PX'])) + ngal).astype(np.int64)
+        if 'ID' not in list(self.catalog.keys()):
+            self.catalog['ID'] = np.zeros(len(self.catalog['PX']))
+
+        if 'RA' not in list(self.catalog.keys()):
+            self.catalog['RA'], self.catalog['DEC'] = hp.vec2ang(np.vstack([self.catalog['PX'],
+                                                                           self.catalog['PY'],
+                                                                           self.catalog['PZ']]).T,
+                                                                 lonlat=True)
 
         cdtype = np.dtype(list(zip(self.catalog.keys(),
                                    [(self.catalog[k].dtype.type,
@@ -78,26 +81,72 @@ class GalaxyCatalog(object):
         for k in self.catalog.keys():
             out[k] = self.catalog[k]
 
-
         r = np.sqrt(out['PX']**2 + out['PY']**2 + out['PZ']**2)
         pix = hp.vec2pix(domain.nside, out['PX'], out['PY'], out['PZ'],
                          nest=domain.nest)
-        
+
         boxnum = domain.boxnum
         # cut off buffer region, make sure we only have the pixel we want
         print('Cutting catalog to {} <= z < {}'.format(self.nbody.cosmo.zofR(domain.rbins[boxnum][domain.rbin]),
                                                        self.nbody.cosmo.zofR(domain.rbins[boxnum][domain.rbin + 1])))
-        
+
         sys.stdout.flush()
         idx = ((domain.rbins[boxnum][domain.rbin] <= r) &
                (r < domain.rbins[boxnum][domain.rbin + 1]) &
                (domain.pix == pix))
 
-        if os.path.exists(filename):
-            with fitsio.FITS(filename, 'rw') as f:
-                f[-1].append(out[idx])
+        out = out[idx]
+
+        if nside_output != domain.nside:
+            map_in = np.arange(12 * domain.nside**2)
+
+            if domain.nest:
+                order = 'NESTED'
+            else:
+                order = 'RING'
+
+            map_out = hp.ud_grade(map_in, nside_output, order_in=order,
+                                  order_out=order)
+            pix = np.where(map_out == domain.pix)
         else:
-            fitsio.write(filename, out[idx])
+            pix = [domain.pix]
+
+        for p in pix:
+            fname = '{}.{}.fits'.format(filename, p)
+
+            if write_pos:
+                pfname = '{}.{}.lens.fits'.format(filename, p)
+
+            if os.path.exists(fname):
+                f = fitsio.FITS(fname)
+                ngal = f[-1].read_header()['NAXIS2']
+                f.close()
+            else:
+                ngal = 0
+
+            pix = hp.vec2pix(nside_output, out['PX'], out['PY'], out['PZ'],
+                             nest=domain.nest)
+
+            idx = pix == p
+            if np.sum(idx) < 100:
+                continue
+
+            out['ID'][idx] = (p * 1e9 + np.arange(len(out['PX'][idx])) + ngal).astype(np.int64)
+
+            if os.path.exists(fname):
+                with fitsio.FITS(fname, 'rw') as f:
+                    f[-1].append(out[idx])
+            else:
+                fitsio.write(fname, out[idx])
+
+            if write_pos:
+                if os.path.exists(pfname):
+                    with fitsio.FITS(pfname, 'rw') as f:
+                        f[-1].append(out[['ID', 'PX', 'PY', 'PZ']][idx])
+                else:
+                    fitsio.write(pfname, out[['ID', 'PX', 'PY', 'PZ']][idx])
+
+        del out
 
     def delete(self):
         """Delete galaxy catalog

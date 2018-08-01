@@ -5,6 +5,7 @@ from fast3tree import fast3tree
 from copy import copy
 from time import time
 import numpy as np
+import healpy as hp
 import fitsio
 import sys
 
@@ -200,6 +201,7 @@ class ADDGALSModel(GalaxyModel):
 
         self.rdelModel = RdelModel(self.nbody, self.luminosityFunction, **rdelModelConfig)
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
+        self.c = 3e5
 
     def paintGalaxies(self):
         """Paint galaxy positions, luminosities and SEDs into nbody.
@@ -235,24 +237,22 @@ class ADDGALSModel(GalaxyModel):
         z = z[zidx]
         mag = mag[zidx]
 
-        density, idx = self.rdelModel.sampleDensity(domain, z, mag)
+        density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
 
-        z = z[idx]
-        mag = mag[idx]
         end = time()
 
         print('[{}] Finished drawing mag, z, dens. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
-        mag_cen, assigned = self.assignHalos(z, mag, density)
+        mag_cen, assigned, bad_cen = self.assignHalos(z, mag, density)
         end = time()
 
         print('[{}] Finished assigning galaxies to halos. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
-        pos, vel, z, density, mag, rhalo, haloid, halomass = self.assignParticles(
+        pos, vel, z, density, mag, rhalo, haloid, halomass, bad = self.assignParticles(
             z[~assigned], mag[~assigned], density[~assigned])
         end = time()
 
@@ -273,6 +273,7 @@ class ADDGALSModel(GalaxyModel):
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
         z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
+        bad = np.hstack([bad_cen, bad])
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
         self.nbody.galaxyCatalog.catalog['PY'] = pos[:, 1]
@@ -288,6 +289,7 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['R200'] = rhalo
         self.nbody.galaxyCatalog.catalog['HALOID'] = haloid
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
+        self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
 
     def paintSEDs(self):
         """Paint SEDs onto galaxies after positions and luminosities have
@@ -311,7 +313,7 @@ class ADDGALSModel(GalaxyModel):
 
         sigma5, ranksigma5, redfraction, \
             sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
-        
+
         self.nbody.galaxyCatalog.catalog['SIGMA5'] = sigma5
         self.nbody.galaxyCatalog.catalog['PSIGMA5'] = ranksigma5
         self.nbody.galaxyCatalog.catalog['SEDID'] = sed_idx
@@ -392,7 +394,7 @@ class ADDGALSModel(GalaxyModel):
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
 
-        return lcen, assigned
+        return lcen, assigned, bad
 
     def assignParticles(self, redshift, magnitude, density):
         """Assign galaxies to particles with the correct redshift
@@ -448,10 +450,10 @@ class ADDGALSModel(GalaxyModel):
         z_asn = z_part[idx]
         density_asn = density_part[idx]
 
-        print('number of bad assignments: {}'.format(np.sum(bad)))
+        print('[{}] number of bad assignments: {}'.format(self.nbody.domain.rank, np.sum(bad)))
         sys.stdout.flush()
 
-        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass
+        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass, bad
 
 
 class RdelModel(object):
@@ -650,15 +652,14 @@ class RdelModel(object):
         density = np.zeros(n_gal)
         count = 0
 
-        idx = np.arange(n_gal)
-
         for i in range(nzbins):
             zlidx = z.searchsorted(zbins[i])
             zhidx = z.searchsorted(zbins[i + 1])
 
             midx = mag[zlidx:zhidx].argsort()
-            mi = mag[zlidx:zhidx][midx]
-            idx[zlidx:zhidx] = midx + zlidx
+            z[zlidx:zhidx] = z[zlidx:zhidx][midx]
+            mag[zlidx:zhidx] = mag[zlidx:zhidx][midx]
+            mi = mag[zlidx:zhidx]
 
             for j in range(nmagbins):
                 mlidx = mi.searchsorted(magbins[j])
@@ -673,13 +674,14 @@ class RdelModel(object):
                         nij] = deltamean[cdf_r.searchsorted(rands) - 1]
                 count += nij
 
-        return density, idx
+        return density, z, mag
 
 
 class ColorModel(object):
 
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
-                 filters=None, band_shift=0.1, **kwargs):
+                 filters=None, band_shift=0.1, use_redfraction=True,
+                 dm_rank=0.1, ds=0.05, dm_sed=0.1, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -695,6 +697,11 @@ class ColorModel(object):
         self.trainingSetFile = trainingSetFile
         self.filters = filters
         self.band_shift = band_shift
+        self.use_redfraction = bool(use_redfraction)
+        self.dm_rank = float(dm_rank)
+        self.ds = float(ds)
+        self.dm_sed = float(dm_sed)
+        self.c = 3e5
 
         self.loadModel()
 
@@ -837,12 +844,11 @@ class ColorModel(object):
 
         return ranksigma5
 
-    def computeRankSigma5(self, z, mag, pos_gals):
+    def computeSigma5(self, z, mag, pos_gals, dt=1.5):
 
-        start = time()
         pos_bright_gals = pos_gals[mag < -19.8]
 
-        max_distances = np.array([1.5, 1.5, 1000])
+        max_distances = np.array([dt, dt, 1000])
         neg_max_distances = -1.0 * max_distances
 
         sigma5 = np.zeros(len(pos_gals))
@@ -863,20 +869,51 @@ class ColorModel(object):
                     sigma5[i] = -1
 
         z_a = copy(z)
-        z_a[z_a<1e-6] = 1e-6
+        z_a[z_a < 1e-6] = 1e-6
 
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
+
+        return sigma5
+
+    def computeRankSigma5(self, z, mag, pos_gals):
+        """Calculate the ranked \Sigma_5 values for galaxies,
+        where \Sigma_5 is the projected radius to the 5th nearest neighbor,
+        and rank \Sigma_5 is the rank of \Sigma_5 in r-band magnitude and
+        redshift bins.
+
+        Parameters
+        ----------
+        z : np.array
+            Redshifts of the galaxies (with RSD).
+        mag : np.array
+            Absolute r-band magnitudes of galaxies.
+        pos_gals : np.array
+            Angular/redshift space coordinates. Should be (N,3) shape, with
+            first column being theta, second being phi (in radians) and third
+            being z_rsd.
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
+
+        start = time()
+        dtheta = 100. / self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
+        if dtheta > 1.5:
+            dtheta = 1.5
+        sigma5 = self.computeSigma5(z, mag, pos_gals, dt=dtheta)
         end = time()
         print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
-        
+
         start = time()
-        ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, 0.1)
+        ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, self.dm_rank)
         end = time()
-        print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
 
         return sigma5, ranksigma5
 
-    def matchTrainingSet(self, mag, ranksigma5, redfraction, dm=0.1, ds=0.01):
+    def matchTrainingSet(self, mag, ranksigma5, redfraction, dm=0.1, ds=0.05):
 
         mag_train = self.trainingSet['ABSMAG'][:, 2]
         ranksigma5_train = self.trainingSet['PSIGMA5']
@@ -929,6 +966,7 @@ class ColorModel(object):
                     bad[i] = True
 
             isbad = np.where(bad)
+            print('Number of bad SED assignments: {}'.format(len(isbad)))
 
             def max_distances(m): return np.array(
                 [10 * (22.5 + m)**2 * dm, ds, 0.4])
@@ -984,16 +1022,27 @@ class ColorModel(object):
         filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
 
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
+        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
+
         amag = k_reconstruct_maggies(rmatrix.astype(np.float64),
+                                     coeffs.astype(np.float64),
+                                     np.zeros_like(z).astype(np.float64),
+                                     kcorr.zvals.astype(np.float64))
+
+        omag = k_reconstruct_maggies(rmatrix0.astype(np.float64),
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals.astype(np.float64))
 
+        kc = 2.5 * np.log10(amag / omag)
+
         a = 1 / (1 + z)
         amax = 1 / (1 + 1e-7)
         a[a > amax] = amax
+
+        omag = -2.5 * np.log10(omag)
         dm = self.nbody.cosmo.distanceModulus(1 / a - 1)
-        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
+        amag = omag - dm.reshape(-1, 1) - kc
 
         # renormalize coeffs
         coeffs *= 10 ** ((mag.reshape(-1, 1) - amag) / -2.5)
@@ -1006,33 +1055,41 @@ class ColorModel(object):
                                            self.band_shift)
         amag = k_reconstruct_maggies(rmatrix,
                                      coeffs.astype(np.float64),
-                                     z.astype(np.float64),
+                                     np.zeros_like(z).astype(np.float64),
                                      kcorr.zvals)
         omag = k_reconstruct_maggies(rmatrix0,
                                      coeffs.astype(np.float64),
                                      z.astype(np.float64),
                                      kcorr.zvals)
 
+        kc = 2.5 * np.log10(amag / omag)
         omag = -2.5 * np.log10(omag)
-        amag = -2.5 * np.log10(amag) - dm.reshape(-1, 1)
+        amag = omag - dm.reshape(-1, 1) - kc
 
         return omag, amag
 
     def assignSEDs(self, pos, mag, z, z_rsd):
-        
+
         start = time()
-        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, pos)
+
+        theta, phi = hp.vec2ang(pos)
+        rspos = np.vstack([theta, phi, self.c * z_rsd]).T
+        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
         end = time()
-        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
-        redfraction = self.computeRedFraction(z, mag)
-        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction)
+        if self.use_redfraction:
+            redfraction = self.computeRedFraction(z, mag)
+        else:
+            redfraction = np.ones_like(z)
+
+        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction, self.dm_sed, self.ds)
         coeffs = self.trainingSet[sed_idx]['COEFFS']
         end = time()
 
-        print('[{}] Finished assigning SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished assigning SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         # make sure we don't have any negative redshifts
@@ -1043,7 +1100,7 @@ class ColorModel(object):
         omag, amag = self.computeMagnitudes(mag, z_a, coeffs, self.filters)
         end = time()
 
-        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))        
+        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         return sigma5, ranksigma5, redfraction, sed_idx, omag, amag

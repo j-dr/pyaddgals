@@ -31,7 +31,8 @@ def main():
 
     cosmo = Cosmology(**cc)
 
-    domain = Domain(cosmo, **nb_config.pop('Domain'))
+    domain = Domain(cosmo, **nb_config.pop('Domain'),
+                    luminosityFunctionConfig=config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig'])
 
     if comm.rank == 0:
         wwaiting = []
@@ -79,12 +80,12 @@ def main():
             nbody = NBody(cosmo, d, **nb_config)
             print('Rank {}: working on pixel, rmin, rmax: {}, {}, {}'.format(comm.rank, d.pix, d.rmin, d.rmax))
             sys.stdout.flush()
-            
+
             start = time()
             nbody.read()
             end = time()
             print('Rank {}: reading data took {} s'.format(comm.rank, end - start))
-                  
+
             start = time()
             nbody.galaxyCatalog.paintGalaxies(config['GalaxyModel'])
             end = time()
@@ -97,10 +98,12 @@ def main():
             comm.send([d.pix], 0, tag=tags['write'])
             message = comm.recv(tag=tags['write'])
             wend = time()
-            print('Rank {}: writing to pix {}, waited {} s'.format(comm.rank, d.pix, wend-wstart))
+            print('Rank {}: writing to pix {}, waited {} s'.format(comm.rank, d.pix, wend - wstart))
             sys.stdout.flush()
-            nbody.galaxyCatalog.write('{}.{}'.format(runtime_config['outpath'],
-                                                     d.pix))
+
+            nbody.galaxyCatalog.write(runtime_config['outpath'],
+                                      int(runtime_config['nside_output']),
+                                      bool(runtime_config['write_pos']))
 
             comm.send([d.pix], 0, tag=tags['fwrite'])
 
