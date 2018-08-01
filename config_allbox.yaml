@@ -10,23 +10,23 @@ NBody :
     nside : 4
     nest : True
     pixlist : [0]
-  partpath :  
+  partpath :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/pixlc/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb4000/output/pixlc/
-  denspath : 
+  denspath :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/calcrnn/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/calcrnn/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb4000/output/calcrnn/
-  hinfopath : 
+  hinfopath :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/pixlc/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb4000/output/pixlc/
-  halofile : 
+  halofile :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/cut_reform_out_0.parents
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/halos/cut_reform_out_0.parents
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb4000/output/halos/cut_reform_out_0.parents
-  halodensfile : 
+  halodensfile :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/rnn_cut_reform_out_0.parents
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/halos/rnn_cut_reform_out_0.parents
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb4000/output/halos/rnn_cut_reform_out_0.parents
