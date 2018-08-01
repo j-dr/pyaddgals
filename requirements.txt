@@ -1,6 +1,6 @@
+numpy==1.14.0
 fitsio==0.9.11
 fast3tree==0.3.1
-numpy==1.14.0
 halotools==0.6
 numba==0.36.2
 scipy==1.0.0
