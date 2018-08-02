@@ -681,7 +681,8 @@ class ColorModel(object):
 
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
                  filters=None, band_shift=0.1, use_redfraction=True,
-                 dm_rank=0.1, ds=0.05, dm_sed=0.1, **kwargs):
+                 dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_m=None,
+                 rf_b=None, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -702,6 +703,8 @@ class ColorModel(object):
         self.ds = float(ds)
         self.dm_sed = float(dm_sed)
         self.c = 3e5
+        self.rf_m = rf_m
+        self.rf_b = rf_b
 
         self.loadModel()
 
@@ -785,6 +788,11 @@ class ColorModel(object):
         # calculate red fraction for mag, z bins
         rfgrid = np.dot(xvec.T, self.redFractionParams)
         rfgrid = rfgrid.reshape(nmagbins, nzbins)
+        if self.rf_m & self.rf_b:
+            rf_grid *= ((zmean * self.rf_m) + self.rf_b).reshape(-1,nzbins)
+        elif self.rf_b:
+            rf_grid *= self.rf_b
+
         rfgrid[rfgrid > 1] = 1.
         rfgrid[rfgrid < 0] = 0
 
