@@ -788,10 +788,10 @@ class ColorModel(object):
         # calculate red fraction for mag, z bins
         rfgrid = np.dot(xvec.T, self.redFractionParams)
         rfgrid = rfgrid.reshape(nmagbins, nzbins)
-        if self.rf_m & self.rf_b:
-            rf_grid *= ((zmean * self.rf_m) + self.rf_b).reshape(-1,nzbins)
-        elif self.rf_b:
-            rf_grid *= self.rf_b
+        if (self.rf_m is not None) & (self.rf_b is not None):
+            rfgrid *= ((zmean * self.rf_m) + self.rf_b).reshape(-1,nzbins)
+        elif (self.rf_b is not None):
+            rfgrid *= self.rf_b
 
         rfgrid[rfgrid > 1] = 1.
         rfgrid[rfgrid < 0] = 0
