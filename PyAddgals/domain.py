@@ -15,7 +15,7 @@ class Domain(object):
 
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
-                 pixlist=None, luminosityFunctionConfig=None):
+                 pixlist=None, luminosityFunctionConfig=None, **kwargs):
 
         self.fmt = fmt
         self.cosmo = cosmo
