@@ -67,16 +67,35 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
             pi += 1
 
+        max_search_count = n_part
+
         if not assigned:
             bad[i] = True
-            while (not assigned):
+            while (not assigned) & (pi < max_search_count):
                 if (pidx - pi) >= 0:
-                    if nassigned[pidx - pi]:
+                    if (nassigned[pidx - pi] & (minz < z_part[pidx - pi]) &
+                            (z_part[pidx - pi] < maxz)):
                         idx_part[i] = pidx - pi
                         assigned = True
 
                 if (pidx + pi) < n_part:
-                    if nassigned[pidx + pi]:
+                    if (nassigned[pidx + pi] & (minz < z_part[pidx + pi]) &
+                            (z_part[pidx + pi] < maxz)):
+                        idx_part[i] = pidx + pi
+                        assigned = True
+
+                pi += 1
+
+        if not assigned:
+            pi = 0
+            while (not assigned) & (pi < max_search_count):
+                if (pidx - pi) >= 0:
+                    if (nassigned[pidx - pi]):
+                        idx_part[i] = pidx - pi
+                        assigned = True
+
+                if (pidx + pi) < n_part:
+                    if (nassigned[pidx + pi]):
                         idx_part[i] = pidx + pi
                         assigned = True
 
