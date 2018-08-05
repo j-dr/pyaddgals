@@ -252,7 +252,7 @@ class ADDGALSModel(GalaxyModel):
         sys.stdout.flush()
 
         start = time()
-        pos, vel, z, density, mag, rhalo, haloid, halomass, bad = self.assignParticles(
+        pos, vel, z, density, mag, rhalo, halorad, haloid, halomass, bad = self.assignParticles(
             z[~assigned], mag[~assigned], density[~assigned])
         end = time()
 
@@ -268,6 +268,7 @@ class ADDGALSModel(GalaxyModel):
         density = np.hstack([self.nbody.haloCatalog.catalog['rnn'], density])
         halomass = np.hstack(
             [self.nbody.haloCatalog.catalog['mass'], halomass])
+        halorad = np.hstack([self.nbody.halocatalog.catalog['radius'], halorad])
         rhalo = np.hstack([np.zeros(n_halo), rhalo])
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
@@ -445,6 +446,7 @@ class ADDGALSModel(GalaxyModel):
         pos = self.nbody.particleCatalog.catalog['pos'][didx][idx]
         vel = self.nbody.particleCatalog.catalog['vel'][didx][idx]
         rhalo = self.nbody.particleCatalog.catalog['rhalo'][didx][idx]
+        haloradius = self.nbody.particleCatalog.catalogs['radius'][didx][idx]
         haloid = self.nbody.particleCatalog.catalog['haloid'][didx][idx]
         halomass = self.nbody.particleCatalog.catalog['mass'][didx][idx]
         z_asn = z_part[idx]
@@ -453,7 +455,7 @@ class ADDGALSModel(GalaxyModel):
         print('[{}] number of bad assignments: {}'.format(self.nbody.domain.rank, np.sum(bad)))
         sys.stdout.flush()
 
-        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloid, halomass, bad
+        return pos, vel, z_asn, density_asn, magnitude, rhalo, haloradius, haloid, halomass, bad
 
 
 class RdelModel(object):
