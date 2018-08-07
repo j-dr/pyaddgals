@@ -704,7 +704,7 @@ class ColorModel(object):
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
                  filters=None, band_shift=0.1, use_redfraction=True,
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_m=None,
-                 rf_b=None, **kwargs):
+                 rf_b=None, Q=0.0, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -727,6 +727,7 @@ class ColorModel(object):
         self.c = 3e5
         self.rf_m = rf_m
         self.rf_b = rf_b
+        self.Q = Q
 
         self.loadModel()
 
@@ -1111,7 +1112,8 @@ class ColorModel(object):
 
         start = time()
         if self.use_redfraction:
-            redfraction = self.computeRedFraction(z, mag)
+            mag_evol = mag + self.Q * (1 / (1 + z) - 1 / 1.1)
+            redfraction = self.computeRedFraction(z, mag_evol)
         else:
             redfraction = np.ones_like(z)
 
@@ -1125,6 +1127,7 @@ class ColorModel(object):
         # make sure we don't have any negative redshifts
         z_a = copy(z_rsd)
         z_a[z_a < 1e-6] = 1e-6
+        mag = mag_evol
 
         start = time()
         omag, amag = self.computeMagnitudes(mag, z_a, coeffs, self.filters)
