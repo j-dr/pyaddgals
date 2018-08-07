@@ -287,7 +287,7 @@ class ADDGALSModel(GalaxyModel):
         density = np.hstack([self.nbody.haloCatalog.catalog['rnn'], density])
         halomass = np.hstack(
             [self.nbody.haloCatalog.catalog['mass'], halomass])
-        halorad = np.hstack([self.nbody.halocatalog.catalog['radius'], halorad])
+        halorad = np.hstack([self.nbody.haloCatalog.catalog['radius'], halorad])
         rhalo = np.hstack([np.zeros(n_halo), rhalo])
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
@@ -306,7 +306,8 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['MAG_R'] = mag
         self.nbody.galaxyCatalog.catalog['DIST8'] = density
         self.nbody.galaxyCatalog.catalog['M200'] = halomass
-        self.nbody.galaxyCatalog.catalog['R200'] = rhalo
+        self.nbody.galaxyCatalog.catalog['R200'] = halorad
+        self.nbody.galaxyCatalog.catalog['RHALP'] = rhalo
         self.nbody.galaxyCatalog.catalog['HALOID'] = haloid
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
         self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
@@ -465,7 +466,7 @@ class ADDGALSModel(GalaxyModel):
         pos = self.nbody.particleCatalog.catalog['pos'][didx][idx]
         vel = self.nbody.particleCatalog.catalog['vel'][didx][idx]
         rhalo = self.nbody.particleCatalog.catalog['rhalo'][didx][idx]
-        haloradius = self.nbody.particleCatalog.catalogs['radius'][didx][idx]
+        haloradius = self.nbody.particleCatalog.catalog['radius'][didx][idx]
         haloid = self.nbody.particleCatalog.catalog['haloid'][didx][idx]
         halomass = self.nbody.particleCatalog.catalog['mass'][didx][idx]
         z_asn = z_part[idx]
