@@ -77,12 +77,14 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
                             (z_part[pidx - pi] < maxz)):
                         idx_part[i] = pidx - pi
                         assigned = True
+                        nassigned[pidx - pi] = False
 
                 if (pidx + pi) < n_part:
                     if (nassigned[pidx + pi] & (minz < z_part[pidx + pi]) &
                             (z_part[pidx + pi] < maxz)):
                         idx_part[i] = pidx + pi
                         assigned = True
+                        nassigned[pidx + pi] = False
 
                 pi += 1
 
@@ -93,11 +95,13 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
                     if (nassigned[pidx - pi]):
                         idx_part[i] = pidx - pi
                         assigned = True
+                        nassigned[pidx - pi] = False
 
                 if (pidx + pi) < n_part:
                     if (nassigned[pidx + pi]):
                         idx_part[i] = pidx + pi
                         assigned = True
+                        nassigned[pidx + pi] = False
 
                 pi += 1
 
