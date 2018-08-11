@@ -971,10 +971,10 @@ class ColorModel(object):
         # make search distance in mag direction larger as we go fainter
         # as there are fewer galaxies in the training set there
 
-        def max_distances(m): return np.array([(22.5 + m) * dm, ds, 1.1])
+        def max_distances(m): return np.array([np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
 
         def neg_max_distances(m): return -1. * \
-            np.array([(22.5 + m) * dm, ds, 1.1])
+            np.array([np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
 
         sed_idx = np.zeros(n_gal, dtype=np.int)
         bad = np.zeros(n_gal, dtype=np.bool)
@@ -996,20 +996,26 @@ class ColorModel(object):
                 except Exception as e:
                     bad[i] = True
 
-            isbad = np.where(bad)
+            isbad = np.where(bad)[0]
             print('Number of bad SED assignments: {}'.format(len(isbad)))
 
             def max_distances(m): return np.array(
-                [10 * (22.5 + m)**2 * dm, ds, 0.4])
+                [np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
 
             def neg_max_distances(m): return -1. * \
-                np.array([10 * (22.5 + m)**2 * dm, ds, 0.4])
+                np.array([np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
 
             for i, p in enumerate(pos[bad]):
                 idx, tpos = tree.query_box(
                     p + neg_max_distances(p[0]), p + max_distances(p[0]), output='both')
+
+                rf = np.sum(tpos[:, 2]) / len(tpos)
+                isred = rand[i] < (rf * redfraction[i])
+                idx = idx[tpos[:, 2] == int(isred)]
+                tpos = tpos[tpos[:, 2] == int(isred)]
                 tpos -= p
                 dt = np.abs(np.sum(tpos**2, axis=1))
+
                 try:
                     sed_idx[isbad[i]] = idx[np.argmin(dt)]
                 except Exception as e:
