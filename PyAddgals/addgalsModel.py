@@ -307,7 +307,7 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['DIST8'] = density
         self.nbody.galaxyCatalog.catalog['M200'] = halomass
         self.nbody.galaxyCatalog.catalog['R200'] = halorad
-        self.nbody.galaxyCatalog.catalog['RHALP'] = rhalo
+        self.nbody.galaxyCatalog.catalog['RHALO'] = rhalo
         self.nbody.galaxyCatalog.catalog['HALOID'] = haloid
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
         self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
@@ -703,8 +703,8 @@ class ColorModel(object):
 
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
                  filters=None, band_shift=0.1, use_redfraction=True,
-                 dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_m=None,
-                 rf_b=None, Q=0.0, **kwargs):
+                 dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_z=None, rf_m=None,
+                 rf_zm=None, rf_b=None, Q=0.0, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -726,6 +726,8 @@ class ColorModel(object):
         self.dm_sed = float(dm_sed)
         self.c = 3e5
         self.rf_m = rf_m
+        self.rf_z = rf_z
+        self.rf_zm = rf_zm
         self.rf_b = rf_b
         self.Q = Q
 
@@ -807,14 +809,18 @@ class ColorModel(object):
         magmean = (magbins[1:] + magbins[:-1]) / 2
 
         xvec = self.makeVandermondeRF(zmean, magmean, bmlim, fmlim, mag_ref)
+        zm = 1/(xvec[7,:] + 0.47) - 1
 
         # calculate red fraction for mag, z bins
         rfgrid = np.dot(xvec.T, self.redFractionParams)
-        rfgrid = rfgrid.reshape(nmagbins, nzbins)
-        if (self.rf_m is not None) & (self.rf_b is not None):
-            rfgrid *= ((zmean * self.rf_m) + self.rf_b).reshape(-1,nzbins)
+        if (self.rf_m is not None) & (self.rf_z is not None) & (self.rf_b is not None) & (self.rf_zm is not None):
+            rfgrid *= (self.rf_b + self.rf_m * xvec[1,:] + self.rf_z * zm + self.rf_zm * zm * xvec[1,:])
+        elif (self.rf_m is not None) & (self.rf_b is not None):
+            rfgrid *= ((zmean * self.rf_m) + self.rf_b)
         elif (self.rf_b is not None):
             rfgrid *= self.rf_b
+
+        rfgrid = rfgrid.reshape(nmagbins, nzbins)
 
         rfgrid[rfgrid > 1] = 1.
         rfgrid[rfgrid < 0] = 0
