@@ -316,6 +316,9 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
         self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
 
+
+
+
     def paintSEDs(self):
         """Paint SEDs onto galaxies after positions and luminosities have
         already been assigned.

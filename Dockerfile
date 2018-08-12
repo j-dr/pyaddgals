@@ -17,7 +17,7 @@ RUN pip3 install numpy
 COPY requirements.txt /tmp/
 RUN pip3 install -r /tmp/requirements.txt
 
-ARG CACHEBUST=1 
+ARG CACHEBUST=3
 RUN git clone https://github.com/j-dr/pyaddgals.git 
 RUN git clone https://github.com/j-dr/pixLC.git
 
