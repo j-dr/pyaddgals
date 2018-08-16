@@ -63,11 +63,11 @@ class GalaxyCatalog(object):
         if 'ID' not in list(self.catalog.keys()):
             self.catalog['ID'] = np.zeros(len(self.catalog['PX']))
 
-        if 'RA' not in list(self.catalog.keys()):
-            self.catalog['RA'], self.catalog['DEC'] = hp.vec2ang(np.vstack([self.catalog['PX'],
-                                                                           self.catalog['PY'],
-                                                                           self.catalog['PZ']]).T,
-                                                                 lonlat=True)
+        if 'TRA' not in list(self.catalog.keys()):
+            self.catalog['TRA'], self.catalog['TDEC'] = hp.vec2ang(np.vstack([self.catalog['PX'],
+                                                                   self.catalog['PY'],
+                                                                   self.catalog['PZ']]).T,
+                                                                   lonlat=True)
 
         self.catalog['TE'] = np.zeros((len(self.catalog['PX']), 2))
         self.catalog['EPSILON'] = np.zeros((len(self.catalog['PX']), 2))
@@ -78,6 +78,9 @@ class GalaxyCatalog(object):
 
         self.catalog['GAMMA1'] = np.zeros(len(self.catalog['PX']))
         self.catalog['GAMMA2'] = np.zeros(len(self.catalog['PX']))
+
+        self.catalog['DEC'] = np.zeros(len(self.catalog['PX']))
+        self.catalog['RA'] = np.zeros(len(self.catalog['PX']))
 
 
         cdtype = np.dtype(list(zip(self.catalog.keys(),
