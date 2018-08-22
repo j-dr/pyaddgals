@@ -127,6 +127,7 @@ class GalaxyCatalog(object):
 
         for p in pix:
             fname = '{}.{}.fits'.format(filename, p)
+            print('Writing to {}'.format(fname))
 
             if write_pos:
                 pfname = '{}.{}.lens.fits'.format(filename, p)
