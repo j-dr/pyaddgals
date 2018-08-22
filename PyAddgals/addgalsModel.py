@@ -340,11 +340,12 @@ class ADDGALSModel(GalaxyModel):
         z_rsd = self.nbody.galaxyCatalog.catalog['Z']
 
         sigma5, ranksigma5, redfraction, \
-            sed_idx, omag, amag = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
+            sed_idx, omag, amag, mag_evol = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
 
         self.nbody.galaxyCatalog.catalog['SIGMA5'] = sigma5
         self.nbody.galaxyCatalog.catalog['PSIGMA5'] = ranksigma5
         self.nbody.galaxyCatalog.catalog['SEDID'] = sed_idx
+        self.nbody.galaxyCatalog.catalog['MAG_R_EVOL'] = mag_evol
         self.nbody.galaxyCatalog.catalog['TMAG'] = omag
         self.nbody.galaxyCatalog.catalog['AMAG'] = amag
         self.nbody.galaxyCatalog.catalog['LMAG'] = np.zeros_like(omag)
@@ -914,6 +915,14 @@ class ColorModel(object):
 
         z_a = copy(z)
         z_a[z_a < 1e-6] = 1e-6
+        try:
+            da = self.nbody.cosmo.angularDiameterDistance(z_a)
+        except RuntimeError:
+            print(np.min(z_a))
+            print(np.max(z_a))
+            print(np.isfinite(z_a).all())
+            print(z_a[~np.isfinite(z_a)])
+            raise RuntimeError
 
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
 
@@ -1155,4 +1164,4 @@ class ColorModel(object):
         print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
-        return sigma5, ranksigma5, redfraction, sed_idx, omag, amag
+        return sigma5, ranksigma5, redfraction, sed_idx, omag, amag, mag
