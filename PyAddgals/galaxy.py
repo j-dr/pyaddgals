@@ -121,10 +121,12 @@ class GalaxyCatalog(object):
 
             map_out = hp.ud_grade(map_in, nside_output, order_in=order,
                                   order_out=order)
-            pix = np.where(map_out == domain.pix)
+            pix, = np.where(map_out == domain.pix)
+
         else:
             pix = [domain.pix]
 
+        print(pix)
         for p in pix:
             fname = '{}.{}.fits'.format(filename, p)
             print('Writing to {}'.format(fname))
