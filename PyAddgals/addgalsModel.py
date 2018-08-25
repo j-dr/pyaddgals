@@ -296,7 +296,7 @@ class ADDGALSModel(GalaxyModel):
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
-        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 3e5
+        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 299792.458
         bad = np.hstack([bad_cen, bad])
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
@@ -336,7 +336,7 @@ class ADDGALSModel(GalaxyModel):
                          self.nbody.galaxyCatalog.catalog['PY'],
                          self.nbody.galaxyCatalog.catalog['PZ']]).T
         mag = self.nbody.galaxyCatalog.catalog['MAG_R']
-        z = self.nbody.galaxyCatalog.catalog['Z']
+        z = self.nbody.galaxyCatalog.catalog['Z_COS']
         z_rsd = self.nbody.galaxyCatalog.catalog['Z']
 
         sigma5, ranksigma5, redfraction, \
@@ -922,6 +922,7 @@ class ColorModel(object):
             print(np.max(z_a))
             print(np.isfinite(z_a).all())
             print(z_a[~np.isfinite(z_a)])
+            print(self.nbody.domain.zmin, self.nbody.domain.zmax, self.nbody.domain.nest)
             raise RuntimeError
 
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
@@ -1133,6 +1134,7 @@ class ColorModel(object):
 
         theta, phi = hp.vec2ang(pos)
         rspos = np.vstack([theta, phi, self.c * z_rsd]).T
+        print('[{}] checking redshifts... max(z), min(z), max(z_rsd), min(z_rsd): {}, {}, {}, {}'.format(self.nbody.domain.rank, np.max(z), np.min(z),np.max(z_rsd),np.min(z_rsd)))
         sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
         end = time()
         print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
