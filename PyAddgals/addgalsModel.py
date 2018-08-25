@@ -285,6 +285,8 @@ class ADDGALSModel(GalaxyModel):
         n_halo = mag_cen.size
 
         pos = np.vstack([self.nbody.haloCatalog.catalog['pos'], pos])
+        print('velocity halo min, halo max, part min, part max: {}, {}, {}, {}'.format(np.min(self.nbody.haloCatalog.catalog['vel']),
+              np.max(self.nbody.haloCatalog.catalog['vel']), np.min(vel), np.max(vel)))
         vel = np.vstack([self.nbody.haloCatalog.catalog['vel'], vel])
         z = np.hstack([self.nbody.haloCatalog.catalog['z'], z])
         mag = np.hstack([mag_cen, mag])
@@ -296,7 +298,7 @@ class ADDGALSModel(GalaxyModel):
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
-        z_rsd = z + np.sum(pos * vel, axis=1) / np.sum(pos, axis=1) / 299792.458
+        z_rsd = z + np.sum(pos * vel, axis=1) / np.sqrt(np.sum(pos**2, axis=1)) / 299792.458
         bad = np.hstack([bad_cen, bad])
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
