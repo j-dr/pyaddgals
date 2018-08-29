@@ -48,6 +48,13 @@ class ParticleCatalog(object):
         for k in keys:
             del self.catalog[k]
 
+    def calculateOverdensity(self):
+
+        dens = len(self.catalog['PX']) * self.part_mass / self.domain.getVolume()
+        dens_mean = 3. * 100 ** 2 / (8 * np.pi * 4.301e-9) * self.domain.cosmo.omega_m
+
+        return dens / dens_mean
+
     def getFilePixels(self, r):
         """Given a healpix cell and radius for a given nside, figure out which
         lightcone pixels we need to read
@@ -74,6 +81,7 @@ class ParticleCatalog(object):
         f = '{}/snapshot_Lightcone_{}_0'.format(partpath, r)
         hdr, idx = read_radial_bin(f)
         hdr = dict(zip(header_fmt, hdr))
+        self.part_mass = hdr['Mpart'] * 1e10
 
         if not self.nbody.domain.nest:
             pix = hp.ring2nest(nside, pix)
@@ -350,6 +358,10 @@ class ParticleCatalog(object):
         # calculate z from radii
         r = np.sqrt(np.sum(pos**2, axis=1))
         idx = (self.nbody.domain.rmin <= r) & (r < self.nbody.domain.rmax)
+
+        # cut to first two octants
+        ra, dec = hp.vec2ang(pos, lonlat=True)
+        idx &= (ra <= 180) & (dec >= 0)
         r = r[idx]
 
         self.catalog['pos'] = pos[idx]

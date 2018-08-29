@@ -202,7 +202,7 @@ class LuminosityFunction(object):
 
         return int(n_gal)
 
-    def drawRedshifts(self, domain):
+    def drawRedshifts(self, domain, overdens):
 
         z_min = domain.zmin
         z_max = domain.zmax
@@ -210,7 +210,7 @@ class LuminosityFunction(object):
         z_bins, nd_cumu = self.redshiftCDF(z_min, z_max, domain)
         nd_spl = interp1d(z_bins, nd_cumu)
         z_fine = np.linspace(z_min, z_max, 10000)
-        nd = nd_spl(z_fine)
+        nd = nd_spl(z_fine) * overdens
         cdf = nd / nd[-1]
         rand = np.random.rand(int(nd[-1]))
         z_samp = np.linspace(z_min, z_max, 10000)[cdf.searchsorted(rand) - 1]
