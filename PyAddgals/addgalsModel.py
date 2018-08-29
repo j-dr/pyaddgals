@@ -254,7 +254,8 @@ class ADDGALSModel(GalaxyModel):
         start = time()
         overdens = self.nbody.particleCatalog.calculateOverdensity()
 
-        print('[{}] : Domain has overdensity: {}'.format(overdens))
+        print('[{}] : Domain has overdensity: {}'.format(self.nbody.domain.rank,
+                                                         overdens))
         z = self.luminosityFunction.drawRedshifts(domain, overdens)
         z.sort()
         mag = self.luminosityFunction.sampleLuminosities(domain, z)

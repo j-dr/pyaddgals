@@ -50,8 +50,8 @@ class ParticleCatalog(object):
 
     def calculateOverdensity(self):
 
-        dens = len(self.catalog['PX']) * self.part_mass / self.domain.getVolume()
-        dens_mean = 3. * 100 ** 2 / (8 * np.pi * 4.301e-9) * self.domain.cosmo.omega_m
+        dens = len(self.catalog['pos']) * self.part_mass / self.nbody.domain.getVolume()
+        dens_mean = 3. * 100 ** 2 / (8 * np.pi * 4.301e-9) * self.nbody.domain.cosmo.omega_m
 
         return dens / dens_mean
 
