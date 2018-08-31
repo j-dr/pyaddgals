@@ -156,8 +156,10 @@ def calc_nonuniform_errors(exptimes,limmags,mag_in,nonoise=False,zp=22.5,
         flux = tflux + noise*np.random.randn(len(mag_in))
         
     #convert to nanomaggies
+        noise = np.sqrt(flux)/exptimes
         flux = flux/exptimes 
-        noise = noise/exptimes
+
+#        noise = noise/exptimes
 
         flux  = flux * 10 ** ((zp - 22.5)/-2.5)
         noise = noise * 10 ** ((zp - 22.5)/-2.5)
