@@ -197,8 +197,8 @@ class CalclensConcat(object):
                     if os.path.exists(fread):
                         try:
                             dset = fitsio.read(fread)
-                        except IOError,e:
-                            if e.message == "No extensions have data":
+                        except IOError as e:
+                            if str(e) == "No extensions have data":
                                 continue
                             else:
                                 raise IOError("Weird problem reading FITS file '%s'!" % fread)
