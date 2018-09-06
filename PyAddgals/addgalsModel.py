@@ -12,7 +12,7 @@ import sys
 from .galaxyModel import GalaxyModel
 from .kcorrect import KCorrect, k_reconstruct_maggies
 from . import luminosityFunction
-from . import shape
+#from . import shape
 
 
 @jit(nopython=True)
