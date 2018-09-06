@@ -19,7 +19,7 @@ class CatWriter(object):
         self.data[dnum] = []
 
     def _write_data(self,dnum,finalize=False):
-        Nchunks = self.ndata[dnum]/self.Nmax
+        Nchunks = int(self.ndata[dnum]//self.Nmax)
         if finalize:
             if Nchunks*self.Nmax < self.ndata[dnum]:
                 Nchunks += 1

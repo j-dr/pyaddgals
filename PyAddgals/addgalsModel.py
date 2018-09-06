@@ -12,6 +12,7 @@ import sys
 from .galaxyModel import GalaxyModel
 from .kcorrect import KCorrect, k_reconstruct_maggies
 from . import luminosityFunction
+from . import shape
 
 
 @jit(nopython=True)
@@ -237,6 +238,7 @@ class ADDGALSModel(GalaxyModel):
 
         self.paintPositions()
         self.paintSEDs()
+        self.paintShapes()
 
     def paintPositions(self):
         """Paint galaxy positions and luminosity in one band

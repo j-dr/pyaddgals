@@ -156,6 +156,10 @@ class Domain(object):
 
             self.decompSingleBox(comm, rank, ntasks, i)
 
+        self.domains_task.extend(self.domains[self.rank::self.ntasks])
+        self.domains_boxnum_task.extend(self.domains_boxnum[self.rank::self.ntasks])
+        self.ndomains_task += len(self.domains[self.rank::self.ntasks])
+
     def decompSingleBox(self, comm, rank, ntasks, boxnum):
         """Perform domain decomposition, creating domain objects for each process. Store information within object.
 
@@ -268,21 +272,13 @@ class Domain(object):
                                    self.allpix))
             domains_boxnum = [boxnum] * len(domains)
 
-            # divide up domains
-            self.domains_task.extend(domains[self.rank::self.ntasks])
-            self.domains_boxnum_task.extend(domains_boxnum[self.rank::self.ntasks])
-            self.ndomains_task += len(domains[self.rank::self.ntasks])
-
             self.domains.extend(domains)
             self.domains_boxnum.extend(domains_boxnum)
 
         if self.fmt == 'Snapshot':
             domains = np.arange(self.nbox**3)
             domains_boxnum = [boxnum] * len(domains)
-            self.domains_task.extend(domains[self.rank::self.ntasks])
-            self.domains_boxnum_task.extend(domains_boxnum[self.rank::self.ntasks])
-            self.ndomains_task += len(domains[self.rank::self.size])
-
+            
             self.domains.extend(domains)
             self.domains_boxnum.extend(domains_boxnum)
 
