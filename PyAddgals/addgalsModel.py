@@ -12,7 +12,7 @@ import sys
 from .galaxyModel import GalaxyModel
 from .kcorrect import KCorrect, k_reconstruct_maggies
 from . import luminosityFunction
-#from . import shape
+from . import shape
 
 
 @jit(nopython=True)
@@ -204,7 +204,8 @@ class ADDGALSModel(GalaxyModel):
 
     def __init__(self, nbody, luminosityFunctionConfig=None,
                  rdelModelConfig=None,
-                 colorModelConfig=None):
+                 colorModelConfig=None,
+                 shapeModelConfig=None):
 
         self.nbody = nbody
 
@@ -226,6 +227,14 @@ class ADDGALSModel(GalaxyModel):
         self.rdelModel = RdelModel(self.nbody, self.luminosityFunction, **rdelModelConfig)
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
         self.c = 3e5
+
+        if shapeModelConfig is None:
+            self.shapeModel = None
+        else:
+            shape_type = shapeModelConfig.pop('modeltype')
+
+            self.shapeModel = getattr(shape, shape_type)
+            self.shapeModel = self.shapeModel(nbody.cosmo, **shapeModelConfig)
 
     def paintGalaxies(self):
         """Paint galaxy positions, luminosities and SEDs into nbody.
@@ -324,9 +333,6 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
         self.nbody.galaxyCatalog.catalog['BAD_ASSIGN'] = bad
 
-
-
-
     def paintSEDs(self):
         """Paint SEDs onto galaxies after positions and luminosities have
         already been assigned.
@@ -361,6 +367,23 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['OMAGERR'] = np.zeros_like(omag)
         self.nbody.galaxyCatalog.catalog['FLUX'] = np.zeros_like(omag)
         self.nbody.galaxyCatalog.catalog['IVAR'] = np.zeros_like(omag)
+
+    def paintShapes(self):
+        """Assign shapes to galaxies.
+
+        Returns
+        -------
+        None
+        """
+
+        if self.shapeModel is None:
+            return
+
+        log_comoving_size, angular_size, epsilon = self.shapeModel.sampleShapes(self.galaxyCatalog.catalog)
+
+        self.nbody.galaxyCatalog.catalog['TSIZE'] = angular_size
+        self.nbody.galaxyCatalog.catalog['TE'] = epsilon
+        self.nbody.galaxyCatalog.catalog['COMOVING_SIZE'] = 10**log_comoving_size
 
     def assignHalos(self, z, mag, dens):
         """Assign central galaxies to resolved halos. Halo catalog

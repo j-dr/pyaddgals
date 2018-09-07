@@ -45,3 +45,16 @@ GalaxyModel :
         - desy3/desy3std_z.par
         - desy3/desy3_Y.par
       band_shift : 0.1
+    shapeModelConfig :
+      n_components : 50
+      cov_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_cov_3p_nc50.txt.npy
+      means_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_mu_3p_nc50.txt.npy
+      weights_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_w_3p_nc50.txt.npy
+      conditional_fields : 
+        - (omag , 2)
+      conditional_field_mean : [22.33084578]
+      conditional_field_std : [1.25009228]
+      size_mean : -2.48034547
+      size_std : 0.27190989
+      epsilon_mean : 0.23635986
+      epsilon_std: 0.1341013

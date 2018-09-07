@@ -6,10 +6,9 @@ NBody :
     lbox : [1050, 2600, 4000]
     rmin : [1.0, 900, 2250]
     rmax : [900, 2250, 3950]
-    nrbins : [7,20,17]
+    nrbins : [4,10,10]
     nside : 4
     nest : True
-    pixlist : [0]
   partpath :
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
     - /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb2600/output/pixlc/

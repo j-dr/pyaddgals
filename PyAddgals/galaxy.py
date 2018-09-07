@@ -69,9 +69,7 @@ class GalaxyCatalog(object):
                                                                    self.catalog['PZ']]).T,
                                                                    lonlat=True)
 
-        self.catalog['TE'] = np.zeros((len(self.catalog['PX']), 2))
         self.catalog['EPSILON'] = np.zeros((len(self.catalog['PX']), 2))
-        self.catalog['TSIZE'] = np.zeros(len(self.catalog['PX']))
         self.catalog['SIZE'] = np.zeros(len(self.catalog['PX']))
         self.catalog['KAPPA'] = np.zeros(len(self.catalog['PX']))
         self.catalog['MU'] = np.zeros(len(self.catalog['PX']))
