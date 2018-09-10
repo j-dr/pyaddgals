@@ -383,6 +383,7 @@ class ADDGALSModel(GalaxyModel):
 
         self.nbody.galaxyCatalog.catalog['TSIZE'] = angular_size
         self.nbody.galaxyCatalog.catalog['TE'] = epsilon
+        self.nbody.galaxyCatalog.catalog['EPSILON_IA'] = np.zeros_like(epsilon)
         self.nbody.galaxyCatalog.catalog['COMOVING_SIZE'] = 10**log_comoving_size
 
     def assignHalos(self, z, mag, dens):

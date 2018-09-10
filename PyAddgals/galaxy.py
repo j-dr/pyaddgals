@@ -73,6 +73,7 @@ class GalaxyCatalog(object):
         self.catalog['SIZE'] = np.zeros(len(self.catalog['PX']))
         self.catalog['KAPPA'] = np.zeros(len(self.catalog['PX']))
         self.catalog['MU'] = np.zeros(len(self.catalog['PX']))
+        self.catalog['W'] = np.zeros(len(self.catalog['PX']))
 
         self.catalog['GAMMA1'] = np.zeros(len(self.catalog['PX']))
         self.catalog['GAMMA2'] = np.zeros(len(self.catalog['PX']))
