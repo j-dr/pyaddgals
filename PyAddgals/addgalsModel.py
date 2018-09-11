@@ -379,7 +379,7 @@ class ADDGALSModel(GalaxyModel):
         if self.shapeModel is None:
             return
 
-        log_comoving_size, angular_size, epsilon = self.shapeModel.sampleShapes(self.galaxyCatalog.catalog)
+        log_comoving_size, angular_size, epsilon = self.shapeModel.sampleShapes(self.nbody.galaxyCatalog.catalog)
 
         self.nbody.galaxyCatalog.catalog['TSIZE'] = angular_size
         self.nbody.galaxyCatalog.catalog['TE'] = epsilon
