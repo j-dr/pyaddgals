@@ -93,7 +93,6 @@ class NBody(object):
         self.haloCatalog.read()
         self.particleCatalog.read()
 
-
     def delete(self):
         self.particleCatalog.delete()
         self.haloCatalog.delete()

@@ -278,7 +278,7 @@ class Domain(object):
         if self.fmt == 'Snapshot':
             domains = np.arange(self.nbox**3)
             domains_boxnum = [boxnum] * len(domains)
-            
+
             self.domains.extend(domains)
             self.domains_boxnum.extend(domains_boxnum)
 

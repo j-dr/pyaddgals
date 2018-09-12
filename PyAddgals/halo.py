@@ -40,6 +40,9 @@ class HaloCatalog(object):
 
         keys = list(self.catalog.keys())
 
+        if len(keys) == 0:
+            return        
+
         for k in keys:
             del self.catalog[k]
 
@@ -79,6 +82,9 @@ class HaloCatalog(object):
 
         self.catalog = {}
 
+        # calculate z from r
+        self.catalog['z'] = self.nbody.cosmo.zofR(r)
+        del r
         self.catalog['id'] = catalog['id']
 
         ind = [names.index(c) for c in ['x', 'y', 'z']]
@@ -95,8 +101,3 @@ class HaloCatalog(object):
             1000.  # convert kpc to mpc
         self.catalog['rs'] = catalog['rs'] / 1000.  # convert kpc to mpc
         self.catalog['rnn'] = rnn[:, 1]
-
-        # calculate z from r
-        self.catalog['z'] = self.nbody.cosmo.zofR(r)
-
-        del r

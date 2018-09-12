@@ -274,12 +274,13 @@ class ADDGALSModel(GalaxyModel):
         zidx = z.argsort()
         z = z[zidx]
         mag = mag[zidx]
+        del zidx
 
         density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
 
         end = time()
 
-        print('[{}] Finished drawing mag, z, dens. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished drawing mag, z, dens. {} galaxies in domain, took {}s'.format(self.nbody.domain.rank, len(z), end - start))
         sys.stdout.flush()
 
         start = time()
@@ -315,6 +316,9 @@ class ADDGALSModel(GalaxyModel):
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
         z_rsd = z + np.sum(pos * vel, axis=1) / np.sqrt(np.sum(pos**2, axis=1)) / 299792.458
         bad = np.hstack([bad_cen, bad])
+
+        #done with halo catalog now
+        self.nbody.haloCatalog.delete()
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
         self.nbody.galaxyCatalog.catalog['PY'] = pos[:, 1]
@@ -362,11 +366,7 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['MAG_R_EVOL'] = mag_evol
         self.nbody.galaxyCatalog.catalog['TMAG'] = omag
         self.nbody.galaxyCatalog.catalog['AMAG'] = amag
-        self.nbody.galaxyCatalog.catalog['LMAG'] = np.zeros_like(omag)
-        self.nbody.galaxyCatalog.catalog['OMAG'] = np.zeros_like(omag)
-        self.nbody.galaxyCatalog.catalog['OMAGERR'] = np.zeros_like(omag)
-        self.nbody.galaxyCatalog.catalog['FLUX'] = np.zeros_like(omag)
-        self.nbody.galaxyCatalog.catalog['IVAR'] = np.zeros_like(omag)
+
 
     def paintShapes(self):
         """Assign shapes to galaxies.
@@ -511,6 +511,9 @@ class ADDGALSModel(GalaxyModel):
         halomass = self.nbody.particleCatalog.catalog['mass'][didx][idx]
         z_asn = z_part[idx]
         density_asn = density_part[idx]
+
+        self.nbody.particleCatalog.delete()
+        del z_part, density_part
 
         print('[{}] number of bad assignments: {}'.format(self.nbody.domain.rank, np.sum(bad)))
         sys.stdout.flush()

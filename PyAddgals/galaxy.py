@@ -81,6 +81,12 @@ class GalaxyCatalog(object):
         self.catalog['DEC'] = np.zeros(len(self.catalog['PX']))
         self.catalog['RA'] = np.zeros(len(self.catalog['PX']))
 
+        self.catalog['LMAG'] = np.zeros_like(self.catalog['TMAG'])
+        self.catalog['OMAG'] = np.zeros_like(self.catalog['TMAG'])
+        self.catalog['OMAGERR'] = np.zeros_like(self.catalog['TMAG'])
+        self.catalog['FLUX'] = np.zeros_like(self.catalog['TMAG'])
+        self.catalog['IVAR'] = np.zeros_like(self.catalog['TMAG'])
+
 
         cdtype = np.dtype(list(zip(self.catalog.keys(),
                                    [(self.catalog[k].dtype.type,
@@ -109,6 +115,10 @@ class GalaxyCatalog(object):
                (domain.pix == pix))
 
         out = out[idx]
+        del idx
+        for k in self.catalog.keys():
+            del self.catalog[k]
+        del self.catalog
 
         if nside_output != domain.nside:
             map_in = np.arange(12 * domain.nside**2)
@@ -125,7 +135,6 @@ class GalaxyCatalog(object):
         else:
             pix = [domain.pix]
 
-        print(pix)
         for p in pix:
             fname = '{}.{}.fits'.format(filename, p)
             print('Writing to {}'.format(fname))
@@ -174,6 +183,9 @@ class GalaxyCatalog(object):
         """
 
         keys = list(self.catalog.keys())
+
+        if len(keys) == 0:
+            return
 
         for k in keys:
             del self.catalog[k]

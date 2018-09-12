@@ -45,6 +45,9 @@ class ParticleCatalog(object):
 
         keys = list(self.catalog.keys())
 
+        if len(keys) == 0:
+            return
+
         for k in keys:
             del self.catalog[k]
 
@@ -363,15 +366,20 @@ class ParticleCatalog(object):
         ra, dec = hp.vec2ang(pos, lonlat=True)
         idx &= (ra <= 180) & (dec >= 0)
         r = r[idx]
+        del ra, dec
 
+        self.catalog['z'] = self.nbody.cosmo.zofR(r)
+        del r
         self.catalog['pos'] = pos[idx]
+        del pos
         self.catalog['vel'] = vel[idx]
+        del vel
         self.catalog['id'] = ids[idx]
+        del ids
         self.catalog['rnn'] = rnn[idx]
+        del rnn
         self.catalog['haloid'] = hinfo['haloid'][idx]
         self.catalog['rhalo'] = hinfo['rhalo'][idx]
         self.catalog['mass'] = hinfo['mass'][idx]
         self.catalog['radius'] = hinfo['radius'][idx]
-        self.catalog['z'] = self.nbody.cosmo.zofR(r)
-
-        del r
+        del hinfo
