@@ -116,8 +116,15 @@ class GalaxyCatalog(object):
 
         out = out[idx]
         del idx
-        for k in self.catalog.keys():
+
+        keys = list(self.catalog.keys())
+
+        if len(keys) == 0:
+            return
+
+        for k in keys:
             del self.catalog[k]
+
         del self.catalog
 
         if nside_output != domain.nside:

@@ -41,8 +41,8 @@ class HaloCatalog(object):
         keys = list(self.catalog.keys())
 
         if len(keys) == 0:
-            return        
-
+            return
+            
         for k in keys:
             del self.catalog[k]
 
