@@ -38,11 +38,14 @@ class HaloCatalog(object):
 
         """
 
+        if not hasattr(self, 'catalog'):
+            return
+
         keys = list(self.catalog.keys())
 
         if len(keys) == 0:
             return
-            
+
         for k in keys:
             del self.catalog[k]
 
