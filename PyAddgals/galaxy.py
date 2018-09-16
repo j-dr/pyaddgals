@@ -189,6 +189,9 @@ class GalaxyCatalog(object):
 
         """
 
+        if not hasattr(self, 'catalog'):
+            return
+
         keys = list(self.catalog.keys())
 
         if len(keys) == 0:
