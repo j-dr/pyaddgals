@@ -117,7 +117,7 @@ class GMMShapes(object):
                  weights_file=None, conditional_fields=None,
                  conditional_field_mean=None, conditional_field_std=None,
                  size_mean=None, size_std=None, epsilon_mean=None,
-                 epsilon_std=None):
+                 epsilon_std=None, modeltype=None):
 
         if n_components is None:
             raise(ValueError("GMMShapes needs to specify number of components"))

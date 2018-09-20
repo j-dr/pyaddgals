@@ -231,7 +231,7 @@ class ADDGALSModel(GalaxyModel):
         if shapeModelConfig is None:
             self.shapeModel = None
         else:
-            shape_type = shapeModelConfig.pop('modeltype')
+            shape_type = shapeModelConfig['modeltype']
 
             self.shapeModel = getattr(shape, shape_type)
             self.shapeModel = self.shapeModel(nbody.cosmo, **shapeModelConfig)
