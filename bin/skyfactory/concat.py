@@ -115,7 +115,7 @@ class CalclensConcat(object):
         ##########################
 
         if ThisTask == 0:
-            print 'doing concat of files...'
+            print( 'doing concat of files...')
 
         for fnum in range(Npw):
             if fnum%NTasks == ThisTask:
@@ -169,7 +169,7 @@ class CalclensConcat(object):
 
     def map_to_input_files(self):
         if ThisTask == 0:
-            print 'mapping to input files:'
+            print( 'mapping to input files:')
 
         # init writer
         writer = CatWriter(os.path.join(self.conf['OutputPath'],
@@ -189,7 +189,7 @@ class CalclensConcat(object):
         
         for plane in range(0,Npr):
             if plane%NTasks == ThisTask:
-                print "   ",ThisTask,":",plane+1,"of",Npr
+                print( "   ",ThisTask,":",plane+1,"of",Npr)
 
                 for sec in range(0,Nfr):
                     tail = '%04d.%04d.fit' % (plane,sec)
