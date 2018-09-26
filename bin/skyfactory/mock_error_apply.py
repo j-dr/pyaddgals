@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function, division
 from glob import glob
 from mpi4py import MPI
