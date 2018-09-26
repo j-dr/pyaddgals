@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from __future__ import print_function, division
 from mpi4py import MPI
 from glob import glob
@@ -9,6 +8,7 @@ import numpy as np
 import fitsio
 import yaml
 import sys
+
 
 def compute_lensing(g, shear, halos=False):
 
