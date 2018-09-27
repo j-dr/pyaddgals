@@ -760,7 +760,7 @@ if __name__ == "__main__":
             robase = cfg['RotBase']
             rpath = cfg['MatPath']
             with open(rpath, 'rb') as fp:
-                rot    = pickle.load(fp, format='latin1')
+                rot    = pickle.load(fp, encoding='latin1')
             try:
                 os.makedirs(rodir)
             except Exception as e:
