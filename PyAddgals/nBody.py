@@ -93,7 +93,7 @@ class NBody(object):
             self.halodensfile = halodensfile
 
         if self.domain.fmt == 'Snapshot':
-            if isinstance(n_blocks, str):
+            if isinstance(n_blocks, str) | isinstance(n_blocks, (int, float, complex)):
                 self.n_blocks = [n_blocks]
             else:
                 self.n_blocks = n_blocks
