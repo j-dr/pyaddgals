@@ -579,7 +579,7 @@ class ParticleCatalog(object):
                 self.nbody.domain.zmin = hdr.redshift
                 self.nbody.domain.zmax = hdr.redshift
                 print(self.nbody.domain.zmean)
-                self.part_mass = hdr.mass['mass'][1] * 10**10
+                self.part_mass = hdr.mass[1] * 10**10
 
             rnni = self.readPartRnn(denspath)
 
