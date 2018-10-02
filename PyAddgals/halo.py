@@ -148,9 +148,9 @@ class HaloCatalog(object):
         rnn = self.readHaloRnn(halornnfile)
 
         # get the part of the catalog for this task
-        idxx = catalog['x'] // nbox
-        idxy = catalog['y'] // nbox
-        idxz = catalog['z'] // nbox
+        idxx = nbox * catalog['x'] // self.nbody.domain.lbox[boxnum]
+        idxy = nbox * catalog['y'] // self.nbody.domain.lbox[boxnum]
+        idxz = nbox * catalog['z'] // self.nbody.domain.lbox[boxnum]
         idx = idxx * nbox ** 2 + idxy * nbox + idxz
         idx = idx == self.nbody.domain.subbox
 
