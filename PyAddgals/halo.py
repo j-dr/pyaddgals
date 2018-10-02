@@ -123,7 +123,6 @@ class HaloCatalog(object):
 
         dtype = np.dtype([('id', int), ('delta', float)])
         delta = np.genfromtxt(filepath, dtype=dtype)
-        delta = delta[delta['id'] != 0]
         return delta['delta']
 
     def readRockstarSnapshotFile(self):
