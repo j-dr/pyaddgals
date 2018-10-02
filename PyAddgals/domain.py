@@ -341,7 +341,7 @@ class Domain(object):
                 d.boxnum = self.domains_boxnum_task[i]
                 d.snapnum = self.domains_task[i][0]
                 d.subbox = self.domains_task[i][1]
-                d.pix = d.subbox
+                d.pix = d.snapnum
                 d.rmin = None
                 d.rmax = None
                 # will be filled in when files are read

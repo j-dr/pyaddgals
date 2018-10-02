@@ -41,14 +41,14 @@ class GalaxyCatalog(object):
             raise(ValueError("Model {} is not implemented".format(model_class)))
 
         if model_class == 'ADDGALSModel':
-            model = ADDGALSModel(self.nbody, **config['ADDGALSModel'])
+            self.model = ADDGALSModel(self.nbody, **config['ADDGALSModel'])
 
         print('Painting galaxies to domain with z_min, z_max, pix, nside: {}, {}, {}, {}'.format(self.nbody.domain.zmin,
                                                                                                  self.nbody.domain.zmax,
                                                                                                  self.nbody.domain.pix,
                                                                                                  self.nbody.domain.nside))
 
-        model.paintGalaxies()
+        self.model.paintGalaxies()
 
     def write(self, filename, nside_output, write_pos=False):
         """Write galaxy catalog to disk.
@@ -177,6 +177,72 @@ class GalaxyCatalog(object):
                         f[-1].append(out[['ID', 'PX', 'PY', 'PZ']][idx])
                 else:
                     fitsio.write(pfname, out[['ID', 'PX', 'PY', 'PZ']][idx])
+
+        del out
+
+
+    def writeSnapshot(self, filename):
+        """Write galaxy catalog to disk.
+
+        Returns
+        -------
+        None
+        """
+
+        domain = self.nbody.domain
+
+        if 'ID' not in list(self.catalog.keys()):
+            self.catalog['ID'] = np.zeros(len(self.catalog['PX']))
+
+        if not self.model.colorModel.no_colors:
+            self.catalog['LMAG'] = np.zeros_like(self.catalog['TMAG'])
+            self.catalog['OMAG'] = np.zeros_like(self.catalog['TMAG'])
+            self.catalog['OMAGERR'] = np.zeros_like(self.catalog['TMAG'])
+            self.catalog['FLUX'] = np.zeros_like(self.catalog['TMAG'])
+            self.catalog['IVAR'] = np.zeros_like(self.catalog['TMAG'])
+
+
+        cdtype = np.dtype(list(zip(self.catalog.keys(),
+                                   [(self.catalog[k].dtype.type,
+                                    self.catalog[k].shape[1])
+                                    if len(self.catalog[k].shape) > 1
+                                    else self.catalog[k].dtype.type
+                                    for k in self.catalog.keys()])))
+
+        out = np.zeros(len(self.catalog[list(self.catalog.keys())[0]]),
+                       dtype=cdtype)
+        for k in self.catalog.keys():
+            out[k] = self.catalog[k]
+
+        snapnum = domain.snapnum
+
+        keys = list(self.catalog.keys())
+
+        if len(keys) == 0:
+            return
+
+        for k in keys:
+            del self.catalog[k]
+
+        del self.catalog
+
+        fname = '{}.{}.fits'.format(filename, snapnum)
+        print('Writing to {}'.format(fname))
+
+        if os.path.exists(fname):
+            f = fitsio.FITS(fname)
+            ngal = f[-1].read_header()['NAXIS2']
+            f.close()
+        else:
+            ngal = 0
+
+        out['ID'] = (np.arange(len(out['PX'])) + ngal).astype(np.int64)
+
+        if os.path.exists(fname):
+            with fitsio.FITS(fname, 'rw') as f:
+                f[-1].append(out)
+        else:
+            fitsio.write(fname, out)
 
         del out
 

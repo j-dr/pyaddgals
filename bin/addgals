@@ -101,9 +101,12 @@ def main():
             print('Rank {}: writing to pix {}, waited {} s'.format(comm.rank, d.pix, wend - wstart))
             sys.stdout.flush()
 
-            nbody.galaxyCatalog.write(runtime_config['outpath'],
-                                      int(runtime_config['nside_output']),
-                                      bool(runtime_config['write_pos']))
+            if nbody.domain.fmt == 'BCCLightcone':
+                nbody.galaxyCatalog.write(runtime_config['outpath'],
+                                          int(runtime_config['nside_output']),
+                                          bool(runtime_config['write_pos']))
+            else:
+                nbody.galaxyCatalog.writeSnapshot(runtime_config['outpath'])
 
             comm.send([d.pix], 0, tag=tags['fwrite'])
 
