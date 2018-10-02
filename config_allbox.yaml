@@ -6,7 +6,7 @@ NBody :
     lbox : [1050, 2600, 4000]
     rmin : [1.0, 900, 2250]
     rmax : [900, 2250, 3950]
-    nrbins : [4,10,10]
+    nrbins : [2,5,5]
     nside : 4
     nest : True
   partpath :

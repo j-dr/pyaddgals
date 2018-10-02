@@ -564,6 +564,10 @@ class ParticleCatalog(object):
             hdr, posi, veli = self.readGadgetSnapshot(partfile)
             if i == 0:
                 self.nbody.domain.zmean = hdr['redshift']
+                self.nbody.domain.zmin = hdr['redshift']
+                self.nbody.domain.zmax = hdr['redshift']
+                print(self.nbody.domain.zmean)
+                self.part_mass = hdr['mass']
 
             rnni = self.readPartRnn(rnnfile)
 

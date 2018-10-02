@@ -7,7 +7,8 @@ import numpy as np
 
 class LuminosityFunction(object):
 
-    def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10., **kwargs):
+    def __init__(self, cosmo, params=None, name=None, magmin=25., magmax=10.,
+                 m_min_of_z_snap=-18, m_max_of_z_snap=-25, **kwargs):
         """Initialize LuminosityFunction object.
 
         Parameters
@@ -32,6 +33,9 @@ class LuminosityFunction(object):
         self.cosmo = cosmo
         self.magmin = float(magmin)
         self.magmax = float(magmax)
+
+        self.m_min_of_z_snap = m_min_of_z_snap
+        self.m_max_of_z_snap = m_max_of_z_snap
 
     def genLuminosityFunction(self, lums, zs):
         """Compute the luminosity function at a range of redshifts.
@@ -173,16 +177,12 @@ class LuminosityFunction(object):
 
         return self.numberDensitySingleZL(z, l) * self.cosmo.dVdz(z)
 
-    def integrate(self, z_min, z_max, area):
+    def integrateZL(self, z_min, z_max, area):
         """Integrate the luminosity function over a redshift and luminosity
         range to give a total number of galaxies in some volume.
 
         Parameters
         ----------
-        m_min : float
-            Faint end bound of luminosity integral
-        m_max : float
-            Bright end bound of luminosity integral
         z_min : float
             Low z bound of redshift integral
         z_max : float
@@ -193,34 +193,61 @@ class LuminosityFunction(object):
         -------
         n_gal : float
             Number of galaxies in this volume
-
         """
 
         n_gal = (area / 41253.) * dblquad(self.numberDensityIntegrandZL, z_min, z_max,
                                           self.m_max_of_z, self.m_min_of_z,
                                           epsabs=1e-2, epsrel=1e-2)[0]
 
+    def integrateL(self, z, volume):
+        """Integrate the luminosity function over a redshift and luminosity
+        range to give a total number of galaxies in some volume.
+
+        Parameters
+        ----------
+        z : float
+            Redshift to evaluate the LF at
+        volume : float
+            If lightcone, the area the the volume subtends
+        Returns
+        -------
+        n_gal : float
+            Number of galaxies in this volume
+
+        """
+
+        n_gal = volume * quad(lambda l: self.numberDensitySingleZL(z, l),
+                              self.m_max_of_z_snap, self.m_min_of_z_snap,
+                              epsabs=1e-2, epsrel=1e-2)
+
         return int(n_gal)
 
     def drawRedshifts(self, domain, overdens):
 
-        z_min = domain.zmin
-        z_max = domain.zmax
+        if domain.fmt == 'BCCLightcone':
+            z_min = domain.zmin
+            z_max = domain.zmax
 
-        z_bins, nd_cumu = self.redshiftCDF(z_min, z_max, domain)
-        nd_spl = interp1d(z_bins, nd_cumu)
-        z_fine = np.linspace(z_min, z_max, 10000)
-        nd = nd_spl(z_fine) * overdens
-        cdf = nd / nd[-1]
-        rand = np.random.rand(int(nd[-1]))
-        z_samp = np.linspace(z_min, z_max, 10000)[cdf.searchsorted(rand) - 1]
+            z_bins, nd_cumu = self.redshiftCDF(z_min, z_max, domain)
+            nd_spl = interp1d(z_bins, nd_cumu)
+            z_fine = np.linspace(z_min, z_max, 10000)
+            nd = nd_spl(z_fine) * overdens
+            cdf = nd / nd[-1]
+            rand = np.random.rand(int(nd[-1]))
+            z_samp = np.linspace(z_min, z_max, 10000)[cdf.searchsorted(rand) - 1]
+
+        elif domain.fmt == 'Snapshot':
+            z_min = domain.zmean
+            z_max = domain.zmean
+            n_gal = self.integrateL(domain.zmean, domain.getVolume())
+            z_samp = np.zeros(n_gal) + domain.zmean
 
         return z_samp
 
     def redshiftCDF(self, z_min, z_max, domain):
 
         zbins = np.linspace(z_min, z_max, 100)
-        n_gal_cum = [self.integrate(z_min, zc, domain.getArea())
+        n_gal_cum = [self.integrateZL(z_min, zc, domain.getArea())
                      for zc in zbins]
         return zbins, np.array(n_gal_cum)
 
@@ -244,7 +271,11 @@ class LuminosityFunction(object):
             # calculate faintest luminosity to use given
             # the apparent magnitude limit that we want to
             # populate to
-            lummin = self.m_min_of_z(zmean[i])
+            if self.m_min_of_z_snap is not None:
+                lummin = self.m_min_of_z_snap
+            else:
+                lummin = self.m_min_of_z(zmean[i])
+
             lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
             # get the parameters at this redshift

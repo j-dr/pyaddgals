@@ -246,8 +246,10 @@ class ADDGALSModel(GalaxyModel):
         """
 
         self.paintPositions()
-        self.paintSEDs()
-        self.paintShapes()
+
+        if not self.colorModel.no_colors:
+            self.paintSEDs()
+            self.paintShapes()
 
     def paintPositions(self):
         """Paint galaxy positions and luminosity in one band
@@ -367,7 +369,6 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['TMAG'] = omag
         self.nbody.galaxyCatalog.catalog['AMAG'] = amag
 
-
     def paintShapes(self):
         """Assign shapes to galaxies.
 
@@ -447,7 +448,6 @@ class ADDGALSModel(GalaxyModel):
                   self.rdelModel.lcenModel['a'][idx],
                   self.rdelModel.lcenModel['b'][idx],
                   self.rdelModel.lcenModel['k'][idx]]
-
 
         assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
                                          z_halo, params, self.rdelModel.scatter)
@@ -747,7 +747,7 @@ class ColorModel(object):
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
                  filters=None, band_shift=0.1, use_redfraction=True,
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_z=None, rf_m=None,
-                 rf_zm=None, rf_b=None, Q=0.0, **kwargs):
+                 rf_zm=None, rf_b=None, Q=0.0, no_colors=False, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -773,6 +773,7 @@ class ColorModel(object):
         self.rf_zm = rf_zm
         self.rf_b = rf_b
         self.Q = Q
+        self.no_colors = no_colors
 
         self.loadModel()
 

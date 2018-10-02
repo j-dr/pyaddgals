@@ -159,7 +159,7 @@ class HaloCatalog(object):
         self.catalog = {}
 
         # calculate z from r
-        self.catalog['z'] = self.nbody.domain.zmean
+        self.catalog['z'] = np.zeros_like(rnn) + self.nbody.domain.zmean
         self.catalog['id'] = catalog['id']
 
         ind = [names.index(c) for c in ['x', 'y', 'z']]
