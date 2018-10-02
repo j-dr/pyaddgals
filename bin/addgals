@@ -31,8 +31,8 @@ def main():
 
     cosmo = Cosmology(**cc)
 
-    domain = Domain(cosmo, **nb_config.pop('Domain'),
-                    luminosityFunctionConfig=config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig'])
+    domain = Domain(cosmo, luminosityFunctionConfig=config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig'],
+                    **nb_config.pop('Domain'))
 
     if comm.rank == 0:
         wwaiting = []

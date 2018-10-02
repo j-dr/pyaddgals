@@ -296,7 +296,7 @@ class Domain(object):
             allsnaps = np.arange(self.n_snaps[boxnum])
 
             if self.snaplist is not None:
-                idx = np.in1d(self.allsnaps, self.snaplist)
+                idx = np.in1d(allsnaps, self.snaplist)
                 assert(idx.any())
 
                 allsnaps = allsnaps[idx]
