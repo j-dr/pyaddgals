@@ -152,19 +152,6 @@ class GMMShapes(object):
         self.epsilon_mean = epsilon_mean
         self.epsilon_std = epsilon_std
 
-        self.cov = np.load(self.cov_file)
-        self.means = np.load(self.means_file)
-        self.weights = np.load(self.weights_file)
-
-        self.gmm = GMM(n_components=self.n_components,
-                       cov=self.cov, mu=self.means,
-                       weights=self.weights)
-        self.idx = np.zeros(len(self.conditional_fields) + 2, dtype=np.bool)
-        self.idx[-2:] = False
-        self.idx[:-2] = True
-
-        self.gmm.calculateConditionalCovs(self.idx)
-
     def randomlyOrientedEllipticity(self, epsilon_norm):
         """Generate two angular components of ellipticity from
         an absolute ellipticity.
@@ -211,6 +198,19 @@ class GMMShapes(object):
         return angular_size
 
     def sampleShapes(self, galaxies):
+
+        self.cov = np.load(self.cov_file)
+        self.means = np.load(self.means_file)
+        self.weights = np.load(self.weights_file)
+
+        self.gmm = GMM(n_components=self.n_components,
+                       cov=self.cov, mu=self.means,
+                       weights=self.weights)
+        self.idx = np.zeros(len(self.conditional_fields) + 2, dtype=np.bool)
+        self.idx[-2:] = False
+        self.idx[:-2] = True
+
+        self.gmm.calculateConditionalCovs(self.idx)
 
         X = np.zeros((len(galaxies['PX']), len(self.conditional_fields)))
 
