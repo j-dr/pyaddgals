@@ -7,6 +7,11 @@ import struct
 
 class ParticleCatalog(object):
 
+    __GadgetHeader_fmt = '6I6dddii6Iiiddddii6Ii'
+
+    GadgetHeader = namedtuple('GadgetHeader',
+                              'npart mass time redshift flag_sfr flag_feedback npartTotal flag_cooling num_files BoxSize Omega0 OmegaLambda HubbleParam flag_age flag_metals NallHW flag_entr_ics')
+
     def __init__(self, nbody, **kwargs):
         """Short summary.
 
@@ -30,6 +35,11 @@ class ParticleCatalog(object):
         if self.nbody.domain.fmt == 'BCCLightcone':
 
             self.readBCCLightcone()
+
+        if self.nbody.domain.fmt == 'Snapshot':
+
+            self.readSnapshot()
+
         else:
             raise(NotImplementedError(
                 "Only BCCLightcone reading is currently implemented"))
@@ -56,8 +66,10 @@ class ParticleCatalog(object):
 
     def calculateOverdensity(self):
 
-        dens = len(self.catalog['pos']) * self.part_mass / self.nbody.domain.getVolume()
-        dens_mean = 3. * 100 ** 2 / (8 * np.pi * 4.301e-9) * self.nbody.domain.cosmo.omega_m
+        dens = len(self.catalog['pos']) * \
+            self.part_mass / self.nbody.domain.getVolume()
+        dens_mean = 3. * 100 ** 2 / \
+            (8 * np.pi * 4.301e-9) * self.nbody.domain.cosmo.omega_m
 
         return dens / dens_mean
 
@@ -82,7 +94,8 @@ class ParticleCatalog(object):
         nside = self.nbody.domain.nside
         pix = self.nbody.domain.pix
 
-        header_fmt = ['Np', 'nside_index', 'nside_file', 'box_rmin', 'box_rmax', 'void', 'Lbox', 'Mpart', 'Omega_m', 'Omega_l', 'h']
+        header_fmt = ['Np', 'nside_index', 'nside_file', 'box_rmin',
+                      'box_rmax', 'void', 'Lbox', 'Mpart', 'Omega_m', 'Omega_l', 'h']
 
         f = '{}/snapshot_Lightcone_{}_0'.format(partpath, r)
         hdr, idx = read_radial_bin(f)
@@ -231,7 +244,8 @@ class ParticleCatalog(object):
                             np.fromstring(
                                 fp.read(int(npart_read[j] * item_per_row[i] * fmt[i].itemsize)), fmt[i])
 
-                    fp.seek(int(npart * item_per_row[i] * fmt[i].itemsize) + counter, 0)
+                    fp.seek(
+                        int(npart * item_per_row[i] * fmt[i].itemsize) + counter, 0)
                     counter += int(npart * item_per_row[i] * fmt[i].itemsize)
                 # fp.seek(
                 #         int(item_per_row[i] * fmt[i].itemsize * (npart - npart_read_cum[-1])), 1)
@@ -339,10 +353,11 @@ class ParticleCatalog(object):
 
                 fp = '{}/snapshot_Lightcone_{}_{}'.format(partpath, r, p)
                 fr = '{}/rnn_snapshot_Lightcone_{}_{}'.format(denspath, r, p)
-                fh = '{}/hinfo_snapshot_Lightcone_{}_{}'.format(hinfopath, r, p)
+                fh = '{}/hinfo_snapshot_Lightcone_{}_{}'.format(
+                    hinfopath, r, p)
 
                 (hdr, idx, posi, veli, idsi), npart_read, npart_seek, npart_read_cum = self.readPartialRadialBin(fp, peano_idx,
-                                    read_pos=True, read_vel=True, read_ids=True)
+                                                                                                                 read_pos=True, read_vel=True, read_ids=True)
 
                 rnni = self.readPartialPartRnn(fr, peano_idx, npart_read, npart_seek,
                                                npart_read_cum)
@@ -386,3 +401,194 @@ class ParticleCatalog(object):
         self.catalog['mass'] = hinfo['mass'][idx]
         self.catalog['radius'] = hinfo['radius'][idx]
         del hinfo
+
+    def readGadgetSnapshot(self, filename, read_pos=True, read_vel=True, read_id=False,
+                           read_mass=False, print_header=False, single_type=-1,
+                           lgadget=False):
+        """
+        This function reads the Gadget-2 snapshot file. Taken from Yao-Yuan Mao's
+        helpers module.
+
+        Parameters
+        ----------
+        filename : str
+            path to the input file
+        read_pos : bool, optional
+            Whether to read the positions or not. Default is false.
+        read_vel : bool, optional
+            Whether to read the velocities or not. Default is false.
+        read_id : bool, optional
+            Whether to read the particle IDs or not. Default is false.
+        read_mass : bool, optional
+            Whether to read the masses or not. Default is false.
+        print_header : bool, optional
+            Whether to print out the header or not. Default is false.
+        single_type : int, optional
+            Set to -1 (default) to read in all particle types.
+            Set to 0--5 to read in only the corresponding particle type.
+        lgadget : bool, optional
+            Set to True if the particle file comes from l-gadget.
+            Default is false.
+
+        Returns
+        -------
+        ret : tuple
+            A tuple of the requested data.
+            The first item in the returned tuple is always the header.
+            The header is in the GadgetHeader namedtuple format.
+        """
+        blocks_to_read = (read_pos, read_vel, read_id, read_mass)
+        ret = []
+        with open(filename, 'rb') as f:
+            f.seek(4, 1)
+            h = list(struct.unpack(ParticleCatalog.__GadgetHeader_fmt,
+                                   f.read(struct.calcsize(ParticleCatalog.__GadgetHeader_fmt))))
+            if lgadget:
+                h[30] = 0
+                h[31] = h[18]
+                h[18] = 0
+                single_type = 1
+            h = tuple(h)
+            header = ParticleCatalog.GadgetHeader._make((h[0:6],) + (h[6:12],) +
+                                                        h[12:16] + (h[16:22],) +
+                                                        h[22:30] + (h[30:36],) +
+                                                        h[36:])
+            if print_header:
+                print(header)
+            if not any(blocks_to_read):
+                return header
+            ret.append(header)
+            f.seek(256 - struct.calcsize(ParticleCatalog.__GadgetHeader_fmt), 1)
+            f.seek(4, 1)
+            #
+            mass_npart = [0 if m else n for m,
+                          n in zip(header.mass, header.npart)]
+            if single_type not in set(range(6)):
+                single_type = -1
+            #
+            for i, b in enumerate(blocks_to_read):
+                fmt = np.dtype(np.float32)
+                fmt_64 = np.dtype(np.float64)
+                item_per_part = 1
+                npart = header.npart
+                #
+                if i < 2:
+                    item_per_part = 3
+                elif i == 2:
+                    fmt = np.dtype(np.uint32)
+                    fmt_64 = np.dtype(np.uint64)
+                elif i == 3:
+                    if sum(mass_npart) == 0:
+                        ret.append(np.array([], fmt))
+                        break
+                    npart = mass_npart
+                #
+                size_check = struct.unpack('I', f.read(4))[0]
+                #
+                block_item_size = item_per_part * sum(npart)
+                if size_check != block_item_size * fmt.itemsize:
+                    fmt = fmt_64
+                if size_check != block_item_size * fmt.itemsize:
+                    raise ValueError('Invalid block size in file!')
+                size_per_part = item_per_part * fmt.itemsize
+                #
+                if not b:
+                    f.seek(sum(npart) * size_per_part, 1)
+                else:
+                    if single_type > -1:
+                        f.seek(sum(npart[:single_type]) * size_per_part, 1)
+                        npart_this = npart[single_type]
+                    else:
+                        npart_this = sum(npart)
+                    data = np.fromstring(
+                        f.read(npart_this * size_per_part), fmt)
+                    if item_per_part > 1:
+                        data.shape = (npart_this, item_per_part)
+                    ret.append(data)
+                    if not any(blocks_to_read[i + 1:]):
+                        break
+                    if single_type > -1:
+                        f.seek(sum(npart[single_type + 1:]) * size_per_part, 1)
+                f.seek(4, 1)
+        #
+        return tuple(ret)
+
+    def readPartRnn(self, filepath):
+        """
+        Read binary output from calcRnn code for particles
+        into a numpy array
+        """
+
+        with open(filepath, 'rb') as fp:
+            # read header
+            bytes = fp.read(4 * 5)
+            head = struct.unpack('iiiii', bytes)
+            # read in densities
+            bytes = fp.read()
+            delta = struct.unpack('{0}f'.format(head[1]), bytes[:-4])
+            delta = np.array(delta)
+
+        return delta
+
+    def getNPartSnapshot(self):
+
+        partfile = '{}.{}'.format(self.partfile[self.boxnum], 0)
+        hdr, =  self.readGadgetSnapshot(partfile, read_pos=False, read_vel=False)
+
+        return hdr['npart']
+
+    def readSnapshot(self):
+        """Read particles and densities for snapshot catalog.
+
+        Returns
+        -------
+        None
+        """
+
+        boxnum = self.nbody.boxnum
+        nbox = self.nbody.domain.nbox[boxnum]
+
+        npart_tot = self.getNpartSnapshot()
+        npart_domain_max = 1.3 * npart_tot // self.nbody.domain.nbox**3
+
+        pos = np.zeros(npart_domain_max, 3)
+        vel = np.zeros(npart_domain_max, 3)
+        rnn = np.zeros(npart_domain_max)
+
+        count = 0
+
+        for i in range(self.nbody.n_blocks[boxnum]):
+            partfile = '{}.{}'.format(self.partfile[boxnum], i)
+            rnnfile = '{}.{}'.format(self.rnnfile[boxnum], i)
+
+            hdr, posi, veli = self.readGadgetSnapshot(partfile)
+            if i == 0:
+                self.nbody.domain.zmean = hdr['redshift']
+
+            rnni = self.readPartRnn(rnnfile)
+
+            idx = posi // nbox
+            idx = idx[:, 0] * nbox ** 2 + idx[:, 1] * nbox + idx[:, 2]
+            idx = idx == self.nbody.domain.subbox
+
+            posi = posi[idx]
+            veli = veli[idx]
+            rnni = rnni[idx]
+
+            nparti = len(rnni)
+
+            pos[count:count + nparti, :] = posi
+            vel[count:count + nparti, :] = veli
+            rnn[count:count + nparti] = rnni
+
+            count += nparti
+
+        self.catalog = {}
+        self.catalog['pos'] = pos[:count]
+        self.catalog['vel'] = vel[:count]
+        self.catalog['rnn'] = rnn[:count]
+        self.catalog['z'] = np.zeros_like(self.catalog['rnn']) + self.nbody.domain.zmean
+        self.catalog['rhalo'] = np.zeros_like(self.catalog['rnn'])
+        self.catalog['radius'] = np.zeros_like(self.catalog['rnn'])
+        self.catalog['haloid'] = np.zeros_like(self.catalog['rnn'])
+        self.catalog['mass'] = np.zeros_like(self.catalog['rnn'])

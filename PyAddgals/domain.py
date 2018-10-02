@@ -15,7 +15,8 @@ class Domain(object):
 
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
-                 pixlist=None, luminosityFunctionConfig=None, **kwargs):
+                 pixlist=None, n_snaps=None, snaplist=None,
+                 luminosityFunctionConfig=None, **kwargs):
 
         self.fmt = fmt
         self.cosmo = cosmo
@@ -88,11 +89,26 @@ class Domain(object):
                 raise(ValueError("lbox must be defined for Snapshot domain"))
             if not nbox:
                 raise(ValueError("subbox must be defined for Snapshot domain"))
+            if not n_snaps:
+                raise(ValueError("nsnaps must be defined for Snapshot domain"))
 
             if isinstance(lbox, str) | isinstance(lbox, (int, float, complex)):
                 self.lbox = [float(lbox)]
 
-            self.nbox = nbox
+            if isinstance(n_snaps, str) | isinstance(n_snaps, (int, float, complex)):
+                self.n_snaps = [int(n_snaps)]
+            else:
+                self.n_snaps = n_snaps
+
+            if isinstance(nbox, str) | isinstance(nbox, (int, float, complex)):
+                self.nbox = [int(nbox)]
+            else:
+                self.nbox = nbox
+
+            if snaplist is not None:
+                self.snaplist = [int(p) for p in snaplist]
+            else:
+                self.snaplist = snaplist
 
     def getRadialLimits(self):
         """Get the radial limits of the lightcone given the redshift limits
@@ -151,8 +167,9 @@ class Domain(object):
     def decomp(self, comm, rank, ntasks):
 
         for i, lb in enumerate(self.lbox):
-            if i > 0:
-                assert(self.rmin[i] == self.rmax[i - 1])
+            if self.fmt == 'BCCLightcone':
+                if i > 0:
+                    assert(self.rmin[i] == self.rmax[i - 1])
 
             self.decompSingleBox(comm, rank, ntasks, i)
 
@@ -184,15 +201,15 @@ class Domain(object):
         self.comm = comm
         self.domain_counter = 0
 
-        if boxnum == 0:
-            self.rbins = []
-            self.domains = []
-            self.domains_boxnum = []
-            self.domains_task = []
-            self.domains_boxnum_task = []
-            self.ndomains_task = 0
-
         if self.fmt == 'BCCLightcone':
+
+            if boxnum == 0:
+                self.rbins = []
+                self.domains = []
+                self.domains_boxnum = []
+                self.domains_task = []
+                self.domains_boxnum_task = []
+                self.ndomains_task = 0
 
             # get the pixels that overlap with the octants that we're using
             allpix = []
@@ -276,7 +293,17 @@ class Domain(object):
             self.domains_boxnum.extend(domains_boxnum)
 
         if self.fmt == 'Snapshot':
-            domains = np.arange(self.nbox**3)
+            allsnaps = np.arange(self.n_snaps[boxnum])
+
+            if self.snaplist is not None:
+                idx = np.in1d(self.allsnaps, self.snaplist)
+                assert(idx.any())
+
+                allsnaps = allsnaps[idx]
+
+            domains = list(product(allsnaps,
+                                   np.arange(self.nbox[boxnum]**3)))
+
             domains_boxnum = [boxnum] * len(domains)
 
             self.domains.extend(domains)
@@ -311,11 +338,22 @@ class Domain(object):
                 d.zmean = self.cosmo.zofR(d.rmean)
 
             elif self.fmt == 'Snapshot':
-                d.subbox = self.domains_task[i]
+                d.boxnum = self.domains_boxnum_task[i]
+                d.snapnum = self.domains_task[i][0]
+                d.subbox = self.domains_task[i][1]
+                d.pix = d.subbox
+                d.rmin = None
+                d.rmax = None
+                # will be filled in when files are read
+                d.rmean = None
+                d.zmean = None
 
             yield d
 
     def getArea(self):
+
+        if self.fmt is 'Snapshot':
+            raise(ValueError('No area associated with snapshot catalogs'))
 
         if hasattr(self, 'area'):
             return self.pixarea
@@ -353,7 +391,7 @@ class Domain(object):
                                                             self.rmin ** 3) / 3
         elif self.fmt == 'Snapshot':
 
-            self.volume = self.lbox ** 3 / self.nbox ** 3
+            self.volume = self.lbox[self.boxnum] ** 3 / self.nbox[self.boxnum] ** 3
 
         else:
             raise(ValueError('Cannot calculate volumes for fmt {}'.format(self.fmt)))

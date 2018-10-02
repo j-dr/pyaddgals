@@ -28,6 +28,8 @@ class HaloCatalog(object):
 
         if self.nbody.domain.fmt == 'BCCLightcone':
             self.readRockstarLightconeFile()
+        elif self.nbody.domain.fmt == 'Snapshot':
+            self.readSnapshotLightconeFile()
 
     def delete(self):
         """Delete halo catalog
@@ -52,6 +54,13 @@ class HaloCatalog(object):
     def getColumnDict(self, fmt):
 
         if fmt == 'BCCLightcone':
+            return {'mass': (2, np.float), 'x': (8, np.float), 'y': (9, np.float),
+                    'z': (10, np.float), 'vx': (11, np.float),
+                    'vy': (12, np.float), 'vz': (13, np.float),
+                    'rs': (6, np.float), 'radius': (5, np.float),
+                    'pid': (14, np.int), 'id': (0, np.int)}
+
+        elif fmt == 'Snapshot':
             return {'mass': (2, np.float), 'x': (8, np.float), 'y': (9, np.float),
                     'z': (10, np.float), 'vx': (11, np.float),
                     'vy': (12, np.float), 'vz': (13, np.float),
@@ -104,3 +113,66 @@ class HaloCatalog(object):
             1000.  # convert kpc to mpc
         self.catalog['rs'] = catalog['rs'] / 1000.  # convert kpc to mpc
         self.catalog['rnn'] = rnn[:, 1]
+
+    def readHaloRnn(self, filepath):
+        """
+        Read text output from calcRnn code for halos
+        into numpy array
+
+        """
+
+        dtype = np.dtype([('id', int), ('delta', float)])
+        delta = np.genfromtxt(filepath, dtype=dtype)
+        delta = delta[delta['id'] != 0]
+        return delta['delta']
+
+    def readRockstarSnapshotFile(self):
+        boxnum = self.nbody.boxnum
+        nbox = self.nbody.domain.nbox[boxnum]
+
+        cdict = self.getColumnDict(self.nbody.domain.fmt)
+
+        halofile = '{}.{}'.format(self.nbody.halofile[self.nbody.boxnum],
+                                  self.nbody.domain.snapnum)
+
+        halornnfile = '{}.{}'.format(self.nbody.halodensfile[self.nbody.boxnum],
+                                     self.nbody.domain.snapnum)
+
+        reader = TabularAsciiReader(halofile, cdict)
+        catalog = reader.read_ascii()
+        names = catalog.dtype.names
+
+        rnn = self.readHaloRnn(halornnfile)
+
+        # get the part of the catalog for this task
+        idxx = catalog['x'] // nbox
+        idxy = catalog['y'] // nbox
+        idxz = catalog['z'] // nbox
+        idx = idxx * nbox ** 2 + idxy * nbox + idxz
+        idx = idx == self.nbody.domain.subbox
+
+        catalog = catalog[idx]
+        rnn = rnn[idx]
+
+        del idx
+
+        self.catalog = {}
+
+        # calculate z from r
+        self.catalog['z'] = self.nbody.domain.zmean
+        self.catalog['id'] = catalog['id']
+
+        ind = [names.index(c) for c in ['x', 'y', 'z']]
+        self.catalog['pos'] = catalog.view(
+            (np.float, len(cdict.keys())))[:, ind]
+
+        ind = [names.index(c) for c in ['vx', 'vy', 'vz']]
+        self.catalog['vel'] = catalog.view(
+            (np.float, len(cdict.keys())))[:, ind]
+
+        self.catalog['pid'] = catalog['pid']
+        self.catalog['mass'] = catalog['mass']
+        self.catalog['radius'] = catalog['radius'] / \
+            1000.  # convert kpc to mpc
+        self.catalog['rs'] = catalog['rs'] / 1000.  # convert kpc to mpc
+        self.catalog['rnn'] = rnn

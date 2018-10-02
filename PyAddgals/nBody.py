@@ -10,7 +10,8 @@ class NBody(object):
     """
 
     def __init__(self, cosmo, domain, partpath=None, denspath=None,
-                 hinfopath=None, halofile=None, halodensfile=None):
+                 hinfopath=None, halofile=None, halodensfile=None,
+                 n_blocks=None):
         """Create NBody object.
 
         Parameters
@@ -29,6 +30,8 @@ class NBody(object):
             Path to halo-particle data
         halofile : str
             Path to halo catalog
+        n_blocks : int/str or list
+            Number of blocks in the snapshot
 
         Returns
         -------
@@ -45,9 +48,10 @@ class NBody(object):
             raise(ValueError(
                 "denspath, path to particle and halo density data must be defined for nbody"))
 
-        if not hinfopath:
-            raise(ValueError(
-                "hinfopath, path to particle-halo data must be defined for nbody"))
+        if self.domain.fmt == 'BCCLightcone':
+            if not hinfopath:
+                raise(ValueError(
+                    "hinfopath, path to particle-halo data must be defined for nbody"))
 
         if not halofile:
             raise(ValueError(
@@ -56,6 +60,11 @@ class NBody(object):
         if not halodensfile:
             raise(ValueError(
                 "halodensfile, path to density measurements for halo catalog must be defined for nbody"))
+
+        if self.domain.fmt == 'Snapshot':
+            if not n_blocks:
+                raise(ValueError(
+                    "n_blocks, number of blocks in snapshot must be defined for nbody snapshots"))
 
         # make all lists so we can deal with stitching together lightcones
         if isinstance(partpath, str):
@@ -82,6 +91,12 @@ class NBody(object):
             self.halodensfile = [halodensfile]
         else:
             self.halodensfile = halodensfile
+
+        if self.domain.fmt == 'Snapshot':
+            if isinstance(n_blocks, str):
+                self.n_blocks = [n_blocks]
+            else:
+                self.n_blocks = n_blocks
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)
