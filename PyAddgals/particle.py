@@ -531,8 +531,13 @@ class ParticleCatalog(object):
         return delta
 
     def getNPartSnapshot(self):
+        snapnum = self.nbody.domain.snapnum
+        if snapnum < 10:
+            snapnum = '0{}'.format(snapnum)
+        else:
+            snapnum = '{}'.format(snapnum)
 
-        partfile = '{}.{}'.format(self.partfile[self.boxnum], 0)
+        partfile = '{}.{}'.format(self.partfile[self.boxnum].format(snapnum), 0)
         hdr, =  self.readGadgetSnapshot(partfile, read_pos=False, read_vel=False)
 
         return hdr['npart']
@@ -546,6 +551,12 @@ class ParticleCatalog(object):
         """
 
         boxnum = self.nbody.boxnum
+        snapnum = self.nbody.domain.snapnum
+        if snapnum < 10:
+            snapnum = '0{}'.format(snapnum)
+        else:
+            snapnum = '{}'.format(snapnum)
+
         nbox = self.nbody.domain.nbox[boxnum]
 
         npart_tot = self.getNpartSnapshot()
@@ -558,8 +569,8 @@ class ParticleCatalog(object):
         count = 0
 
         for i in range(self.nbody.n_blocks[boxnum]):
-            partfile = '{}.{}'.format(self.partfile[boxnum], i)
-            rnnfile = '{}.{}'.format(self.rnnfile[boxnum], i)
+            partfile = '{}.{}'.format(self.partfile[boxnum].format(snapnum), i)
+            rnnfile = '{}.{}'.format(self.rnnfile[boxnum].format([snapnum]), i)
 
             hdr, posi, veli = self.readGadgetSnapshot(partfile)
             if i == 0:

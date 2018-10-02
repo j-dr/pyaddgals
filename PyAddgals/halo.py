@@ -130,13 +130,19 @@ class HaloCatalog(object):
         boxnum = self.nbody.boxnum
         nbox = self.nbody.domain.nbox[boxnum]
 
+        snapnum = self.nbody.domain.snapnum
+        if snapnum < 10:
+            snapnum = '0{}'.format(snapnum)
+        else:
+            snapnum = '{}'.format(snapnum)
+
         cdict = self.getColumnDict(self.nbody.domain.fmt)
 
-        halofile = '{}.{}'.format(self.nbody.halofile[self.nbody.boxnum],
-                                  self.nbody.domain.snapnum)
+        halofile = '{}.{}'.format(self.nbody.halofile[self.nbody.boxnum].format(
+                                  snapnum))
 
-        halornnfile = '{}.{}'.format(self.nbody.halodensfile[self.nbody.boxnum],
-                                     self.nbody.domain.snapnum)
+        halornnfile = '{}.{}'.format(self.nbody.halodensfile[self.nbody.boxnum].format(
+                                     snapnum))
 
         reader = TabularAsciiReader(halofile, cdict)
         catalog = reader.read_ascii()
