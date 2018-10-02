@@ -538,7 +538,7 @@ class ParticleCatalog(object):
         else:
             snapnum = '{}'.format(snapnum)
 
-        partpath = '{}.{}'.format(self.partpath[self.boxnum].format(snapnum), 0)
+        partpath = '{}.{}'.format(self.nbody.partpath[self.boxnum].format(snapnum), 0)
         hdr, =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
         return hdr['npart']
@@ -570,8 +570,8 @@ class ParticleCatalog(object):
         count = 0
 
         for i in range(self.nbody.n_blocks[boxnum]):
-            partpath = '{}.{}'.format(self.partpath[boxnum].format(snapnum), i)
-            denspath = '{}.{}'.format(self.denspath[boxnum].format([snapnum]), i)
+            partpath = '{}.{}'.format(self.nbody.partpath[boxnum].format(snapnum), i)
+            denspath = '{}.{}'.format(self.nbody.denspath[boxnum].format([snapnum]), i)
 
             hdr, posi, veli = self.readGadgetSnapshot(partpath)
             if i == 0:
