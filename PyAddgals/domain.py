@@ -293,6 +293,11 @@ class Domain(object):
             self.domains_boxnum.extend(domains_boxnum)
 
         if self.fmt == 'Snapshot':
+            self.domains = []
+            self.domains_boxnum = []
+            self.domains_task = []
+            self.domains_boxnum_task = []
+            self.ndomains_task = 0
             allsnaps = np.arange(self.n_snaps[boxnum])
 
             if self.snaplist is not None:
