@@ -405,7 +405,7 @@ class ParticleCatalog(object):
 
     def readGadgetSnapshot(self, filename, read_pos=True, read_vel=True, read_id=False,
                            read_mass=False, print_header=False, single_type=-1,
-                           lgadget=False):
+                           lgadget=True):
         """
         This function reads the Gadget-2 snapshot file. Taken from Yao-Yuan Mao's
         helpers module.
@@ -539,7 +539,7 @@ class ParticleCatalog(object):
             snapnum = '{}'.format(snapnum)
 
         partpath = '{}.{}'.format(self.nbody.partpath[self.nbody.boxnum].format(snapnum=snapnum), 0)
-        hdr, =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
+        hdr =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
         return hdr['npart']
 
