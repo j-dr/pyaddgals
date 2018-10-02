@@ -11,7 +11,7 @@ class NBody(object):
 
     def __init__(self, cosmo, domain, partpath=None, denspath=None,
                  hinfopath=None, halofile=None, halodensfile=None,
-                 n_blocks=None):
+                 n_blocks=None, f_downsample=1.):
         """Create NBody object.
 
         Parameters
@@ -97,6 +97,12 @@ class NBody(object):
                 self.n_blocks = [n_blocks]
             else:
                 self.n_blocks = n_blocks
+
+        if self.domain.fmt == 'Snapshot':
+            if isinstance(f_downsample, str) | isinstance(f_downsample, (int, float, complex)):
+                self.f_downsample = [f_downsample]
+            else:
+                self.f_downsample = f_downsample
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)
