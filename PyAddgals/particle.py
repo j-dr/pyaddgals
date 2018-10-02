@@ -539,9 +539,9 @@ class ParticleCatalog(object):
             snapnum = '{}'.format(snapnum)
 
         partpath = '{}.{}'.format(self.nbody.partpath[self.nbody.boxnum].format(snapnum=snapnum), 0)
-        hdr =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
+        hdr = self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
-        return hdr['npart']
+        return hdr.npartTotal[1]
 
     def readSnapshot(self):
         """Read particles and densities for snapshot catalog.
@@ -575,11 +575,11 @@ class ParticleCatalog(object):
 
             hdr, posi, veli = self.readGadgetSnapshot(partpath)
             if i == 0:
-                self.nbody.domain.zmean = hdr['redshift']
-                self.nbody.domain.zmin = hdr['redshift']
-                self.nbody.domain.zmax = hdr['redshift']
+                self.nbody.domain.zmean = hdr.redshift
+                self.nbody.domain.zmin = hdr.redshift
+                self.nbody.domain.zmax = hdr.redshift
                 print(self.nbody.domain.zmean)
-                self.part_mass = hdr['mass']
+                self.part_mass = hdr.mass['mass'][1] * 10**10
 
             rnni = self.readPartRnn(denspath)
 
