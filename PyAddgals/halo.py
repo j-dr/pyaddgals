@@ -139,10 +139,10 @@ class HaloCatalog(object):
         cdict = self.getColumnDict(self.nbody.domain.fmt)
 
         halofile = '{}.{}'.format(self.nbody.halofile[self.nbody.boxnum].format(
-                                  snapnum))
+                                  snapnum=snapnum))
 
         halornnfile = '{}.{}'.format(self.nbody.halodensfile[self.nbody.boxnum].format(
-                                     snapnum))
+                                     snapnum=snapnum))
 
         reader = TabularAsciiReader(halofile, cdict)
         catalog = reader.read_ascii()
