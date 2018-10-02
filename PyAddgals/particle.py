@@ -538,7 +538,7 @@ class ParticleCatalog(object):
         else:
             snapnum = '{}'.format(snapnum)
 
-        partpath = '{}.{}'.format(self.nbody.partpath[self.boxnum].format(snapnum), 0)
+        partpath = '{}.{}'.format(self.nbody.partpath[self.nbody.boxnum].format(snapnum), 0)
         hdr, =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
         return hdr['npart']
