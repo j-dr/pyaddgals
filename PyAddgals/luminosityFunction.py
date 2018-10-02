@@ -218,7 +218,7 @@ class LuminosityFunction(object):
 
         n_gal = volume * quad(lambda l: self.numberDensitySingleZL(z, l),
                               self.m_max_of_z_snap, self.m_min_of_z_snap,
-                              epsabs=1e-2, epsrel=1e-2)
+                              epsabs=1e-2, epsrel=1e-2)[0]
 
         return int(n_gal)
 
