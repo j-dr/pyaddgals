@@ -105,8 +105,12 @@ class NBody(object):
         self.boxnum = self.domain.boxnum
 
     def read(self):
-        self.haloCatalog.read()
-        self.particleCatalog.read()
+        if self.domain.fmt == 'BCCLightcone':
+            self.haloCatalog.read()
+            self.particleCatalog.read()
+        else:
+            self.particleCatalog.read()
+            self.haloCatalog.read()
 
     def delete(self):
         self.particleCatalog.delete()

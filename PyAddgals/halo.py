@@ -29,7 +29,7 @@ class HaloCatalog(object):
         if self.nbody.domain.fmt == 'BCCLightcone':
             self.readRockstarLightconeFile()
         elif self.nbody.domain.fmt == 'Snapshot':
-            self.readSnapshotLightconeFile()
+            self.readRockstarSnapshotFile()
 
     def delete(self):
         """Delete halo catalog
