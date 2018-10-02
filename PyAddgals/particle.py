@@ -583,7 +583,7 @@ class ParticleCatalog(object):
 
             rnni = self.readPartRnn(denspath)
 
-            idx = nbox * posi // self.domain.lbox[boxnum]
+            idx = nbox * posi // self.nbody.domain.lbox[boxnum]
             idx = idx[:, 0] * nbox ** 2 + idx[:, 1] * nbox + idx[:, 2]
             idx = idx == self.nbody.domain.subbox
 
