@@ -563,8 +563,8 @@ class ParticleCatalog(object):
         npart_tot = self.getNPartSnapshot()
         npart_domain_max = int(1.3 * npart_tot // nbox**3)
 
-        pos = np.zeros(npart_domain_max, 3)
-        vel = np.zeros(npart_domain_max, 3)
+        pos = np.zeros((npart_domain_max, 3))
+        vel = np.zeros((npart_domain_max, 3))
         rnn = np.zeros(npart_domain_max)
 
         count = 0
