@@ -775,7 +775,8 @@ class ColorModel(object):
         self.Q = Q
         self.no_colors = no_colors
 
-        self.loadModel()
+        if not self.no_colors:
+            self.loadModel()
 
     def loadModel(self):
         """Load color training model information.
