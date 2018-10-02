@@ -538,8 +538,8 @@ class ParticleCatalog(object):
         else:
             snapnum = '{}'.format(snapnum)
 
-        partfile = '{}.{}'.format(self.partfile[self.boxnum].format(snapnum), 0)
-        hdr, =  self.readGadgetSnapshot(partfile, read_pos=False, read_vel=False)
+        partpath = '{}.{}'.format(self.partpath[self.boxnum].format(snapnum), 0)
+        hdr, =  self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
         return hdr['npart']
 
@@ -570,10 +570,10 @@ class ParticleCatalog(object):
         count = 0
 
         for i in range(self.nbody.n_blocks[boxnum]):
-            partfile = '{}.{}'.format(self.partfile[boxnum].format(snapnum), i)
-            rnnfile = '{}.{}'.format(self.rnnfile[boxnum].format([snapnum]), i)
+            partpath = '{}.{}'.format(self.partpath[boxnum].format(snapnum), i)
+            denspath = '{}.{}'.format(self.denspath[boxnum].format([snapnum]), i)
 
-            hdr, posi, veli = self.readGadgetSnapshot(partfile)
+            hdr, posi, veli = self.readGadgetSnapshot(partpath)
             if i == 0:
                 self.nbody.domain.zmean = hdr['redshift']
                 self.nbody.domain.zmin = hdr['redshift']
@@ -581,7 +581,7 @@ class ParticleCatalog(object):
                 print(self.nbody.domain.zmean)
                 self.part_mass = hdr['mass']
 
-            rnni = self.readPartRnn(rnnfile)
+            rnni = self.readPartRnn(denspath)
 
             idx = posi // nbox
             idx = idx[:, 0] * nbox ** 2 + idx[:, 1] * nbox + idx[:, 2]
