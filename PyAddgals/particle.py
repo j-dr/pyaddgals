@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from pixlc.pixLC import read_radial_bin, nest2peano
+from collections import namedtuple
 import healpy as hp
 import numpy as np
 import struct
