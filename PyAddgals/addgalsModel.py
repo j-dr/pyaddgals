@@ -437,7 +437,7 @@ class ADDGALSModel(GalaxyModel):
 
         amean = 1 / (self.nbody.domain.zmean + 1)
 
-        idx = self.rdelModel.lcenModel['scale'].searchsorted(amean) - 1
+        idx = self.rdelModel.lcenModel['scale'].searchsorted(amean)
 
         if idx < 0:
             idx = 0
