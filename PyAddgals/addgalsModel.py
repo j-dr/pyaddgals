@@ -271,15 +271,21 @@ class ADDGALSModel(GalaxyModel):
                                                          overdens))
         z = self.luminosityFunction.drawRedshifts(domain, overdens)
         z.sort()
-        mag = self.luminosityFunction.sampleLuminosities(domain, z)
 
+        if domain.fmt == 'Snapshot':
+            mag = self.luminosityFunction.sampleLuminositiesSnap(domain, z)
+        else:
+            mag = self.luminosityFunction.sampleLuminosities(domain, z)
+        print('mag from lum')
+        print(mag)
         zidx = z.argsort()
         z = z[zidx]
         mag = mag[zidx]
         del zidx
 
         density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
-
+        print(mag)
+        print(density)
         end = time()
 
         print('[{}] Finished drawing mag, z, dens. {} galaxies in domain, took {}s'.format(self.nbody.domain.rank, len(z), end - start))
