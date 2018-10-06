@@ -111,7 +111,7 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
 @jit(nopython=True)
 def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
-               params, scatter, dMr=0.15):
+               params, scatter, dMr=0.015):
 
     n_halo = z_halo.size
     n_gal = redshift.size
@@ -165,12 +165,9 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
 
             pi += 1
 
-            if (pi > max_search_count):
-                bad[i] = True
-
         # if not assigned with fiducial magniude window, make larger
         if not halo_assigned:
-
+            bad[i] = True
             pi = 0
             magmin = mr0[i] - 3 * dMr
             magmax = mr0[i] + 3 * dMr
@@ -290,6 +287,13 @@ class ADDGALSModel(GalaxyModel):
 
         print('[{}] Finished drawing mag, z, dens. {} galaxies in domain, took {}s'.format(self.nbody.domain.rank, len(z), end - start))
         sys.stdout.flush()
+
+        # sort galaxies by density
+        idx = density.argsort()
+        z = z[idx]
+        mag = mag[idx]
+        density = density[idx]
+        del idx
 
         start = time()
         mag_cen, assigned, bad_cen = self.assignHalos(z, mag, density)
@@ -434,12 +438,6 @@ class ADDGALSModel(GalaxyModel):
         mass_halo = self.nbody.haloCatalog.catalog['mass']
         density_halo = self.nbody.haloCatalog.catalog['rnn']
         z_halo = self.nbody.haloCatalog.catalog['z']
-
-        # sort galaxies by density
-        idx = dens.argsort()
-        z = z[idx]
-        mag = mag[idx]
-        dens = dens[idx]
 
         amean = 1 / (self.nbody.domain.zmean + 1)
 
