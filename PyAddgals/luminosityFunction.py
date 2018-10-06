@@ -293,6 +293,33 @@ class LuminosityFunction(object):
         return lums_gal
 
 
+    def sampleLuminositiesSnap(self, domain, z):
+
+        n_gal = z.size
+        zmean = domain.zmean
+        volume = domain.getVolume()
+
+        if self.m_min_of_z_snap is not None:
+            lummin = self.m_min_of_z_snap
+        else:
+            lummin = self.m_min_of_z(zmean[i])
+
+        lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
+
+        # get the parameters at this redshift
+        params = self.evolveParams(zmean)
+
+        number_density = self.numberDensity(params, lums)
+        cdf_lum = np.cumsum(number_density * (lums[1] - lums[0]))
+        cdf_lum /= cdf_lum[-1]
+
+        # sample from CDF
+        rands = np.random.uniform(size=n_gal)
+        lums_gal = lums[cdf_lum.searchsorted(rands)]
+
+        return lums_gal
+
+
 class DSGLuminosityFunction(LuminosityFunction):
 
     def __init__(self, cosmo, params=None, name=None, **kwargs):
