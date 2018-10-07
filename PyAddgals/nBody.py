@@ -98,11 +98,10 @@ class NBody(object):
             else:
                 self.n_blocks = n_blocks
 
-        if self.domain.fmt == 'Snapshot':
-            if isinstance(f_downsample, str) | isinstance(f_downsample, (int, float, complex)):
-                self.f_downsample = [f_downsample]
-            else:
-                self.f_downsample = f_downsample
+        if isinstance(f_downsample, str) | isinstance(f_downsample, (int, float, complex)):
+            self.f_downsample = [f_downsample]
+        else:
+            self.f_downsample = f_downsample
 
         self.particleCatalog = ParticleCatalog(self)
         self.haloCatalog = HaloCatalog(self)
