@@ -199,6 +199,8 @@ class LuminosityFunction(object):
                                           self.m_max_of_z, self.m_min_of_z,
                                           epsabs=1e-2, epsrel=1e-2)[0]
 
+        return int(n_gal)
+
     def integrateL(self, z, volume):
         """Integrate the luminosity function over a redshift and luminosity
         range to give a total number of galaxies in some volume.
