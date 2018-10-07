@@ -281,7 +281,7 @@ class ADDGALSModel(GalaxyModel):
         del zidx
 
         if domain.fmt == 'Snapshot':
-            density, z, mag = self.rdelModel.sampleDensitySnap(domain, mag)
+            density, mag = self.rdelModel.sampleDensitySnap(domain, mag)
         else:
             density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
 
