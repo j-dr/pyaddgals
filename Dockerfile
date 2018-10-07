@@ -19,7 +19,7 @@ RUN pip3 install -r /tmp/requirements.txt
 RUN git clone https://github.com/j-dr/pixLC.git
 RUN pip3 install pyfits
 
-ARG CSBUSTT=4
+ARG CSBUSTT=5
 RUN git clone https://github.com/j-dr/pyaddgals.git 
 
 

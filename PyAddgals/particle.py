@@ -37,7 +37,7 @@ class ParticleCatalog(object):
 
             self.readBCCLightcone()
 
-        if self.nbody.domain.fmt == 'Snapshot':
+        elif self.nbody.domain.fmt == 'Snapshot':
 
             self.readSnapshot()
 
