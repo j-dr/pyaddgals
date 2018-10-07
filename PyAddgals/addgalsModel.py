@@ -788,13 +788,18 @@ class RdelModel(object):
         mag = mag[midx]
         mi = mag
 
+        zmean = self.nbody.domain.zmean
+
+        if zmean < 0.001:
+            zmean = 0.001
+
         for j in range(nmagbins):
             mlidx = mi.searchsorted(magbins[j])
             mhidx = mi.searchsorted(magbins[j + 1])
 
             nij = mhidx - mlidx
 
-            cdf_r = self.pofR(deltamean, self.nbody.domain.zmean, magmean[j])
+            cdf_r = self.pofR(deltamean, zmean, magmean[j])
 
             rands = np.random.uniform(size=nij)
             density[count: count +
