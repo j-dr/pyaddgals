@@ -280,7 +280,11 @@ class ADDGALSModel(GalaxyModel):
         mag = mag[zidx]
         del zidx
 
-        density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
+        if domain.fmt == 'Snapshot':
+            density, z, mag = self.rdelModel.sampleDensitySnap(domain, mag)
+        else:
+            density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
+
         print(mag)
         print(density)
         end = time()
@@ -400,7 +404,7 @@ class ADDGALSModel(GalaxyModel):
     def assignHalos(self, z, mag, dens):
         """Assign central galaxies to resolved halos. Halo catalog
         will be cut to minimum mass and subhalos removed if they
-        are not used
+        are not used. Assumes that inputs are sorted by density.
 
         Parameters
         ----------
@@ -744,6 +748,60 @@ class RdelModel(object):
                 count += nij
 
         return density, z, mag
+
+
+    def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.1,
+                          n_dens_bins=1e5):
+        """Draw densities for galaxies at redshifts z and magnitudes m
+
+        Parameters
+        ----------
+        z : np.array
+            Redshifts of the galaxies we're adding
+        mag : np.array
+            Magnitudes of the galaxies we're adding
+
+        Returns
+        -------
+        density : np.array
+            Sampled densities
+
+        """
+
+        n_gal = mag.size
+
+        magbins = np.arange(np.min(mag), np.max(mag) + dm, dm)
+        magmean = (magbins[1:] + magbins[:-1]) / 2
+
+        nmagbins = magmean.size
+
+        # sort galaxies by redshift
+        mag = mag
+
+        deltabins = np.linspace(0.01, 15, n_dens_bins + 1)
+        deltamean = (deltabins[1:] + deltabins[:-1]) / 2
+
+        density = np.zeros(n_gal)
+        count = 0
+
+        midx = mag.argsort()
+        mag = mag[midx]
+        mi = mag
+
+        for j in range(nmagbins):
+            mlidx = mi.searchsorted(magbins[j])
+            mhidx = mi.searchsorted(magbins[j + 1])
+
+            nij = mhidx - mlidx
+
+            cdf_r = self.pofR(deltamean, self.nbody.domain.zmean, magmean[j])
+
+            rands = np.random.uniform(size=nij)
+            density[count: count +
+                    nij] = deltamean[cdf_r.searchsorted(rands) - 1]
+            count += nij
+
+        return density, mag
 
 
 class ColorModel(object):
