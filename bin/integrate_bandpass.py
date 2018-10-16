@@ -1,4 +1,4 @@
-from PyAddgals.config import parseConfig, readConfig
+from PyAddgals.config import parseConfig, readCfg
 from PyAddgals.cosmology import Cosmology
 from PyAddgals.domain import Domain
 from PyAddgals.nBody import NBody
@@ -58,6 +58,6 @@ if __name__ == '__main__':
     outpath = sys.argv[3]
     magflag = sys.argv[4]
 
-    config = readConfig(config_file, filter_file, outpath, magflag)
+    config = readCfg(config_file, filter_file, outpath, magflag)
 
     main(config)
