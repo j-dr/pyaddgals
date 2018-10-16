@@ -12,16 +12,16 @@ import sys
 
 def compute_lensing(g, shear, halos=False):
 
-
-    lensfields = ['GAMMA1', 'GAMMA2', 'KAPPA', 'W', 'MU', 'TRA', 'TDEC', 'RA', 'DEC']
+    lensfields = ['GAMMA1', 'GAMMA2', 'KAPPA',
+                  'W', 'MU', 'TRA', 'TDEC', 'RA', 'DEC']
 
     if not halos:
         lensfields.append("LMAG")
 
-    nmimg  = 0
+    nmimg = 0
     adtype = []
     fields = []
-    data   = []
+    data = []
 
     for f in lensfields:
         if f not in g.dtype.names:
@@ -29,23 +29,27 @@ def compute_lensing(g, shear, halos=False):
             print(f)
             sys.stdout.flush()
             if f == 'RA':
-                adtype.append(np.dtype([(f,np.float)]))
-                theta, phi = hp.vec2ang(g[['PX','PY','PZ']].view((g.dtype['PX'],3)))
-                dec, ra =  -np.degrees(theta-np.pi/2.), np.degrees(np.pi*2.-phi)
+                adtype.append(np.dtype([(f, np.float)]))
+                theta, phi = hp.vec2ang(
+                    g[['PX', 'PY', 'PZ']].view((g.dtype['PX'], 3)))
+                dec, ra = -np.degrees(theta - np.pi /
+                                      2.), np.degrees(np.pi * 2. - phi)
                 data.append(ra)
             elif f == 'DEC':
-                adtype.append(np.dtype([(f,np.float)]))
-                theta, phi = hp.vec2ang(g[['PX','PY','PZ']].view((g.dtype['PX'],3)))
-                dec, ra =  -np.degrees(theta-np.pi/2.), np.degrees(np.pi*2.-phi)
+                adtype.append(np.dtype([(f, np.float)]))
+                theta, phi = hp.vec2ang(
+                    g[['PX', 'PY', 'PZ']].view((g.dtype['PX'], 3)))
+                dec, ra = -np.degrees(theta - np.pi /
+                                      2.), np.degrees(np.pi * 2. - phi)
                 data.append(dec)
             elif f == 'LMAG':
-                adtype.append(np.dtype([(f,(np.float,5))]))
+                adtype.append(np.dtype([(f, (np.float, 5))]))
                 data.append(np.zeros(len(g)))
             else:
-                adtype.append(np.dtype([(f,np.float)]))
+                adtype.append(np.dtype([(f, np.float)]))
                 data.append(np.zeros(len(g)))
 
-    if len(fields)>0:
+    if len(fields) > 0:
         g = rf.append_fields(g, fields, data=data,
                              dtypes=adtype, usemask=False)
 
@@ -53,20 +57,20 @@ def compute_lensing(g, shear, halos=False):
     print("Number of rows in galaxy catalog: {0}".format(len(g)))
     sys.stdout.flush()
 
-    #Make array long enough for multiply imaged galaxies
+    # Make array long enough for multiply imaged galaxies
     uidx, sidx = np.unique(shear['index'], return_index=True)
 
-    #unique indicies should have same length as galaxy catalog
-    assert(len(sidx)==len(g))
+    # unique indicies should have same length as galaxy catalog
+    assert(len(sidx) == len(g))
 
-    #Get indices of multiply imaged galaxies
+    # Get indices of multiply imaged galaxies
     miidx = np.arange(len(shear))
-    miidx = miidx[~np.in1d(miidx,sidx)]
+    miidx = miidx[~np.in1d(miidx, sidx)]
     nmi = len(miidx)
 
-    #number of multiply imaged galaxies should be difference in lengths
-    #of shear catalog and galaxy catalog
-    assert(nmi == (len(shear)-len(g)))
+    # number of multiply imaged galaxies should be difference in lengths
+    # of shear catalog and galaxy catalog
+    assert(nmi == (len(shear) - len(g)))
 
     print('Number of multiply imaged galaxies: {0}'.format(nmi))
     sys.stdout.flush()
@@ -83,33 +87,35 @@ def compute_lensing(g, shear, halos=False):
     g['RA'] = shear['ra']
     g['DEC'] = shear['dec']
 
-    g['GAMMA1'] = 0.5*(shear['A11'] - shear['A00'])
-    g['GAMMA2'] = -0.5*(shear['A01'] + shear['A10'])
-    g['KAPPA'] = 1.0 - 0.5*(shear['A00'] + shear['A11'])
-    g['W'] = 0.5*(shear['A10'] - shear['A01'])
+    g['GAMMA1'] = 0.5 * (shear['A11'] - shear['A00'])
+    g['GAMMA2'] = -0.5 * (shear['A01'] + shear['A10'])
+    g['KAPPA'] = 1.0 - 0.5 * (shear['A00'] + shear['A11'])
+    g['W'] = 0.5 * (shear['A10'] - shear['A01'])
 
-    #compute mu = 1/detA
-    g['MU'] = 1./(shear['A11']*shear['A00'] - shear['A01']*shear['A10'])
+    # compute mu = 1/detA
+    g['MU'] = 1. / (shear['A11'] * shear['A00'] - shear['A01'] * shear['A10'])
 
     if not halos:
-        #lens the size and magnitudes
+        # lens the size and magnitudes
         g['SIZE'] = g['TSIZE'] * np.sqrt(g['MU'])
         for im in range(g['AMAG'].shape[1]):
-            g['LMAG'][:,im] = g['TMAG'][:,im] - 2.5*np.log10(g['MU'])
+            g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
-        #get intrinsic shape
-        epss = g['TE'][:,0] + 1j * g['TE'][:,1]
+        # get intrinsic shape
+        epss = g['TE'][:, 0] + 1j * g['TE'][:, 1]
 
-        #;;get reduced complex shear g = (gamma1 + i*gamma2)/(1-kappa)
-        gquot = (g['GAMMA1'] + 1j * g['GAMMA2']) / (1.-g['KAPPA'])
+        # ;;get reduced complex shear g = (gamma1 + i*gamma2)/(1-kappa)
+        gquot = (g['GAMMA1'] + 1j * g['GAMMA2']) / (1. - g['KAPPA'])
 
-        #;;lens the shapes - see Bartelmann & Schneider (2001), Section 4.2
+        # ;;lens the shapes - see Bartelmann & Schneider (2001), Section 4.2
         lidx = np.abs(gquot) < 1
-        eps = (1.0 + ( gquot * epss.conjugate())) / (epss.conjugate() + gquot.conjugate())
-        eps[lidx] = (epss[lidx] + gquot[lidx]) / (1.0 + ( epss[lidx] * gquot[lidx].conjugate() ) )
+        eps = (1.0 + (gquot * epss.conjugate())) / \
+            (epss.conjugate() + gquot.conjugate())
+        eps[lidx] = (epss[lidx] + gquot[lidx]) / \
+            (1.0 + (epss[lidx] * gquot[lidx].conjugate()))
 
-        g['EPSILON'][:,0] = np.real(eps)
-        g['EPSILON'][:,1] = np.imag(eps)
+        g['EPSILON'][:, 0] = np.real(eps)
+        g['EPSILON'][:, 1] = np.imag(eps)
 
     return g
 
@@ -120,7 +126,7 @@ def add_lensing(gfiles, sfiles):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    assert(len(gfiles)==len(sfiles))
+    assert(len(gfiles) == len(sfiles))
 
     gpix = np.array([int(gf.split('.')[-2]) for gf in gfiles])
     spix = np.array([int(sf.split('.')[-3].split('_')[0]) for sf in sfiles])
@@ -130,26 +136,25 @@ def add_lensing(gfiles, sfiles):
     gpix = gpix[gidx]
     spix = spix[sidx]
 
-    assert(all(gpix==spix))
+    assert(all(gpix == spix))
 
     gfiles = gfiles[gidx]
     sfiles = sfiles[sidx]
 
     for i, f in enumerate(gfiles):
         if ('halo' in f) and ('halo' not in sfiles[i]):
-            if ((i+1)<len(gpix)) and (gpix[i]==spix[i+1]):
-                temp = sfiles[i+1]
-                sfiles[i+1] = sfiles[i]
+            if ((i + 1) < len(gpix)) and (gpix[i] == spix[i + 1]):
+                temp = sfiles[i + 1]
+                sfiles[i + 1] = sfiles[i]
                 sfiles[i] = temp
-            elif gpix[i]==spix[i-1]:
-                temp = sfiles[i-1]
-                sfiles[i-1] = sfiles[i]
+            elif gpix[i] == spix[i - 1]:
+                temp = sfiles[i - 1]
+                sfiles[i - 1] = sfiles[i]
                 sfiles[i] = temp
 
             assert(('halo' in f) and ('halo' in sfiles[i]))
 
-
-    for gf,sf in zip(gfiles[rank::size],sfiles[rank::size]):
+    for gf, sf in zip(gfiles[rank::size], sfiles[rank::size]):
 
         print("[{1}] Lensing {0}".format(gf, rank))
         print("[{1}] Using  {0}".format(sf, rank))
@@ -157,14 +162,13 @@ def add_lensing(gfiles, sfiles):
         gfs = gf.split('/')
         gbase = "/".join(gfs[:-1])
 
-
-        g     = fitsio.read(gf)
+        g = fitsio.read(gf)
         shear = fitsio.read(sf)
 
         if 'halo' in gf:
-            g     = compute_lensing(g, shear, halos=True)
+            g = compute_lensing(g, shear, halos=True)
         else:
-            g     = compute_lensing(g, shear)
+            g = compute_lensing(g, shear)
 
         gfss = gfs[-1].split('.')
         oname = "{0}/{1}_lensed.{2}.fits".format(gbase, gfss[0], gfss[1])
@@ -175,7 +179,7 @@ def add_lensing(gfiles, sfiles):
         fits.write(g)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
     cfgfile = sys.argv[1]
 
