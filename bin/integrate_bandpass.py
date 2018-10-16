@@ -5,18 +5,15 @@ from PyAddgals.nBody import NBody
 from PyAddgals.addgalsModel import ADDGALSModel
 
 from mpi4py import MPI
-from glob import glob
 import numpy as np
 import fitsio
 import sys
 
 
-def main(config, filter_config, filepath, magflag):
+def main(config, outpath, magflag):
 
     config = parseConfig(config)
-    filter_config = parseConfig(filter_config)
-    files = glob(filepath)
-
+    files = config['Runtime']['outpath']
     comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
@@ -44,7 +41,7 @@ def main(config, filter_config, filepath, magflag):
                                                                         filters)
 
         pixnum = f.split('.')[-2]
-        fname = '{}-{}.{}.fits'.format(filepath, magflag, pixnum)
+        fname = '{}-{}.{}.fits'.format(outpath, magflag, pixnum)
         for i in range(len(filters)):
             mags['LMAG'][:, i] = mags['TMAG'][:, i] - 2.5 * np.log10(g['MU'])
 
@@ -54,10 +51,9 @@ def main(config, filter_config, filepath, magflag):
 if __name__ == '__main__':
 
     config_file = sys.argv[1]
-    filter_file = sys.argv[2]
     outpath = sys.argv[3]
     magflag = sys.argv[4]
 
-    config = readCfg(config_file, filter_file, outpath, magflag)
+    config = readCfg(config_file)
 
-    main(config)
+    main(config, outpath, magflag)
