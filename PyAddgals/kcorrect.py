@@ -227,8 +227,8 @@ class KCorrect(object):
             List of arrays containing filter transmissions
         filter_lambda : list
             List of arrays containing filter wavelengths
-        band_shift : float
-            The shift to apply to all filters.
+        band_shift : list
+            List of shifts to apply to filters.
 
         Returns
         -------
@@ -258,7 +258,7 @@ class KCorrect(object):
                 template_lambda, filter_lambda[k], filter_pass[k])
 
             filter_pass_spline = ius(
-                filter_lambda_k / (1 + band_shift), filter_pass_k, k=1)
+                filter_lambda_k / (1 + band_shift[k]), filter_pass_k, k=1)
             filter_pass_interp = filter_pass_spline(template_lambda_mean)
             scale = 1 / np.sum(filter_pass_interp *
                                dlambda * self.abfnu * self.c / template_lambda_mean)

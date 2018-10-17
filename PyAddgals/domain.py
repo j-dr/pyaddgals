@@ -321,7 +321,6 @@ class Domain(object):
 
             if self.fmt == 'BCCLightcone':
 
-                #                radial_buffer = 50.
                 d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
                 d.pix = self.domains_task[i][1]
@@ -354,6 +353,44 @@ class Domain(object):
                 d.zmean = None
 
             yield d
+
+    def dummyDomain(self):
+        d = copy(self)
+
+        if self.fmt == 'BCCLightcone':
+
+            d.boxnum = self.domains_boxnum_task[0]
+            d.rbin = self.domains_task[0][0]
+            d.pix = self.domains_task[0][1]
+
+            d.rmin = self.rbins[d.boxnum][d.rbin]
+            d.rmax = self.rbins[d.boxnum][d.rbin + 1]
+
+            d.zmin = self.cosmo.zofR(d.rmin) - 0.015
+            d.zmax = self.cosmo.zofR(d.rmax) + 0.015
+
+            if d.zmin < 0:
+                d.zmin = 1.e-4
+
+            d.rmin = self.cosmo.rofZ(d.zmin)
+            d.rmax = self.cosmo.rofZ(d.zmax)
+
+            # volume weighted average radius
+            d.rmean = 0.75 * (d.rmax - d.rmin)
+            d.zmean = self.cosmo.zofR(d.rmean)
+
+        elif self.fmt == 'Snapshot':
+            d.boxnum = self.domains_boxnum_task[0]
+            d.snapnum = self.domains_task[0][0]
+            d.subbox = self.domains_task[0][1]
+            d.pix = d.snapnum
+            d.rmin = None
+            d.rmax = None
+            # will be filled in when files are read
+            d.rmean = None
+            d.zmean = None
+
+        return d
 
     def getArea(self):
 

@@ -842,6 +842,11 @@ class ColorModel(object):
         self.Q = Q
         self.no_colors = no_colors
 
+        if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
+            self.band_shift = [float(self.band_shift)]
+        else:
+            self.band_shift = [float(bs) for bs in self.band_shift]
+
         if not self.no_colors:
             self.loadModel()
 
