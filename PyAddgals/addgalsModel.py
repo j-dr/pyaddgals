@@ -1190,8 +1190,8 @@ class ColorModel(object):
         sdss_r_name = ['sdss/sdss_r0.par']
         filter_lambda, filter_pass = kcorr.load_filters(sdss_r_name)
 
-        rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, 0.1)
-        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, 0.0)
+        rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda, [0.1])
+        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, [0.0])
 
         amag = k_reconstruct_maggies(rmatrix.astype(np.float64),
                                      coeffs.astype(np.float64),
