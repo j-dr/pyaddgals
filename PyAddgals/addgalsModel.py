@@ -1219,7 +1219,8 @@ class ColorModel(object):
         # Calculate observed and absolute magnitudes magnitudes
         filter_lambda, filter_pass = kcorr.load_filters(filters)
 
-        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda, [0.0])
+        rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda,
+                                            [0.0] * len(filters))
         rmatrix = kcorr.k_projection_table(filter_pass, filter_lambda,
                                            self.band_shift)
         amag = k_reconstruct_maggies(rmatrix,
