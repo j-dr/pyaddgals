@@ -12,7 +12,6 @@ import sys
 
 def main(config, outpath, magflag):
 
-    config = parseConfig(config)
     files = config['Runtime']['outpath']
     comm = MPI.COMM_WORLD
 
@@ -51,9 +50,9 @@ def main(config, outpath, magflag):
 if __name__ == '__main__':
 
     config_file = sys.argv[1]
-    outpath = sys.argv[3]
-    magflag = sys.argv[4]
+    outpath = sys.argv[2]
+    magflag = sys.argv[3]
 
-    config = readCfg(config_file)
+    config = parseConfig(config_file)
 
     main(config, outpath, magflag)
