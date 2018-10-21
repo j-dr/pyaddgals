@@ -30,11 +30,18 @@ def main(config, outpath, magflag):
     model = ADDGALSModel(nbody, **config['GalaxyModel']['ADDGALSModel'])
     filters = config['GalaxyModel']['ADDGALSModel']['colorModelConfig']['filters']
     train = fitsio.read(config['GalaxyModel']['ADDGALSModel']['colorModelConfig']['trainingSetFile'])
+    nk = len(filters)
 
     for f in files:
         g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R', 'MU'])
-        mags = np.zeros(len(g), dtype=np.dtype(['TMAG', 'AMAG', 'LMAG', 'OMAG',
-                                                'OMAGERR', 'FLUX', 'IVAR', 'Z']))
+        mags = np.zeros(len(g), dtype=np.dtype([('TMAG', (np.float, nk)),
+                                                ('AMAG', (np.float, nk)),
+                                                ('LMAG', (np.float, nk)),
+                                                ('OMAG', (np.float, nk)),
+                                                ('OMAGERR', (np.float, nk)),
+                                                ('FLUX', (np.float, nk)),
+                                                ('IVAR', (np.float, nk)),
+                                                ('Z', np.float)]))
         mags['Z'] = g['Z']
         mags['TMAG'], mags['AMAG'] = model.colorModel.computeMagnitudes(g['MAG_R'],
                                                                         g['Z'],
