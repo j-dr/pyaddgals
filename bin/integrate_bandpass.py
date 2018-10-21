@@ -26,8 +26,8 @@ def main(config, outpath, magflag):
     nbody = NBody(cosmo, d, **nb_config)
 
     model = ADDGALSModel(nbody, **config['GalaxyModel']['ADDGALSModel'])
-    filters = config['GalaxyModel']['colorModelConfig']['filters']
-    train = fitsio.read(config['GalaxyModel']['colorModelConfig']['trainingSetFile'])
+    filters = config['GalaxyModel']['ADDGALSModel']['colorModelConfig']['filters']
+    train = fitsio.read(config['GalaxyModel']['ADDGALSModel']['colorModelConfig']['trainingSetFile'])
 
     for f in files:
         g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R', 'MU'])
