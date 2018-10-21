@@ -16,6 +16,10 @@ def main(config, outpath, magflag):
     files = config['Runtime']['outpath']
     files = glob(files)
     comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    files = files[rank::size]
 
     cc = config['Cosmology']
     nb_config = config['NBody']
