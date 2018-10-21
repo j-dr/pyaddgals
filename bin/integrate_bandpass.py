@@ -5,6 +5,7 @@ from PyAddgals.nBody import NBody
 from PyAddgals.addgalsModel import ADDGALSModel
 
 from mpi4py import MPI
+from glob import glob
 import numpy as np
 import fitsio
 import sys
@@ -13,6 +14,7 @@ import sys
 def main(config, outpath, magflag):
 
     files = config['Runtime']['outpath']
+    files = glob(files)
     comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
