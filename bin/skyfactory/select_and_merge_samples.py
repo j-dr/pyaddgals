@@ -2,7 +2,6 @@ from __future__ import print_function, division
 from mpi4py import MPI
 from glob import glob
 from copy import copy
-from itertools import izip
 from merge_buzzard import buzzard_flat_cat
 import numpy as np
 import healpy as hp
@@ -214,7 +213,7 @@ if __name__=="__main__":
     flatcat = buzzard_flat_cat(simname=cfg['merge']['simname'], obsdir=cfg['merge']['obsdir'], 
                                nzcut=cfg['merge']['nzcut'], odir=cfg['merge']['obsdir'])
     
-    for of, tf, pz in izip(ofiles[rank::size], tfiles[rank::size], pzfiles[rank::size]):
+    for of, tf, pz in zip(ofiles[rank::size], tfiles[rank::size], pzfiles[rank::size]):
 
         print("working on files {}, {}, {}".format(of, tf, pz))
         sys.stdout.flush()
