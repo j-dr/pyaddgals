@@ -44,7 +44,7 @@ def sys_map_cuts(gal_data, sys_map_data=None, ra_col='ra',
     sys_map_vals={}
     mask=np.ones(len(gal_data),dtype='bool')
 
-    for i, (name, m) in enumerate(sys_map_data.iteritems()):
+    for i, (name, m) in enumerate(sys_map_data.items()):
 
          sys_map_vals[name]=m.get_mapval(gal_data[ra_col],
                                             gal_data[dec_col])
@@ -227,7 +227,7 @@ if __name__=="__main__":
             print('reading sys maps')
             sys.stdout.flush()
             if 'sys_maps' in scfg.keys():
-                for name, mfile in scfg['sys_maps'].iteritems():
+                for name, mfile in scfg['sys_maps'].items():
                     if name not in sys_map_data[sample].keys():
                         print('reading {}'.format(mfile))
                         sys.stdout.flush()
