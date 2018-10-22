@@ -58,28 +58,17 @@ def sys_map_cuts(gal_data, sys_map_data=None, ra_col='ra',
 
 def gold_cuts(gal_data, ra_col='RA', dec_col='DEC',
                 gold_fp_map=None, gold_br_map=None):
-    print(gal_data[dec_col])
-    print(gal_data[ra_col])    
+
     sys.stdout.flush()
     if gold_fp_map is None:
         gold_fp_map=hu.readMap(gold_footprint_fn)
     if gold_br_map is None:
         gold_br_map=hu.readMap(gold_badreg_fn)
-    print(gal_data[dec_col])
-    print(gal_data[ra_col])
+
     sys.stdout.flush()
-    try:
-        print('mapval: {}'.format(gold_fp_map.get_mapval(gal_data[ra_col],gal_data[dec_col])))
-    except:
-        print('Cannot print mapvals')
-        print(np.min(gal_data[ra_col]))
-        print(np.max(gal_data[ra_col]))
-        print(np.min(gal_data[dec_col]))
-        print(np.max(gal_data[dec_col]))
-        raise
+
     use=((gold_fp_map.get_mapval(gal_data[ra_col],gal_data[dec_col])>=1) *
              (gold_br_map.get_mapval(gal_data[ra_col],gal_data[dec_col])==0)) #LSS uses < 3?
-    print('use: {}'.format(use))
     sys.stdout.flush()
     return use.astype(bool)
 
@@ -128,19 +117,16 @@ def make_single_selection(obs, truth, pz, mask,
                             sys_map_data, cut_func, zcol):
 
     #mask based on systematics maps
-    print('Survey mask: {}'.format(mask))
     print('{}'.format(mask.any()))
     smask, sys_map_vals = sys_map_cuts(obs,
                             sys_map_data=sys_map_data,
                             ra_col='RA',dec_col='DEC')
 
-    print('Systematic mask: {}'.format(smask))
     print('{}'.format(smask.any()))
     mask &= smask
 
     #apply galaxy property cuts
     mask &= cut_func(obs, truth, pz, sys_map_vals, zcol)
-    print('Cut mask: {}'.format(mask))
     print('{}'.format(mask.any()))
 
     return mask
@@ -223,14 +209,11 @@ if __name__=="__main__":
             pf     = fitsio.FITS(pz, 'r')
             pz     = pf[-1].read(columns=['MEAN_Z','Z_MC','MODE_Z'])
 
-        print('opened {}'.format(of))
         obs    = obsf[-1].read()
-        print('read {}'.format(of))
         truth  = truthf[-1].read(columns=['ID','GAMMA1','GAMMA2','KAPPA','Z'])
 
         sample_flags = np.zeros(len(obs),dtype=dtype_flag)
         
-        print('gold cuts')
         sys.stdout.flush()
         mask = gold_cuts(obs, gold_fp_map=gold_fp,
                             gold_br_map=gold_br)
@@ -249,7 +232,6 @@ if __name__=="__main__":
                         print('reading {}'.format(mfile))
                         sys.stdout.flush()
                         m=read_partial_map(mfile,masked_val=np.nan)
-                        print('assigning to dict')
                         sys.stdout.flush()
                         sys_map_data[sample][name] = m
 

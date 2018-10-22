@@ -154,7 +154,7 @@ class buzzard_flat_cat(object):
 
             # insert selection function here to mask truth/obs (if can be run on individual files)
 
-            print ifile, len(truth), filename
+            print( ifile, len(truth), filename)
 
             gold['coadd_objects_id'][lenst:lenst+len(truth)]  = truth['ID']
             gold['ra'][lenst:lenst+len(truth)]                = obs['RA']
