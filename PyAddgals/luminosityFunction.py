@@ -259,7 +259,6 @@ class LuminosityFunction(object):
         zbins = np.arange(domain.zmin, domain.zmax + 0.001, 0.001)
 
         zmean = (zbins[1:] + zbins[:-1]) / 2
-        volume = domain.getVolume()
 
         nzbins = zmean.size
         lums_gal = np.zeros(n_gal)
@@ -273,10 +272,7 @@ class LuminosityFunction(object):
             # calculate faintest luminosity to use given
             # the apparent magnitude limit that we want to
             # populate to
-            if self.m_min_of_z_snap is not None:
-                lummin = self.m_min_of_z_snap
-            else:
-                lummin = self.m_min_of_z(zmean[i])
+            lummin = self.m_min_of_z(zmean[i])
 
             lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
@@ -294,17 +290,15 @@ class LuminosityFunction(object):
 
         return lums_gal
 
-
     def sampleLuminositiesSnap(self, domain, z):
 
         n_gal = z.size
         zmean = domain.zmean
-        volume = domain.getVolume()
 
         if self.m_min_of_z_snap is not None:
             lummin = self.m_min_of_z_snap
         else:
-            lummin = self.m_min_of_z(zmean[i])
+            lummin = self.m_min_of_z(zmean)
 
         lums = np.linspace(self.m_max_of_z(0.0), lummin, 100000)
 
