@@ -99,7 +99,7 @@ class NBody(object):
                 self.n_blocks = n_blocks
 
         if isinstance(f_downsample, str) | isinstance(f_downsample, (int, float, complex)):
-            self.f_downsample = [f_downsample] * len(self.nbody.partpath)
+            self.f_downsample = [f_downsample] * len(self.partpath)
         else:
             self.f_downsample = f_downsample
 
