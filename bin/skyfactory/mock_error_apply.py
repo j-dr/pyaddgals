@@ -276,7 +276,8 @@ def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
 
     if blind_obs:
         fields.extend([('M200', np.float), ('Z', np.float),
-                        ('CENTRAL', np.int)])
+                        ('CENTRAL', np.int), ('HALOID', np.int64),
+                       ('R200', np.float), ('Z_COS', np.float)])
 
     odtype = np.dtype(fields)
 
@@ -480,6 +481,9 @@ def apply_nonuniform_errormodel(g, oname, d, dhdr,
         obs['M200']    = g['M200']
         obs['CENTRAL'] = g['CENTRAL']
         obs['Z']       = g['Z']
+        obs['R200']    = g['R200']
+        obs['HALOID']  = g['HALOID']
+        obs['Z_COS']   = g['Z_COS']
 
     fitsio.write(oname, obs, clobber=True)
 
@@ -646,6 +650,9 @@ def apply_uniform_errormodel(g, oname, survey, magfile=None, usemags=None,
         obs['M200']    = g['M200']
         obs['CENTRAL'] = g['CENTRAL']
         obs['Z']       = g['Z']
+        obs['R200']    = g['R200']
+        obs['HALOID']  = g['HALOID']
+        obs['Z_COS']   = g['Z_COS']
 
     fitsio.write(oname, obs, clobber=True)
 
