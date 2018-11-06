@@ -455,6 +455,7 @@ class ParticleCatalog(object):
                                                         h[12:16] + (h[16:22],) +
                                                         h[22:30] + (h[30:36],) +
                                                         h[36:])
+
             if print_header:
                 print(header)
             if not any(blocks_to_read):
@@ -542,7 +543,7 @@ class ParticleCatalog(object):
         partpath = '{}.{}'.format(self.nbody.partpath[self.nbody.boxnum].format(snapnum=snapnum), 0)
         hdr = self.readGadgetSnapshot(partpath, read_pos=False, read_vel=False)
 
-        return hdr.npartTotal[1]
+        return hdr.npartTotal[1] + hdr.NallHW[1] * 2**32
 
     def readSnapshot(self):
         """Read particles and densities for snapshot catalog.
