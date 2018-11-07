@@ -38,7 +38,7 @@ def main():
                 if os.path.exists(opath):
                     continue
 
-                subprocess.call(['python', "{0}/photoz-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
+                subprocess.call(['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
 
 def main_submany():
 
