@@ -646,8 +646,8 @@ class RdelModel(object):
             self.X = fitsio.read(self.rdelModelFile, ext=2)
             self.T = fitsio.read(self.rdelModelFile, ext=3)
 
-            self.rdel_params = np.dot(np.linalg.inv(self.T), rdel_params)
-            self.rdel_param_errors = np.abs(np.dot(np.linalg.inv(self.T), rdel_param_errors))
+            self.rdel_params = np.dot(np.linalg.inv(self.T), rdel_params.T)
+            self.rdel_param_errors = np.abs(np.dot(np.linalg.inv(self.T), rdel_param_errors.T))
 
             gpp = self.fit_gp(self.X, self.rdel_params[0, :],
                               self.rdel_param_errors[0, :])
