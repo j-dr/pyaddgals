@@ -649,16 +649,16 @@ class RdelModel(object):
             self.rdel_params = np.dot(np.linalg.inv(self.T), rdel_params)
             self.rdel_param_errors = np.abs(np.dot(np.linalg.inv(self.T), rdel_param_errors))
 
-            gpp = self.fit_gp(self.X, self.rdel_params[:, 0],
-                              self.rdel_param_errors[:, 0])
-            gpmuc = self.fit_gp(self.X, self.rdel_params[:, 1],
-                                self.rdel_param_errors[:, 1])
-            gpsigmac = self.fit_gp(self.X, self.rdel_params[:, 2],
-                                   self.rdel_param_errors[:, 2])
-            gpmuf = self.fit_gp(self.X, self.rdel_params[:, 3],
-                                self.rdel_param_errors[:, 3])
-            gpsigmaf = self.fit_gp(self.X, self.rdel_params[:, 4],
-                                   self.rdel_param_errors[:, 4])
+            gpp = self.fit_gp(self.X, self.rdel_params[0, :],
+                              self.rdel_param_errors[0, :])
+            gpmuc = self.fit_gp(self.X, self.rdel_params[1, :],
+                                self.rdel_param_errors[1, :])
+            gpsigmac = self.fit_gp(self.X, self.rdel_params[2, :],
+                                   self.rdel_param_errors[2, :])
+            gpmuf = self.fit_gp(self.X, self.rdel_params[3, :],
+                                self.rdel_param_errors[3, :])
+            gpsigmaf = self.fit_gp(self.X, self.rdel_params[4, :],
+                                   self.rdel_param_errors[4, :])
 
             self.gp_model = [gpp, gpmuc, gpsigmac, gpmuf, gpsigmaf]
 
@@ -755,16 +755,16 @@ class RdelModel(object):
                 zp = np.min(self.X[:, 0])
 
             xp = np.atleast_2d([zp, mp])
-            p = self.pred_gp(self.gp_model[0], self.rdel_params[:, 0],
-                             self.X, xp, self.rdel_param_errors[:, 0])[0]
-            muc = self.pred_gp(self.gp_model[1], self.rdel_params[:, 1],
-                               self.X, xp, self.rdel_param_errors[:, 1])[0]
-            sigmac = self.pred_gp(self.gp_model[2], self.rdel_params[:, 2],
-                                  self.X, xp, self.rdel_param_errors[:, 2])[0]
-            muf = self.pred_gp(self.gp_model[3], self.rdel_params[:, 3],
-                               self.X, xp, self.rdel_param_errors[:, 3])[0]
-            sigmaf = self.pred_gp(self.gp_model[4], self.rdel_params[:, 4],
-                                  self.X, xp, self.rdel_param_errors[:, 4])[0]
+            p = self.pred_gp(self.gp_model[0], self.rdel_params[0, :],
+                             self.X, xp, self.rdel_param_errors[0, :])[0]
+            muc = self.pred_gp(self.gp_model[1], self.rdel_params[1, :],
+                               self.X, xp, self.rdel_param_errors[1, :])[0]
+            sigmac = self.pred_gp(self.gp_model[2], self.rdel_params[2, :],
+                                  self.X, xp, self.rdel_param_errors[2, :])[0]
+            muf = self.pred_gp(self.gp_model[3], self.rdel_params[3, :],
+                               self.X, xp, self.rdel_param_errors[3, :])[0]
+            sigmaf = self.pred_gp(self.gp_model[4], self.rdel_params[4, :],
+                                  self.X, xp, self.rdel_param_errors[4, :])[0]
 
             pars = [p, muc, sigmac, muf, sigmaf]
             pars = np.dot(self.T, pars)
