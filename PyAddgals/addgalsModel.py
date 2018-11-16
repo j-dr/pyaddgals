@@ -766,6 +766,10 @@ class RdelModel(object):
             sigmaf = self.pred_gp(self.gp_model[4], self.rdel_params[:, 4],
                                   self.X, xp, self.rdel_param_errors[:, 4])[0]
 
+            pars = [p, muc, sigmac, muf, sigmaf]
+            pars = np.dot(self.T, pars)
+            p, muc, sigmac, muf, sigmaf = pars
+
         return muc, sigmac, muf, sigmaf, p
 
     def pofR(self, r, z, mag, dmag=0.05):
