@@ -602,7 +602,7 @@ class RdelModel(object):
         result = minimize(neg_ln_like, [1., 1], jac=grad_neg_ln_like, method="L-BFGS-B")
         gp.set_parameter_vector(result.x)
 
-        return gp, scaler, scaler_y
+        return gp
 
     def pred_gp(self, gp, y, X, px, ye):
         Xc, yc, _ = self.clean_data(X, y, ye)
