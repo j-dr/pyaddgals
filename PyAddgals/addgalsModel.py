@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from scipy.special import erf
+from scipy.optimize import minimize
 from numba import jit, boolean
 from fast3tree import fast3tree
 from copy import copy
@@ -7,6 +8,11 @@ from time import time
 import numpy as np
 import healpy as hp
 import fitsio
+import george
+from george import kernels
+from sklearn import preprocessing
+
+
 import sys
 
 from .galaxyModel import GalaxyModel
@@ -221,7 +227,8 @@ class ADDGALSModel(GalaxyModel):
         self.luminosityFunction = self.luminosityFunction(
             nbody.cosmo, **luminosityFunctionConfig)
 
-        self.rdelModel = RdelModel(self.nbody, self.luminosityFunction, **rdelModelConfig)
+        self.rdelModel = RdelModel(
+            self.nbody, self.luminosityFunction, **rdelModelConfig)
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
         self.c = 3e5
 
@@ -273,8 +280,7 @@ class ADDGALSModel(GalaxyModel):
             mag = self.luminosityFunction.sampleLuminositiesSnap(domain, z)
         else:
             mag = self.luminosityFunction.sampleLuminosities(domain, z)
-        print('mag from lum')
-        print(mag)
+
         zidx = z.argsort()
         z = z[zidx]
         mag = mag[zidx]
@@ -285,11 +291,10 @@ class ADDGALSModel(GalaxyModel):
         else:
             density, z, mag = self.rdelModel.sampleDensity(domain, z, mag)
 
-        print(mag)
-        print(density)
         end = time()
 
-        print('[{}] Finished drawing mag, z, dens. {} galaxies in domain, took {}s'.format(self.nbody.domain.rank, len(z), end - start))
+        print('[{}] Finished drawing mag, z, dens. {} galaxies in domain, took {}s'.format(
+            self.nbody.domain.rank, len(z), end - start))
         sys.stdout.flush()
 
         # sort galaxies by density
@@ -303,7 +308,8 @@ class ADDGALSModel(GalaxyModel):
         mag_cen, assigned, bad_cen = self.assignHalos(z, mag, density)
         end = time()
 
-        print('[{}] Finished assigning galaxies to halos. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished assigning galaxies to halos. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
@@ -311,29 +317,32 @@ class ADDGALSModel(GalaxyModel):
             z[~assigned], mag[~assigned], density[~assigned])
         end = time()
 
-        print('[{}] Finished assigning galaxies to particles. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished assigning galaxies to particles. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         n_halo = mag_cen.size
 
         pos = np.vstack([self.nbody.haloCatalog.catalog['pos'], pos])
         print('velocity halo min, halo max, part min, part max: {}, {}, {}, {}'.format(np.min(self.nbody.haloCatalog.catalog['vel']),
-              np.max(self.nbody.haloCatalog.catalog['vel']), np.min(vel), np.max(vel)))
+                                                                                       np.max(self.nbody.haloCatalog.catalog['vel']), np.min(vel), np.max(vel)))
         vel = np.vstack([self.nbody.haloCatalog.catalog['vel'], vel])
         z = np.hstack([self.nbody.haloCatalog.catalog['z'], z])
         mag = np.hstack([mag_cen, mag])
         density = np.hstack([self.nbody.haloCatalog.catalog['rnn'], density])
         halomass = np.hstack(
             [self.nbody.haloCatalog.catalog['mass'], halomass])
-        halorad = np.hstack([self.nbody.haloCatalog.catalog['radius'], halorad])
+        halorad = np.hstack(
+            [self.nbody.haloCatalog.catalog['radius'], halorad])
         rhalo = np.hstack([np.zeros(n_halo), rhalo])
         central = np.zeros(rhalo.size)
         central[:n_halo] = 1
         haloid = np.hstack([self.nbody.haloCatalog.catalog['id'], haloid])
-        z_rsd = z + np.sum(pos * vel, axis=1) / np.sqrt(np.sum(pos**2, axis=1)) / 299792.458
+        z_rsd = z + np.sum(pos * vel, axis=1) / \
+            np.sqrt(np.sum(pos**2, axis=1)) / 299792.458
         bad = np.hstack([bad_cen, bad])
 
-        #done with halo catalog now
+        # done with halo catalog now
         self.nbody.haloCatalog.delete()
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
@@ -374,7 +383,8 @@ class ADDGALSModel(GalaxyModel):
         z_rsd = self.nbody.galaxyCatalog.catalog['Z']
 
         sigma5, ranksigma5, redfraction, \
-            sed_idx, omag, amag, mag_evol = self.colorModel.assignSEDs(pos, mag, z, z_rsd)
+            sed_idx, omag, amag, mag_evol = self.colorModel.assignSEDs(
+                pos, mag, z, z_rsd)
 
         self.nbody.galaxyCatalog.catalog['SIGMA5'] = sigma5
         self.nbody.galaxyCatalog.catalog['PSIGMA5'] = ranksigma5
@@ -394,7 +404,8 @@ class ADDGALSModel(GalaxyModel):
         if self.shapeModel is None:
             return
 
-        log_comoving_size, angular_size, epsilon = self.shapeModel.sampleShapes(self.nbody.galaxyCatalog.catalog)
+        log_comoving_size, angular_size, epsilon = self.shapeModel.sampleShapes(
+            self.nbody.galaxyCatalog.catalog)
 
         self.nbody.galaxyCatalog.catalog['TSIZE'] = angular_size
         self.nbody.galaxyCatalog.catalog['TE'] = epsilon
@@ -523,7 +534,8 @@ class ADDGALSModel(GalaxyModel):
         self.nbody.particleCatalog.delete()
         del z_part, density_part
 
-        print('[{}] number of bad assignments: {}'.format(self.nbody.domain.rank, np.sum(bad)))
+        print('[{}] number of bad assignments: {}'.format(
+            self.nbody.domain.rank, np.sum(bad)))
         sys.stdout.flush()
 
         return pos, vel, z_asn, density_asn, magnitude, rhalo, haloradius, haloid, halomass, bad
@@ -532,7 +544,8 @@ class ADDGALSModel(GalaxyModel):
 class RdelModel(object):
 
     def __init__(self, nbody, lf, rdelModelFile=None, lcenModelFile=None,
-                 lcenMassMin=None, useSubhalos=False, scatter=None):
+                 lcenMassMin=None, useSubhalos=False, scatter=None,
+                 gaussian_process=False):
 
         if lcenModelFile is None:
             raise(ValueError('rdel model must define lcenModelFile'))
@@ -550,6 +563,7 @@ class RdelModel(object):
         self.lcenMassMin = lcenMassMin
         self.useSubhalos = useSubhalos
         self.scatter = float(scatter)
+        self.gaussian_process = gaussian_process
 
         if isinstance(self.lcenMassMin, str):
             self.lcenMassMin = [float(self.lcenMassMin)]
@@ -557,6 +571,49 @@ class RdelModel(object):
             self.lcenMassMin = [float(lcm) for lcm in self.lcenMassMin]
 
         self.loadModelFile()
+
+    def clean_data(self, X, y, yerr):
+        medy = np.median(y)
+
+        idx = (np.isfinite(y) & (np.abs((y - medy)) < 100 * np.abs(medy)) &
+               (yerr > 0) & (yerr == yerr) & (np.abs(yerr) != np.inf))
+        return X[idx], y[idx], yerr[idx]
+
+    def fit_gp(self, X, y, ye):
+        Xc, yc, yerrc = self.clean_data(X, y, ye)
+        scaler = preprocessing.StandardScaler().fit(Xc)
+        scaler_y = preprocessing.StandardScaler().fit(yc.reshape(-1, 1))
+        nX = scaler.transform(Xc)
+        ny = scaler_y.transform(yc.reshape(-1, 1))
+        nye = yerrc * scaler_y.scale_
+
+        kernel = np.var(ny.flatten()) * kernels.ExpSquaredKernel(0.5, ndim=Xc.shape[1])
+        gp = george.GP(kernel, fit_white_noise=True)
+        gp.compute(nX, np.sqrt(nye).flatten())
+
+        def neg_ln_like(p):
+            gp.set_parameter_vector(p)
+            return -gp.log_likelihood(ny.flatten())
+
+        def grad_neg_ln_like(p):
+            gp.set_parameter_vector(p)
+            return -gp.grad_log_likelihood(ny.flatten())
+
+        result = minimize(neg_ln_like, [1., 1], jac=grad_neg_ln_like, method="L-BFGS-B")
+        gp.set_parameter_vector(result.x)
+
+        return gp, scaler, scaler_y
+
+    def pred_gp(self, gp, y, X, px, ye):
+        Xc, yc, _ = self.clean_data(X, y, ye)
+        scaler = preprocessing.StandardScaler().fit(Xc)
+        scaler_y = preprocessing.StandardScaler().fit(yc.reshape(-1, 1))
+
+        ny = scaler_y.transform(yc.reshape(-1, 1))
+        npx = scaler.transform(px)
+        pred, pred_var = gp.predict(ny.flatten(), npx, return_var=True)
+
+        return scaler_y.inverse_transform(pred)
 
     def loadModelFile(self):
         """Load the rdel and lcen model files and parse them
@@ -568,19 +625,42 @@ class RdelModel(object):
 
         """
 
-        mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
-        model = np.loadtxt(self.rdelModelFile, dtype=mdtype)
+        if not self.gaussian_process:
+            mdtype = np.dtype([('param', 'S10'), ('value', np.float)])
+            model = np.loadtxt(self.rdelModelFile, dtype=mdtype)
 
-        idx = model['param'].argsort()
-        model = model[idx]
+            idx = model['param'].argsort()
+            model = model[idx]
 
-        self.params = {}
+            self.params = {}
 
-        self.params['muc'] = model['value'][:15]
-        self.params['sigmac'] = model['value'][15:30]
-        self.params['muf'] = model['value'][30:45]
-        self.params['sigmaf'] = model['value'][45:60]
-        self.params['p'] = model['value'][60:75]
+            self.params['muc'] = model['value'][:15]
+            self.params['sigmac'] = model['value'][15:30]
+            self.params['muf'] = model['value'][30:45]
+            self.params['sigmaf'] = model['value'][45:60]
+            self.params['p'] = model['value'][60:75]
+        else:
+
+            rdel_params = fitsio.read(self.rdelModelFile, ext=0)
+            rdel_param_errors = fitsio.read(self.rdelModelFile, ext=1)
+            self.X = fitsio.read(self.rdelModelFile, ext=2)
+            self.T = fitsio.read(self.rdelModelFile, ext=3)
+
+            self.rdel_params = np.dot(np.linalg.inv(self.T), rdel_params)
+            self.rdel_param_errors = np.abs(np.dot(np.linalg.inv(self.T), rdel_param_errors))
+
+            gpp = self.fit_gp(self.X, self.rdel_params[:, 0],
+                              self.rdel_param_errors[:, 0])
+            gpmuc = self.fit_gp(self.X, self.rdel_params[:, 1],
+                                self.rdel_param_errors[:, 1])
+            gpsigmac = self.fit_gp(self.X, self.rdel_params[:, 2],
+                                   self.rdel_param_errors[:, 2])
+            gpmuf = self.fit_gp(self.X, self.rdel_params[:, 3],
+                                self.rdel_param_errors[:, 3])
+            gpsigmaf = self.fit_gp(self.X, self.rdel_params[:, 4],
+                                   self.rdel_param_errors[:, 4])
+
+            self.gp_model = [gpp, gpmuc, gpsigmac, gpmuf, gpsigmaf]
 
         self.lcenModel = fitsio.read(self.lcenModelFile)
         self.lcenModel['Mc'] = 10**self.lcenModel['Mc']
@@ -645,19 +725,46 @@ class RdelModel(object):
             Description of returned object.
 
         """
-        x = self.makeVandermonde(z, mag, magbright, magfaint, magref)
 
-        p = np.dot(self.params['p'], x)
-        muc = np.dot(self.params['muc'], x)
-        muf = np.dot(self.params['muf'], x)
-        sigmac = np.dot(self.params['sigmac'], x)
-        sigmaf = np.dot(self.params['sigmaf'], x)
+        if not self.gaussian_process:
+            x = self.makeVandermonde(z, mag, magbright, magfaint, magref)
 
-        p[p < 0] = 0.
-        p[p > 1] = 1.
-        muf[muf < 0] = 0.
-        sigmac[sigmac < 0] = 0.0001
-        sigmaf[sigmaf < 0] = 0.0001
+            p = np.dot(self.params['p'], x)
+            muc = np.dot(self.params['muc'], x)
+            muf = np.dot(self.params['muf'], x)
+            sigmac = np.dot(self.params['sigmac'], x)
+            sigmaf = np.dot(self.params['sigmaf'], x)
+
+            p[p < 0] = 0.
+            p[p > 1] = 1.
+            muf[muf < 0] = 0.
+            sigmac[sigmac < 0] = 0.0001
+            sigmaf[sigmaf < 0] = 0.0001
+        else:
+            zp = z
+            mp = mag
+
+            if mp > magfaint:
+                mp = magfaint
+            elif mp < magbright:
+                mp = magbright
+
+            if zp > np.max(self.X[:, 0]):
+                zp = np.max(self.X[:, 0])
+            elif zp < np.min(self.X[:, 0]):
+                zp = np.min(self.X[:, 0])
+
+            xp = np.atleast_2d([zp, mp])
+            p = self.pred_gp(self.gp_model[0], self.rdel_params[:, 0],
+                             self.X, xp, self.rdel_param_errors[:, 0])[0]
+            muc = self.pred_gp(self.gp_model[1], self.rdel_params[:, 1],
+                               self.X, xp, self.rdel_param_errors[:, 1])[0]
+            sigmac = self.pred_gp(self.gp_model[2], self.rdel_params[:, 2],
+                                  self.X, xp, self.rdel_param_errors[:, 2])[0]
+            muf = self.pred_gp(self.gp_model[3], self.rdel_params[:, 3],
+                               self.X, xp, self.rdel_param_errors[:, 3])[0]
+            sigmaf = self.pred_gp(self.gp_model[4], self.rdel_params[:, 4],
+                                  self.X, xp, self.rdel_param_errors[:, 4])[0]
 
         return muc, sigmac, muf, sigmaf, p
 
@@ -748,7 +855,6 @@ class RdelModel(object):
                 count += nij
 
         return density, z, mag
-
 
     def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.1,
                           n_dens_bins=1e5):
@@ -926,12 +1032,13 @@ class ColorModel(object):
         magmean = (magbins[1:] + magbins[:-1]) / 2
 
         xvec = self.makeVandermondeRF(zmean, magmean, bmlim, fmlim, mag_ref)
-        zm = 1/(xvec[7,:] + 0.47) - 1
+        zm = 1 / (xvec[7, :] + 0.47) - 1
 
         # calculate red fraction for mag, z bins
         rfgrid = np.dot(xvec.T, self.redFractionParams)
         if (self.rf_m is not None) & (self.rf_z is not None) & (self.rf_b is not None) & (self.rf_zm is not None):
-            rfgrid *= (self.rf_b + self.rf_m * xvec[1,:] + self.rf_z * zm + self.rf_zm * zm * xvec[1,:])
+            rfgrid *= (self.rf_b + self.rf_m *
+                       xvec[1, :] + self.rf_z * zm + self.rf_zm * zm * xvec[1, :])
         elif (self.rf_m is not None) & (self.rf_b is not None):
             rfgrid *= ((zmean * self.rf_m) + self.rf_b)
         elif (self.rf_b is not None):
@@ -1031,7 +1138,8 @@ class ColorModel(object):
             print(np.max(z_a))
             print(np.isfinite(z_a).all())
             print(z_a[~np.isfinite(z_a)])
-            print(self.nbody.domain.zmin, self.nbody.domain.zmax, self.nbody.domain.nest)
+            print(self.nbody.domain.zmin,
+                  self.nbody.domain.zmax, self.nbody.domain.nest)
             raise RuntimeError
 
         sigma5 = sigma5 * self.nbody.cosmo.angularDiameterDistance(z_a)
@@ -1062,17 +1170,20 @@ class ColorModel(object):
         """
 
         start = time()
-        dtheta = 100. / self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
+        dtheta = 100. / \
+            self.nbody.cosmo.angularDiameterDistance(self.nbody.domain.zmin)
         if dtheta > 1.5:
             dtheta = 1.5
         sigma5 = self.computeSigma5(z, mag, pos_gals, dt=dtheta)
         end = time()
-        print('[{}] Finished computing sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished computing sigma5. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
 
         start = time()
         ranksigma5 = self.rankSigma5(z, mag, sigma5, 0.01, self.dm_rank)
         end = time()
-        print('[{}] Finished computing rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished computing rank sigma5. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
 
         return sigma5, ranksigma5
 
@@ -1103,10 +1214,12 @@ class ColorModel(object):
         # make search distance in mag direction larger as we go fainter
         # as there are fewer galaxies in the training set there
 
-        def max_distances(m): return np.array([np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
+        def max_distances(m): return np.array(
+            [np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
 
         def neg_max_distances(m): return -1. * \
-            np.array([np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
+            np.array(
+                [np.min([np.max([np.abs((22.5 + m)) * dm, 0.1]), 5]), ds, 1.1])
 
         sed_idx = np.zeros(n_gal, dtype=np.int)
         bad = np.zeros(n_gal, dtype=np.bool)
@@ -1244,10 +1357,12 @@ class ColorModel(object):
 
         theta, phi = hp.vec2ang(pos)
         rspos = np.vstack([theta, phi, self.c * z_rsd]).T
-        print('[{}] checking redshifts... max(z), min(z), max(z_rsd), min(z_rsd): {}, {}, {}, {}'.format(self.nbody.domain.rank, np.max(z), np.min(z),np.max(z_rsd),np.min(z_rsd)))
+        print('[{}] checking redshifts... max(z), min(z), max(z_rsd), min(z_rsd): {}, {}, {}, {}'.format(
+            self.nbody.domain.rank, np.max(z), np.min(z), np.max(z_rsd), np.min(z_rsd)))
         sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
         end = time()
-        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         start = time()
@@ -1257,11 +1372,13 @@ class ColorModel(object):
         else:
             redfraction = np.ones_like(z)
 
-        sed_idx, bad = self.matchTrainingSet(mag, ranksigma5, redfraction, self.dm_sed, self.ds)
+        sed_idx, bad = self.matchTrainingSet(
+            mag, ranksigma5, redfraction, self.dm_sed, self.ds)
         coeffs = self.trainingSet[sed_idx]['COEFFS']
         end = time()
 
-        print('[{}] Finished assigning SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished assigning SEDs. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         # make sure we don't have any negative redshifts
@@ -1273,7 +1390,8 @@ class ColorModel(object):
         omag, amag = self.computeMagnitudes(mag, z_a, coeffs, self.filters)
         end = time()
 
-        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(self.nbody.domain.rank, end - start))
+        print('[{}] Finished compiuting magnitudes from SEDs. Took {}s'.format(
+            self.nbody.domain.rank, end - start))
         sys.stdout.flush()
 
         return sigma5, ranksigma5, redfraction, sed_idx, omag, amag, mag

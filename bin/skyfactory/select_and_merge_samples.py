@@ -283,4 +283,4 @@ if __name__ == "__main__":
     comm.Barrier()
 
     if rank == 0:
-        flatcat.merge_rank_files(merge_with_bpz=False)
+        flatcat.merge_rank_files(merge_with_bpz=cfg['merge']['simname'])

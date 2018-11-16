@@ -398,8 +398,9 @@ class buzzard_flat_cat(object):
         pout = fio.FITS(self.odir + '/' + self.simname +
                         '_{}'.format(self.obsdir[:-1]) + '_pz.fits', 'rw')
 
-        gfiles = glob.glob(
-            self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold*[0-9].fits')
+        gfiles = glob.glob(self.odir + '/' +
+                           self.simname + '_{}'.format(self.obsdir[:-1]) + 
+                           '_gold*[0-9].fits')
         size = len(gfiles)
 
         for i in range(size):
