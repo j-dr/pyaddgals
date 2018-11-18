@@ -600,6 +600,7 @@ class RdelModel(object):
             return -gp.grad_log_likelihood(ny.flatten())
 
         result = minimize(neg_ln_like, [1., 1], jac=grad_neg_ln_like, method="L-BFGS-B")
+        print('[{}]: fit {}'.format(self.nbody.domain.rank, result))
         gp.set_parameter_vector(result.x)
 
         return gp
