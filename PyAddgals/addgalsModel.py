@@ -798,7 +798,7 @@ class RdelModel(object):
 
         return prob
 
-    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.4,
+    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.1,
                       n_dens_bins=1e5, dmcdf=0.2):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
@@ -861,7 +861,7 @@ class RdelModel(object):
 
         return density, z, mag
 
-    def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.4,
+    def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.1,
                           n_dens_bins=1e5, dmcdf=0.2):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
