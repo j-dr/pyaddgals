@@ -798,7 +798,7 @@ class RdelModel(object):
 
         return prob
 
-    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.1,
+    def sampleDensity(self, domain, z, mag, dz=0.005, dm=0.4,
                       n_dens_bins=1e5):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
@@ -852,7 +852,7 @@ class RdelModel(object):
 
                 nij = mhidx - mlidx
 
-                cdf_r = self.pofR(deltamean, zmean[i], magmean[j])
+                cdf_r = self.pofR(deltamean, zmean[i], magmean[j], dmag=dm / 2)
 
                 rands = np.random.uniform(size=nij)
                 density[count: count +
@@ -861,7 +861,7 @@ class RdelModel(object):
 
         return density, z, mag
 
-    def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.1,
+    def sampleDensitySnap(self, domain, mag, dz=0.005, dm=0.4,
                           n_dens_bins=1e5):
         """Draw densities for galaxies at redshifts z and magnitudes m
 
@@ -910,7 +910,7 @@ class RdelModel(object):
 
             nij = mhidx - mlidx
 
-            cdf_r = self.pofR(deltamean, zmean, magmean[j])
+            cdf_r = self.pofR(deltamean, zmean, magmean[j], dmag=dm / 2)
 
             rands = np.random.uniform(size=nij)
             density[count: count +
