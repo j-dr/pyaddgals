@@ -264,8 +264,8 @@ def assignLcenNodens(redshift, magnitude, density, mass_halo, density_halo, z_ha
 
             if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
 
-                if ((not assigned[pidx + pi]) & (zmin < redshift[pidx - pi]) &
-                        (redshift[pidx - pi] < zmax)):
+                if ((not assigned[pidx + pi]) & (zmin < redshift[pidx + pi]) &
+                        (redshift[pidx + pi] < zmax)):
                     assigned[pidx + pi] = True
                     halo_assigned = True
                     pi += 1
@@ -285,7 +285,7 @@ def assignLcenNodens(redshift, magnitude, density, mass_halo, density_halo, z_ha
                 if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
 
                     if ((not assigned[pidx - pi]) & (zmin < redshift[pidx - pi]) &
-                        (redshift[pidx - pi] < zmax)):
+                       (redshift[pidx - pi] < zmax)):
                         assigned[pidx - pi] = True
                         halo_assigned = True
                         pi += 1
@@ -293,8 +293,8 @@ def assignLcenNodens(redshift, magnitude, density, mass_halo, density_halo, z_ha
 
                 if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
 
-                    if ((not assigned[pidx + pi]) & (zmin < redshift[pidx - pi]) &
-                        (redshift[pidx - pi] < zmax)):
+                    if ((not assigned[pidx + pi]) & (zmin < redshift[pidx + pi]) &
+                       (redshift[pidx + pi] < zmax)):
                         assigned[pidx + pi] = True
                         halo_assigned = True
                         pi += 1
