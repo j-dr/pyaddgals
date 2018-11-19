@@ -117,7 +117,7 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
 @jit(nopython=True)
 def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
-               params, scatter, dMr=0.015):
+               params, scatter, dMr=0.015, dz=0.02):
 
     n_halo = z_halo.size
     n_gal = redshift.size
@@ -143,6 +143,9 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
         magmin = mr0[i] - dMr
         magmax = mr0[i] + dMr
 
+        zmin = z_halo[i] - dz
+        zmax = z_halo[i] + dz
+
         pidx = np.searchsorted(density, density_halo[i])
         pidx -= 1
         pi = 0
@@ -154,7 +157,9 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
             if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
 
                 if ((not assigned[pidx - pi]) & (magmin < magnitude[pidx - pi]) &
-                        (magnitude[pidx - pi] < magmax)):
+                        (magnitude[pidx - pi] < magmax) &
+                        (zmin < redshift[pidx - pi]) &
+                        (redshift[pidx - pi] < zmax)):
                     assigned[pidx - pi] = True
                     halo_assigned = True
                     pi += 1
@@ -163,7 +168,9 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
             if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
 
                 if ((not assigned[pidx + pi]) & (magmin < magnitude[pidx + pi]) &
-                        (magnitude[pidx + pi] < magmax)):
+                        (magnitude[pidx + pi] < magmax) &
+                        (zmin < redshift[pidx + pi]) &
+                        (redshift[pidx + pi] < zmax)):
                     assigned[pidx + pi] = True
                     halo_assigned = True
                     pi += 1
@@ -178,12 +185,17 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
             magmin = mr0[i] - 3 * dMr
             magmax = mr0[i] + 3 * dMr
 
+            zmin = z_halo[i] - dz
+            zmax = z_halo[i] + dz
+
             while ((not halo_assigned) & (pi < max_search_count)):
 
                 if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
 
                     if ((not assigned[pidx - pi]) & (magmin < magnitude[pidx - pi]) &
-                            (magnitude[pidx - pi] < magmax)):
+                            (magnitude[pidx - pi] < magmax) &
+                            (zmin < redshift[pidx - pi]) &
+                            (redshift[pidx - pi] < zmax)):
                         assigned[pidx - pi] = True
                         halo_assigned = True
                         pi += 1
@@ -192,7 +204,97 @@ def assignLcen(redshift, magnitude, density, mass_halo, density_halo, z_halo,
                 if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
 
                     if ((not assigned[pidx + pi]) & (magmin < magnitude[pidx + pi]) &
-                            (magnitude[pidx + pi] < magmax)):
+                            (magnitude[pidx + pi] < magmax) &
+                            (zmin < redshift[pidx + pi]) &
+                            (redshift[pidx + pi] < zmax)):
+                        assigned[pidx + pi] = True
+                        halo_assigned = True
+                        pi += 1
+                        continue
+
+                pi += 1
+
+    return assigned, mr0, bad
+
+
+@jit(nopython=True)
+def assignLcenNodens(redshift, magnitude, density, mass_halo, density_halo, z_halo,
+                     params, scatter, dMr=0.015, dz=0.01):
+
+    n_halo = z_halo.size
+    n_gal = redshift.size
+    m0 = params[0]
+    mc = params[1]
+    a = params[2]
+    b = params[3]
+    k = params[4]
+
+    mr0 = m0 - 2.5 * (a * np.log10(mass_halo / mc) - b *
+                      np.log10(1. + (mass_halo / mc)**(k / b)))
+    mr0 = mr0 + np.random.randn(n_halo) * (2.5 * scatter)
+
+    bad = np.zeros(n_halo, dtype=boolean)
+
+    # made this as large as possible to avoid not assigning halos
+    max_search_count = n_gal
+
+    assigned = np.zeros(n_gal, dtype=boolean)
+
+    for i in range(n_halo):
+
+        zmin = z_halo[i] - dz
+        zmax = z_halo[i] + dz
+
+        pidx = np.searchsorted(magnitude, mr0[i])
+        pidx -= 1
+        pi = 0
+
+        halo_assigned = False
+
+        while ((not halo_assigned) & (pi < max_search_count)):
+
+            if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
+
+                if ((not assigned[pidx - pi]) & (zmin < redshift[pidx - pi]) &
+                        (redshift[pidx - pi] < zmax)):
+                    assigned[pidx - pi] = True
+                    halo_assigned = True
+                    pi += 1
+                    continue
+
+            if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
+
+                if ((not assigned[pidx + pi]) & (zmin < redshift[pidx - pi]) &
+                        (redshift[pidx - pi] < zmax)):
+                    assigned[pidx + pi] = True
+                    halo_assigned = True
+                    pi += 1
+                    continue
+
+            pi += 1
+
+        # if not assigned with fiducial magniude window, make larger
+        if not halo_assigned:
+            bad[i] = True
+            pi = 0
+            zmin = z_halo[i] - 3 * dz
+            zmax = z_halo[i] + 3 * dz
+
+            while ((not halo_assigned) & (pi < max_search_count)):
+
+                if ((pidx - pi) >= 0) & ((pidx - pi) < n_gal):
+
+                    if ((not assigned[pidx - pi]) & (zmin < redshift[pidx - pi]) &
+                        (redshift[pidx - pi] < zmax)):
+                        assigned[pidx - pi] = True
+                        halo_assigned = True
+                        pi += 1
+                        continue
+
+                if ((pidx + pi) < n_gal) & ((pidx + pi) >= 0):
+
+                    if ((not assigned[pidx + pi]) & (zmin < redshift[pidx - pi]) &
+                        (redshift[pidx - pi] < zmax)):
                         assigned[pidx + pi] = True
                         halo_assigned = True
                         pi += 1
@@ -297,8 +399,8 @@ class ADDGALSModel(GalaxyModel):
             self.nbody.domain.rank, len(z), end - start))
         sys.stdout.flush()
 
-        # sort galaxies by density
-        idx = density.argsort()
+        # sort galaxies by magnitude
+        idx = mag.argsort()
         z = z[idx]
         mag = mag[idx]
         density = density[idx]
@@ -468,8 +570,8 @@ class ADDGALSModel(GalaxyModel):
                   self.rdelModel.lcenModel['b'][idx],
                   self.rdelModel.lcenModel['k'][idx]]
 
-        assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
-                                         z_halo, params, self.rdelModel.scatter)
+        assigned, lcen, bad = assignLcenNodens(z, mag, dens, mass_halo, density_halo,
+                                               z_halo, params, self.rdelModel.scatter)
 
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
