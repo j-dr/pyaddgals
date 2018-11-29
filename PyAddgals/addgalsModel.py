@@ -1027,7 +1027,8 @@ class ColorModel(object):
     def __init__(self, nbody, trainingSetFile=None, redFractionModelFile=None,
                  filters=None, band_shift=0.1, use_redfraction=True,
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_z=None, rf_m=None,
-                 rf_zm=None, rf_b=None, Q=0.0, no_colors=False, **kwargs):
+                 rf_zm=None, rf_b=None, Q=0.0, no_colors=False,
+                 piecewise_mag_evolution=False, **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -1053,6 +1054,7 @@ class ColorModel(object):
         self.rf_zm = rf_zm
         self.rf_b = rf_b
         self.Q = Q
+        self.piecewise_mag_evolution = piecewise_mag_evolution
         self.no_colors = no_colors
 
         if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
@@ -1473,8 +1475,15 @@ class ColorModel(object):
         sys.stdout.flush()
 
         start = time()
-        if self.use_redfraction:
+        if self.piecewise_mag_evolution:
+            zidx = z > self.Q[2]
+            mag_evol = mag + self.Q[0] * (1. / (1 + z.reshape(-1, 1)) - 1. / (1 + 0.1))
+            mag_evol[zidx] = (mag + self.Q[1] * (1. / (1 + z.reshape(-1, 1)) - 1. / (1 + 0.1)) +
+                              self.Q[0] * (1. / (1 + self.Q[2]) - 1. / (1 + 0.1)))
+        else:
             mag_evol = mag + self.Q * (1 / (1 + z) - 1 / 1.1)
+
+        if self.use_redfraction:
             redfraction = self.computeRedFraction(z, mag_evol)
         else:
             redfraction = np.ones_like(z)
