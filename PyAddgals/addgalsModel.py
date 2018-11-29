@@ -1477,8 +1477,8 @@ class ColorModel(object):
         start = time()
         if self.piecewise_mag_evolution:
             zidx = z > self.Q[2]
-            mag_evol = mag + self.Q[0] * (1. / (1 + z.reshape(-1, 1)) - 1. / (1 + 0.1))
-            mag_evol[zidx] = (mag + self.Q[1] * (1. / (1 + z.reshape(-1, 1)) - 1. / (1 + 0.1)) +
+            mag_evol = mag + self.Q[0] * (1. / (1 + z) - 1. / (1 + 0.1))
+            mag_evol[zidx] = (mag + self.Q[1] * (1. / (1 + z) - 1. / (1 + 0.1)) +
                               self.Q[0] * (1. / (1 + self.Q[2]) - 1. / (1 + 0.1)))
         else:
             mag_evol = mag + self.Q * (1 / (1 + z) - 1 / 1.1)
