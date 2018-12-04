@@ -241,7 +241,7 @@ class LuminosityFunction(object):
         elif domain.fmt == 'Snapshot':
             z_min = domain.zmean
             z_max = domain.zmean
-            n_gal = self.integrateL(domain.zmean, domain.getVolume()) * overdens
+            n_gal = int(self.integrateL(domain.zmean, domain.getVolume()) * overdens)
             z_samp = np.zeros(n_gal) + domain.zmean
 
         return z_samp
