@@ -154,7 +154,7 @@ class buzzard_flat_cat(object):
 
             if self.nzcut:
                 sflag[obs['MAG_R'] > (
-                    22.00718733 + 1.21691296 * pz['MEAN_Z'])] = 0
+                    20.8755386 + 2.88949793 * truth['Z'])] = 0
 
             truth = truth[sflag > 0]
             obs = obs[sflag > 0]
@@ -399,7 +399,7 @@ class buzzard_flat_cat(object):
                         '_{}'.format(self.obsdir[:-1]) + '_pz.fits', 'rw')
 
         gfiles = glob.glob(self.odir + '/' +
-                           self.simname + '_{}'.format(self.obsdir[:-1]) + 
+                           self.simname + '_{}'.format(self.obsdir[:-1]) +
                            '_gold*[0-9].fits')
         size = len(gfiles)
 

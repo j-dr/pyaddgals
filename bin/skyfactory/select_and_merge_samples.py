@@ -80,14 +80,9 @@ def WL_cuts(obs, truth, pz, sys_map_vals,
             maglim_cut_factor, rgrp_cut, z_col):
 
     psf_size = 0.26 * 0.5 * sys_map_vals['psf_fwhm_r']
-    mag_mask = obs['MAG_R'] < (-2.5 * np.log10(maglim_cut_factor) + sys_map_vals['maglim_r'])
-    print('maglim cut: {}'.format(np.max((-2.5 * np.log10(maglim_cut_factor) + sys_map_vals['maglim_r']))))
+    mag_mask = ((obs['MAGERR_R'] < maglim_cut_factor) & (obs['MAGERR_I'] < maglim_cut_factor) &
+                (obs['MAGERR_Z'] < maglim_cut_factor))
     size_mask = np.sqrt(obs['SIZE']**2 + psf_size**2) > rgrp_cut * psf_size
-
-#    if z_col=='Z':
-#        z = truth[z_col]
-#    else:
-#        z = pz[z_col]
 
     other_mask = (np.isfinite(
         sys_map_vals['maglim_r']) * np.isfinite(sys_map_vals['psf_fwhm_r']))
