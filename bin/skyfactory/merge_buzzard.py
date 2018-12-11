@@ -404,13 +404,16 @@ class buzzard_flat_cat(object):
         size = len(gfiles)
 
         for i in range(size):
-
-            gold = fio.read(self.odir + '/' +
-                self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(i))
-            shape = fio.read(self.odir + '/' +
-                self.simname + '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(i))
-            photoz = fio.read(self.odir + '/' +
-                self.simname + '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(i))
+            try:
+                gold = fio.read(self.odir + '/' +
+                    self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(i))
+                shape = fio.read(self.odir + '/' +
+                    self.simname + '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(i))
+                photoz = fio.read(self.odir + '/' +
+                    self.simname + '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(i))
+            except OSError as e:
+                print('File rank {} has no galaxies in it'.format(i))
+                continue
 
             idx = ((gold['mag_g'] < 99) & (gold['mag_r'] < 99) & (gold['mag_i'] < 99) & (gold['mag_z'] < 99) &
                    np.isfinite(gold['mag_g']) & np.isfinite(
