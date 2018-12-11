@@ -318,7 +318,7 @@ class buzzard_flat_cat(object):
         sflag[sample['WL_FLAG'] == 1] = 2
 
         if self.nzcut:
-            sflag[obs['MAG_R'] > (22.07731412 + 1.08338339 * truth['Z'])] = 0
+            sflag[obs['MAG_R'] > (20.8755386 + 2.88949793 * truth['Z'])] = 0
 
         truth = truth[sflag > 0]
         obs = obs[sflag > 0]
