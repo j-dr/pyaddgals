@@ -405,11 +405,11 @@ class buzzard_flat_cat(object):
 
         for i in range(size):
 
-            gold = fio.read(
+            gold = fio.read(self.odir + '/' +
                 self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(i))
-            shape = fio.read(
+            shape = fio.read(self.odir + '/' +
                 self.simname + '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(i))
-            photoz = fio.read(
+            photoz = fio.read(self.odir + '/' +
                 self.simname + '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(i))
 
             idx = ((gold['mag_g'] < 99) & (gold['mag_r'] < 99) & (gold['mag_i'] < 99) & (gold['mag_z'] < 99) &
