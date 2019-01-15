@@ -38,11 +38,11 @@ def load_model(cfg):
 def write_halo_file(cfg, outpath):
 
     model, config, d_config = load_model(cfg)
-    parentfiles = cfg['NBody']['halofile']
+    parentfiles = config['NBody']['halofile']
     fname = parentfiles[0].split('/')[-1]
     outfiles = [f.replace(fname, 'out.list') for f in parentfiles]
 
-    cdict_parent = model.nBody.haloCatalog.getColumnDict('BCCLightcone')
+    cdict_parent = model.nbody.haloCatalog.getColumnDict('BCCLightcone')
     cdict_out = model.nbody.haloCatalog.getColumnDict('OutLightcone')
 
     for i in range(len(parentfiles)):
