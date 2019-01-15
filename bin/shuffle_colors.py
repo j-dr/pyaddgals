@@ -1,8 +1,10 @@
 from glob import glob
 from mpi4py import MPI
 import numpy as np
+import healpy as hp
 import fitsio
 import sys
+import os
 
 from PyAddgals.config import parseConfig
 from PyAddgals.cosmology import Cosmology
@@ -111,7 +113,7 @@ def shuffleColors(mag, z, swap, rankrhalo, ir, dm=0.1, dz=0.05, dr=0.05):
     return idx_swap
 
 
-def load_model():
+def load_model(cfg):
 
     config_file = 'addgals.cfg'
     config = parseConfig(config_file)
@@ -136,11 +138,11 @@ def load_model():
     return model, filters
 
 
-def reassign_colors(g, mr, mm, mhalo=6e12):
+def reassign_colors(g, h, mr, mm, mhalo=6e12):
 
     model, filters = load_model()
 
-    centrals = g[(g['CENTRAL'] == 1) & (g['M200'] > mhalo)]
+    centrals = h[(h['HOST_HALOID'] == h['HALOID']) & (h['M200B'] > mhalo)]
     cpos = np.zeros((len(centrals), 3))
 
     pos = np.zeros((len(g), 3))
@@ -192,19 +194,49 @@ def reassign_colors(g, mr, mm, mhalo=6e12):
 if __name__ == '__main__':
 
     filepath = sys.argv[1]
-    config = sys.argv[2]
-    mr = sys.argv[3]
-    mm = sys.argv[4]
+    hfilepath = sys.argv[2]
+    config = sys.argv[3]
+    mr = sys.argv[4]
+    mm = sys.argv[5]
 
     files = glob(filepath)
     comm = MPI.COMM_WORLD
     size = comm.size
     rank = comm.rank
 
+    ud_map = hp.ud_grade(np.arange(12 * 2**2), 8)
+
     files = files[rank::size]
+
     for i in range(len(files)):
         g = fitsio.read(files[i])
+        r = np.sqrt(g['PX']**2 + g['PY']**2 + g['PZ']**2)
 
-    g = reassign_colors(g, mr, mm, mhalo=6e12)
-    ofile = files[i].replace('fits', 'swapped.fits')
-    fitsio.write(ofile, g)
+        pix8 = int(g.split('.')[-1])
+        pix = ud_map[pix8]
+
+        h = fitsio.read(hfilepath.format(pix), columns=['PX', 'PY', 'PZ', 'M200B'])
+
+        config = parseConfig(config)
+
+        cc = config['Cosmology']
+        nb_config = config['NBody']
+
+        cosmo = Cosmology(**cc)
+
+        domain = Domain(cosmo, **nb_config.pop('Domain'))
+        domain.decomp(None, 1, 1)
+
+        for d in domain.yieldDomains():
+            nbody = NBody(cosmo, d, **nb_config)
+            idx = ((domain.rbins[domain.boxnum][domain.rbin] <= r) &
+                   (r < domain.rbins[domain.boxnum][domain.rbin + 1]))
+
+            gi = reassign_colors(g[idx], mr, mm, mhalo=6e12)
+            ofile = files[i].replace('fits', 'swapped.fits')
+
+            if os.path.exists(ofile):
+                with fitsio.FITS(ofile, 'rw') as f:
+                    f[-1].append(gi)
+            else:
+                fitsio.write(ofile, gi)
