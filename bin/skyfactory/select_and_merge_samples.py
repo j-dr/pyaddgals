@@ -176,10 +176,14 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     # Read in gold masks
-    if gold_fp is not None:
+    if cfg['gold']['gold_footprint_fn'] is not None:
         gold_fp = hu.readMap(cfg['gold']['gold_footprint_fn'])
-    if gold_br is not None:
+    else:
+        gold_fp = None
+    if cfg['gold']['gold_badreg_fn'] is not None:
         gold_br = hu.readMap(cfg['gold']['gold_badreg_fn'])
+    else:
+        gold_br = None
 
     pzpath = cfg['sim'].pop('pzpath', None)
 
