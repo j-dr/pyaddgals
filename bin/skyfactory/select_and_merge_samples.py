@@ -63,15 +63,13 @@ def gold_cuts(gal_data, ra_col='RA', dec_col='DEC',
               gold_fp_map=None, gold_br_map=None):
 
     sys.stdout.flush()
-    if gold_fp_map is None:
-        gold_fp_map = hu.readMap(gold_footprint_fn)
-    if gold_br_map is None:
-        gold_br_map = hu.readMap(gold_badreg_fn)
 
     sys.stdout.flush()
 
-    use = ((gold_fp_map.get_mapval(gal_data[ra_col], gal_data[dec_col]) >= 1) *
-           (gold_br_map.get_mapval(gal_data[ra_col], gal_data[dec_col]) == 0))  # LSS uses < 3?
+    use = gold_fp_map.get_mapval(gal_data[ra_col], gal_data[dec_col]) >= 1
+
+    if gold_br_map is not None:
+        use *= (gold_br_map.get_mapval(gal_data[ra_col], gal_data[dec_col]) == 0)
     sys.stdout.flush()
     return use.astype(bool)
 
@@ -178,8 +176,10 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     # Read in gold masks
-    gold_fp = hu.readMap(cfg['gold']['gold_footprint_fn'])
-    gold_br = hu.readMap(cfg['gold']['gold_badreg_fn'])
+    if gold_fp is not None:
+        gold_fp = hu.readMap(cfg['gold']['gold_footprint_fn'])
+    if gold_br is not None:
+        gold_br = hu.readMap(cfg['gold']['gold_badreg_fn'])
 
     pzpath = cfg['sim'].pop('pzpath', None)
 
@@ -231,7 +231,7 @@ if __name__ == "__main__":
             sys.stdout.flush()
             if 'sys_maps' in scfg.keys():
                 for name, mfile in scfg['sys_maps'].items():
-                    if name not in sys_map_data[sample].keys():
+                    if (name not in sys_map_data[sample].keys()) & (name is not None):
                         print('reading {}'.format(mfile))
                         sys.stdout.flush()
                         m = read_partial_map(mfile, masked_val=np.nan)

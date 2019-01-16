@@ -164,7 +164,7 @@ def reassign_colors(g, h, mr, mm, cfg, mhalo=6e12):
     isred = gr > (-0.22 - 0.05 * g['AMAG'][:, 1])
 
     rankrhalo = rankRhalo(g['Z_COS'], g['MAG_R_EVOL'], np.log10(rhalo14), 0.1, 0.3)
-    swap, pswap = determineSwap(g['MAG_R_EVOL'], rankrhalo, isred, 1, 1.0)
+    swap, pswap = determineSwap(g['MAG_R_EVOL'], rankrhalo, isred, mm, mr)
     idx_swap = shuffleColors(g['MAG_R_EVOL'], g['Z_COS'], swap, rankrhalo, isred)
 
     from copy import copy

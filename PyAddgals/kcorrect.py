@@ -256,16 +256,13 @@ class KCorrect(object):
 
             filter_lambda_k, filter_pass_k = self.zero_pad(
                 template_lambda, filter_lambda[k], filter_pass[k])
-            print(filter_lambda_k)
-            print(band_shift[k])
-            print(filter_lambda_k / (1 + band_shift[k]))
-            print(filter_pass_k)
+
             filter_pass_spline = ius(
                 filter_lambda_k / (1 + band_shift[k]), filter_pass_k, k=1)
             filter_pass_interp = filter_pass_spline(template_lambda_mean)
             scale = 1 / np.sum(filter_pass_interp *
                                dlambda * self.abfnu * self.c / template_lambda_mean)
-            print(scale)
+
             for i in range(nz):
                 z = zvals[i]
                 filter_pass_interp = filter_pass_spline(
