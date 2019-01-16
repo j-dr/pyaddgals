@@ -6,6 +6,7 @@ from PyAddgals.addgalsModel import ADDGALSModel
 
 from mpi4py import MPI
 from glob import glob
+from copy import copy
 import numpy as np
 import fitsio
 import sys
@@ -37,7 +38,7 @@ def main(config, outpath, magflag):
     nk = len(filters)
 
     for f in files:
-        g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R', 'MU'])
+        g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R_EVOL', 'MU'])
         mags = np.zeros(len(g), dtype=np.dtype([('TMAG', (np.float, nk)),
                                                 ('AMAG', (np.float, nk)),
                                                 ('LMAG', (np.float, nk)),
@@ -47,7 +48,10 @@ def main(config, outpath, magflag):
                                                 ('IVAR', (np.float, nk)),
                                                 ('Z', np.float)]))
         mags['Z'] = g['Z']
-        mags['TMAG'], mags['AMAG'] = model.colorModel.computeMagnitudes(g['MAG_R'],
+        z_a = copy(mags['Z'])
+        z_a[z_a < 1e-6] = 1e-6
+
+        mags['TMAG'], mags['AMAG'] = model.colorModel.computeMagnitudes(g['MAG_R_EVOL'],
                                                                         g['Z'],
                                                                         train['COEFFS'][g['SEDID']],
                                                                         filters)

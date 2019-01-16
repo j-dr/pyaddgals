@@ -40,7 +40,7 @@ def write_halo_file(cfg, outpath):
     model, config, d_config = load_model(cfg)
     parentfiles = config['NBody']['halofile']
     fname = parentfiles[0].split('/')[-1]
-    outfiles = [f.replace(fname, 'out.list') for f in parentfiles]
+    outfiles = [f.replace(fname, 'out_0.list') for f in parentfiles]
 
     cdict_parent = model.nbody.haloCatalog.getColumnDict('BCCLightcone')
     cdict_out = model.nbody.haloCatalog.getColumnDict('OutLightcone')
@@ -70,8 +70,8 @@ def write_halo_file(cfg, outpath):
         vel[:, 1] = matched_out['VY']
         vel[:, 2] = matched_out['VZ']
 
-        matched_out['Z_COS'] = model.nbody.cosmo.zofr(r)
-        matched_out['Z'] = np.sum(vec * vel, axis=1) / \
+        matched_out['Z_COS'] = model.nbody.cosmo.zofR(r)
+        matched_out['Z'] = matched_out['Z_COS'] + np.sum(vec * vel, axis=1) / \
             np.sqrt(np.sum(vec**2, axis=1)) / 299792.458
 
         del vel
@@ -85,11 +85,11 @@ def write_halo_file(cfg, outpath):
         matched_out['RA'] = 0.
         matched_out['DEC'] = 0.
 
-        pix = hp.vec2pix(2, vec[:, 0], vec[:, 1], vec[:, 2])
+        pix = hp.vec2pix(2, vec[:, 0], vec[:, 1], vec[:, 2], nest=True)
         upix = np.unique(pix)
 
         for p in upix:
-            idx = pix == upix
+            idx = pix == p
             opath = outpath.format(p)
 
             if os.path.exists(opath):

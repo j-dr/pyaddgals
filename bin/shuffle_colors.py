@@ -115,8 +115,7 @@ def shuffleColors(mag, z, swap, rankrhalo, ir, dm=0.1, dz=0.05, dr=0.05):
 
 def load_model(cfg):
 
-    config_file = 'addgals.cfg'
-    config = parseConfig(config_file)
+    config = parseConfig(cfg)
 
     comm = MPI.COMM_WORLD
 
@@ -138,9 +137,9 @@ def load_model(cfg):
     return model, filters
 
 
-def reassign_colors(g, h, mr, mm, mhalo=6e12):
+def reassign_colors(g, h, mr, mm, cfg, mhalo=6e12):
 
-    model, filters = load_model()
+    model, filters = load_model(cfg)
 
     centrals = h[(h['HOST_HALOID'] == h['HALOID']) & (h['M200B'] > mhalo)]
     cpos = np.zeros((len(centrals), 3))
@@ -166,7 +165,7 @@ def reassign_colors(g, h, mr, mm, mhalo=6e12):
 
     rankrhalo = rankRhalo(g['Z_COS'], g['MAG_R_EVOL'], np.log10(rhalo14), 0.1, 0.3)
     swap, pswap = determineSwap(g['MAG_R_EVOL'], rankrhalo, isred, 1, 1.0)
-    idx_swap = shuffleColors(['MAG_R_EVOL'], g['Z_COS'], swap, rankrhalo, isred)
+    idx_swap = shuffleColors(g['MAG_R_EVOL'], g['Z_COS'], swap, rankrhalo, isred)
 
     from copy import copy
     sedid_swap = g['SEDID'][swap]
@@ -175,7 +174,7 @@ def reassign_colors(g, h, mr, mm, mhalo=6e12):
     temp_sedid[swap] = sedid_swap1
     temp_sedid[idx_swap] = sedid_swap
 
-    coeffs = model.colormodel.trainingSet[temp_sedid]['COEFFS']
+    coeffs = model.colorModel.trainingSet[temp_sedid]['COEFFS']
 
     # make sure we don't have any negative redshifts
     z_a = copy(g['Z'])
@@ -195,7 +194,7 @@ if __name__ == '__main__':
 
     filepath = sys.argv[1]
     hfilepath = sys.argv[2]
-    config = sys.argv[3]
+    cfg = sys.argv[3]
     mr = sys.argv[4]
     mm = sys.argv[5]
 
@@ -204,7 +203,7 @@ if __name__ == '__main__':
     size = comm.size
     rank = comm.rank
 
-    ud_map = hp.ud_grade(np.arange(12 * 2**2), 8)
+    ud_map = hp.ud_grade(np.arange(12 * 2**2), 8, order_in='NESTED', order_out='NESTED')
 
     files = files[rank::size]
 
@@ -212,12 +211,12 @@ if __name__ == '__main__':
         g = fitsio.read(files[i])
         r = np.sqrt(g['PX']**2 + g['PY']**2 + g['PZ']**2)
 
-        pix8 = int(g.split('.')[-1])
+        pix8 = int(files[i].split('.')[-2])
         pix = ud_map[pix8]
 
-        h = fitsio.read(hfilepath.format(pix), columns=['PX', 'PY', 'PZ', 'M200B'])
-
-        config = parseConfig(config)
+        h = fitsio.read(hfilepath.format(pix), columns=['PX', 'PY', 'PZ', 'HOST_HALOID', 'HALOID', 'M200B'])
+        hr = np.sqrt(h['PX']**2 + h['PY']**2 + h['PZ']**2)
+        config = parseConfig(cfg)
 
         cc = config['Cosmology']
         nb_config = config['NBody']
@@ -229,10 +228,13 @@ if __name__ == '__main__':
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
-            idx = ((domain.rbins[domain.boxnum][domain.rbin] <= r) &
-                   (r < domain.rbins[domain.boxnum][domain.rbin + 1]))
+            idx = ((domain.rbins[d.boxnum][d.rbin] <= r) &
+                   (r < domain.rbins[d.boxnum][d.rbin + 1]))
 
-            gi = reassign_colors(g[idx], mr, mm, mhalo=6e12)
+            hidx = (((domain.rbins[d.boxnum][d.rbin]-100) <= hr) &
+                   (hr < (domain.rbins[d.boxnum][d.rbin + 1]+100)))
+
+            gi = reassign_colors(g[idx], h[hidx], mr, mm, cfg, mhalo=6e12)
             ofile = files[i].replace('fits', 'swapped.fits')
 
             if os.path.exists(ofile):
