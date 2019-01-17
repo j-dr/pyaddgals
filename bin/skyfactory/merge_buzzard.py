@@ -402,7 +402,7 @@ class buzzard_flat_cat(object):
                            self.simname + '_{}'.format(self.obsdir[:-1]) +
                            '_gold*[0-9].fits')
         size = len(gfiles)
-
+        count = 0
         for i in range(size):
             try:
                 gold = fio.read(self.odir + '/' +
@@ -427,7 +427,7 @@ class buzzard_flat_cat(object):
                 photoz['mc-z'] = bpz['Z_MC']
                 photoz['mode-z'] = bpz['MODE_Z']
 
-            if i == 0:
+            if count == 0:
                 gout.write(gold[idx])
                 sout.write(shape[idx])
                 pout.write(photoz[idx])
@@ -435,6 +435,7 @@ class buzzard_flat_cat(object):
                 gout[-1].append(gold[idx])
                 sout[-1].append(shape[idx])
                 pout[-1].append(photoz[idx])
+            count += 1
 
 
 if __name__ == '__main__':
