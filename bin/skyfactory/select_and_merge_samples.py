@@ -44,7 +44,7 @@ def sys_map_cuts(gal_data, sys_map_data=None, ra_col='ra',
     """Get systematic values, and cut data without sys data"""
 
     sys_map_vals = {}
-    mask = np.ones(len(gal_data), dtype='bool')
+    use = np.ones(len(gal_data), dtype='bool')
 
     for i, (name, m) in enumerate(sys_map_data.items()):
 
