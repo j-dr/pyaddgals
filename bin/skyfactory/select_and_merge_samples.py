@@ -176,11 +176,11 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     # Read in gold masks
-    if cfg['gold']['gold_footprint_fn'] is not None:
+    if 'gold_footprint_fn' in list(cfg['gold'].keys()):
         gold_fp = hu.readMap(cfg['gold']['gold_footprint_fn'])
     else:
         gold_fp = None
-    if cfg['gold']['gold_badreg_fn'] is not None:
+    if 'gold_badreg_fn' in list(cfg['gold'].keys()):
         gold_br = hu.readMap(cfg['gold']['gold_badreg_fn'])
     else:
         gold_br = None
