@@ -171,7 +171,7 @@ class buzzard_flat_cat(object):
             gold['dec'][lenst:lenst + len(truth)] = obs['DEC']
             gold['redshift'][lenst:lenst + len(truth)] = truth['Z']
             gold['hpix'][lenst:lenst + len(truth)] = hp.ang2pix(
-                4096, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
+                16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
             gold['lss-sample'][lenst:lenst + len(truth)] = obs['LSS_FLAG']
             gold['wl-sample'][lenst:lenst + len(truth)] = obs['WL_FLAG']
             gold['mag_r'][lenst:lenst + len(truth)] = obs['MAG_R']
@@ -340,7 +340,7 @@ class buzzard_flat_cat(object):
         gold['dec'] = obs['DEC']
         gold['redshift'] = truth['Z']
         gold['hpix'] = hp.ang2pix(
-            4096, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
+            16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
         gold['lss-sample'] = sample['LSS_FLAG']
         gold['wl-sample'] = sample['WL_FLAG']
         gold['mag_r'] = obs['MAG_R']
@@ -453,7 +453,7 @@ class buzzard_flat_cat(object):
                     }
 
         gold_inc = {'coadd_object_id': 'coadd_object_id',
-                    'hpix': 'hpix',
+                    'hpix_16384': 'hpix',
                     'flags_gold': 'flags_gold',
                     'ra': 'ra',
                     'dec': 'dec',
