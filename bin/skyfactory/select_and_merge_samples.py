@@ -175,7 +175,7 @@ if __name__ == "__main__":
     print(cfg)
     sys.stdout.flush()
 
-    use_hdf5 = config.pop('hdf5', False)
+    use_hdf5 = cfg.pop('hdf5', False)
 
     # Read in gold masks
     if 'gold_footprint_fn' in list(cfg['gold'].keys()):
