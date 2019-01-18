@@ -175,6 +175,8 @@ if __name__ == "__main__":
     print(cfg)
     sys.stdout.flush()
 
+    use_hdf5 = config.pop('hdf5', False)
+
     # Read in gold masks
     if 'gold_footprint_fn' in list(cfg['gold'].keys()):
         gold_fp = hu.readMap(cfg['gold']['gold_footprint_fn'])
@@ -282,4 +284,7 @@ if __name__ == "__main__":
     comm.Barrier()
 
     if rank == 0:
-        flatcat.merge_rank_files(merge_with_bpz=cfg['merge']['merge_with_bpz'])
+        if use_hdf5:
+            flatcat.merge_rank_files_h5()
+        else:
+            flatcat.merge_rank_files(merge_with_bpz=cfg['merge']['merge_with_bpz'])

@@ -2,6 +2,7 @@ from mpi4py import MPI
 import numpy as np
 import fitsio as fio
 import healpy as hp
+import h5py
 import glob
 import yaml
 import os
@@ -436,6 +437,111 @@ class buzzard_flat_cat(object):
                 sout[-1].append(shape[idx])
                 pout[-1].append(photoz[idx])
             count += 1
+
+    def merge_rank_files_h5(self, merge_with_bpz=False):
+        mcal_inc = {'id': 'coadd_object_id',
+                    'flags': 'flags',
+                    'mask_frac': 'weight',
+                    'ra': 'ra',
+                    'dec': 'dec',
+                    'e1': 'e1',
+                    'e2': 'e2',
+                    'g1': 'g1',
+                    'g2': 'g2',
+                    'kappa': 'kappa',
+                    'size': 'size',
+                    }
+
+        gold_inc = {'coadd_object_id': 'coadd_object_id',
+                    'hpix': 'hpix',
+                    'flags_gold': 'flags_gold',
+                    'ra': 'ra',
+                    'dec': 'dec',
+                    'z': 'redshift',
+                    'mag_g': 'mag_g',
+                    'magerr_g': 'mag_err_g',
+                    'mag_r': 'mag_r',
+                    'magerr_r': 'mag_err_r',
+                    'mag_i': 'mag_i',
+                    'magerr_i': 'mag_err_i',
+                    'mag_z': 'mag_z',
+                    'magerr_z': 'mag_err_z',
+                    'ivar_g': 'ivar_g',
+                    'ivar_r': 'ivar_r',
+                    'ivar_i': 'ivar_i',
+                    'ivar_z': 'ivar_z'}
+
+        bpz_inc = {'coadd_object_id': 'coadd_object_id',
+                   'zmc_sof': 'mc-z',
+                   'zmean_sof': 'mean-z'}
+
+        gout = h5py.File(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'rw')
+        sout = h5py.Fits(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_shape.h5', 'rw')
+        pout = h5py.Fits(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'rw')
+
+        gfiles = glob.glob(self.odir + '/' +
+                           self.simname + '_{}'.format(self.obsdir[:-1]) +
+                           '_gold*[0-9].fits')
+        size = len(gfiles)
+        total_length = 0
+        iter_end = 0
+
+        for i in range(size):
+            try:
+                hdr = fio.read_header(self.odir + '/' +
+                                      self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                      '_gold.{}.fits'.format(i))
+                total_length += hdr['NAXIS2']
+
+            except OSError as e:
+                continue
+
+        for i in range(size):
+            try:
+                gold = fio.read(self.odir + '/' +
+                                self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                '_gold.{}.fits'.format(i))
+                shape = fio.read(self.odir + '/' +
+                                 self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                 '_shape.{}.fits'.format(i))
+                bpz = fio.read(self.odir + '/' +
+                               self.simname + '_{}'.format(self.obsdir[:-1]) +
+                               '_pz.{}.fits'.format(i))
+            except OSError as e:
+                print('File rank {} has no galaxies in it'.format(i))
+                continue
+
+            lencat = len(gold)
+
+            for name in gold_inc:
+                if i == 0:
+                    gout.create_dataset('catalog/gold/' + gold_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=gold.dtype[name],
+                                        chunks=(1000000,))
+                gout['catalog/gold/' + gold_inc[name]][iter_end:iter_end + lencat] = gold[name]
+
+            for name in mcal_inc:
+                if i == 0:
+                    gout.create_dataset('catalog/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=shape.dtype[name],
+                                        chunks=(1000000,))
+                sout['catalog/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+
+            for name in bpz_inc:
+                if i == 0:
+                    gout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=bpz.dtype[name],
+                                        chunks=(1000000,))
+                pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
+
+            iter_end += lencat
+
+            gout.close()
+            pout.close()
+            sout.close()
 
 
 if __name__ == '__main__':
