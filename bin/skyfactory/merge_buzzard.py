@@ -525,10 +525,10 @@ class buzzard_flat_cat(object):
 
             for name in mcal_inc:
                 if i == 0:
-                    gout.create_dataset('catalog/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                    gout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
                                         shape=(total_length,), dtype=shape.dtype[name],
                                         chunks=(1000000,))
-                sout['catalog/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+                sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
 
             for name in bpz_inc:
                 if i == 0:
