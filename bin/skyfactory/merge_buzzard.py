@@ -493,7 +493,7 @@ class buzzard_flat_cat(object):
             try:
                 hdr = fio.read_header(self.odir + '/' +
                                       self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                      '_gold.{}.fits'.format(i))
+                                      '_gold.{}.fits'.format(i), 1)
                 total_length += hdr['NAXIS2']
 
             except OSError as e:
