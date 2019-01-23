@@ -477,9 +477,9 @@ class buzzard_flat_cat(object):
 
         gout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
-        sout = h5py.Fits(self.odir + '/' + self.simname +
+        sout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_shape.h5', 'w')
-        pout = h5py.Fits(self.odir + '/' + self.simname +
+        pout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'w')
 
         gfiles = glob.glob(self.odir + '/' +
