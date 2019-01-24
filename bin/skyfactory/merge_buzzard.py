@@ -439,7 +439,7 @@ class buzzard_flat_cat(object):
             count += 1
 
     def merge_rank_files_h5(self, merge_with_bpz=False):
-        mcal_inc = {'coadd_object_id': 'coadd_object_id',
+        mcal_inc = {'coadd_objects_id': 'coadd_object_id',
                     'flags': 'flags',
                     'weight' : 'mask_frac',
                     'ra': 'ra',
@@ -452,7 +452,7 @@ class buzzard_flat_cat(object):
                     'size': 'size',
                     }
 
-        gold_inc = {'coadd_object_id': 'coadd_object_id',
+        gold_inc = {'coadd_objects_id': 'coadd_object_id',
                     'hpix': 'hpix_16384',
                     'flags_gold': 'flags_gold',
                     'ra': 'ra',
@@ -471,7 +471,7 @@ class buzzard_flat_cat(object):
                     'ivar_i': 'ivar_i',
                     'ivar_z': 'ivar_z'}
 
-        bpz_inc = {'coadd_object_id': 'coadd_object_id',
+        bpz_inc = {'coadd_objects_id': 'coadd_object_id',
                    'mc-z': 'zmc_sof',
                    'mean-z': 'zmean_sof'}
 
