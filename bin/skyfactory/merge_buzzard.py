@@ -536,7 +536,8 @@ class buzzard_flat_cat(object):
                                         shape=(total_length,), dtype=bpz.dtype[name],
                                         chunks=(1000000,))
                 pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
-
+                
+            #because shifter is dumb
             iter_end += lencat
 
             gout.close()
