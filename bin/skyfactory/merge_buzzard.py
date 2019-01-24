@@ -439,9 +439,9 @@ class buzzard_flat_cat(object):
             count += 1
 
     def merge_rank_files_h5(self, merge_with_bpz=False):
-        mcal_inc = {'id': 'coadd_object_id',
+        mcal_inc = {'coadd_object_id': 'coadd_object_id',
                     'flags': 'flags',
-                    'mask_frac': 'weight',
+                    'weight' : 'mask_frac',
                     'ra': 'ra',
                     'dec': 'dec',
                     'e1': 'e1',
@@ -453,11 +453,11 @@ class buzzard_flat_cat(object):
                     }
 
         gold_inc = {'coadd_object_id': 'coadd_object_id',
-                    'hpix_16384': 'hpix',
+                    'hpix': 'hpix_16384',
                     'flags_gold': 'flags_gold',
                     'ra': 'ra',
                     'dec': 'dec',
-                    'z': 'redshift',
+                    'redshift': 'z',
                     'mag_g': 'mag_g',
                     'magerr_g': 'mag_err_g',
                     'mag_r': 'mag_r',
@@ -472,8 +472,8 @@ class buzzard_flat_cat(object):
                     'ivar_z': 'ivar_z'}
 
         bpz_inc = {'coadd_object_id': 'coadd_object_id',
-                   'zmc_sof': 'mc-z',
-                   'zmean_sof': 'mean-z'}
+                   'mc-z': 'zmc_sof',
+                   'mean-z': 'zmean_sof'}
 
         gout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
