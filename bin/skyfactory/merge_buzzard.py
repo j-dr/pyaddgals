@@ -189,6 +189,8 @@ class buzzard_flat_cat(object):
                 gold['ivar_i'][lenst:lenst + len(truth)] = obs['IVAR_I']
                 gold['ivar_z'][lenst:lenst + len(truth)] = obs['IVAR_Z']
 
+            shape['ra'][lenst:lenst + len(truth)] = truth['RA']
+            shape['dec'][lenst:lenst + len(truth)] = truth['DEC']
             shape['coadd_objects_id'][lenst:lenst + len(truth)] = truth['ID']
             shape['e1'][lenst:lenst + len(truth)] = obs['EPSILON1']
             shape['e2'][lenst:lenst + len(truth)] = obs['EPSILON2']
