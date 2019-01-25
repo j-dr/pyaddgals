@@ -283,7 +283,7 @@ class buzzard_flat_cat(object):
         else:
             shape = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
                              + [('ra', 'f4')]
-                             + [('dec', 'f4')]            
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -365,6 +365,8 @@ class buzzard_flat_cat(object):
             gold['ivar_z'] = obs['IVAR_Z']
 
         shape['coadd_objects_id'] = truth['ID']
+        shape['ra'] = obs['RA']
+        shape['dec'] = obs['DEC']
         shape['e1'] = obs['EPSILON1']
         shape['e2'] = obs['EPSILON2']
         shape['g1'] = truth['GAMMA1']
@@ -550,9 +552,9 @@ class buzzard_flat_cat(object):
             #because shifter is dumb
             iter_end += lencat
 
-            gout.close()
-            pout.close()
-            sout.close()
+        gout.close()
+        pout.close()
+        sout.close()
 
 
 if __name__ == '__main__':
