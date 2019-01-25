@@ -266,6 +266,8 @@ class buzzard_flat_cat(object):
 
         if debug:
             shape = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -280,6 +282,8 @@ class buzzard_flat_cat(object):
                              + [('flags', 'i8')])
         else:
             shape = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]            
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
