@@ -87,6 +87,8 @@ class buzzard_flat_cat(object):
 
         if debug:
             shape = np.zeros(self.maxrows, dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -101,6 +103,8 @@ class buzzard_flat_cat(object):
                              + [('flags', 'i8')])
         else:
             shape = np.zeros(self.maxrows, dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -536,7 +540,7 @@ class buzzard_flat_cat(object):
                                         shape=(total_length,), dtype=bpz.dtype[name],
                                         chunks=(1000000,))
                 pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
-                
+
             #because shifter is dumb
             iter_end += lencat
 
