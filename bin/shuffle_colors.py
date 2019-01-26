@@ -1,3 +1,6 @@
+from __future__ import print_function, division
+from halotools.empirical_models import abunmatch
+from copy import copy
 from glob import glob
 from mpi4py import MPI
 import numpy as np
@@ -12,106 +15,6 @@ from PyAddgals.domain import Domain
 from PyAddgals.nBody import NBody
 from PyAddgals.addgalsModel import ADDGALSModel
 from fast3tree import fast3tree
-
-
-def rankRhalo(z, magnitude, rhalo, zwindow, magwindow):
-
-    drhalo = np.max(rhalo) - np.min(rhalo)
-    rankrhalo = np.zeros(len(z))
-
-    pos = np.zeros((len(z), 3))
-    pos[:, 0] = z
-    pos[:, 1] = magnitude
-    pos[:, 2] = rhalo
-
-    max_distances = np.array([zwindow, magwindow, drhalo])
-    neg_max_distances = -1.0 * max_distances
-
-    tree_dsidx = np.random.choice(np.arange(len(z)), size=len(z) // 10)
-    tree_pos = pos[tree_dsidx]
-
-    with fast3tree(tree_pos) as tree:
-
-        for i, p in enumerate(pos):
-
-            tpos = tree.query_box(
-                p + neg_max_distances, p + max_distances, output='pos')
-            tpos = tpos[:, 2]
-            tpos.sort()
-            rankrhalo[i] = tpos.searchsorted(pos[i, 2]) / (len(tpos) + 1)
-
-    return rankrhalo
-
-
-def determineSwap(mag, rankrhalo, isred, mm, mr, magmin=-22, magmax=-19):
-
-    bmag = np.zeros(len(mag))
-    bmag[:] = mag
-    bmag[bmag < magmin] = magmin
-    bmag[bmag > magmax] = magmax
-
-    def pofr(m, rankr):
-        return -mr * (mm * (m + 22)) * (rankr - 0.5)
-
-    pswap = pofr(bmag, rankrhalo)
-    swap = np.random.rand(len(pswap)) < np.abs(pswap)
-    swap[((swap) & (isred) & (pswap > 0)) | ((pswap < 0))] = False
-
-    return swap, pswap
-
-
-def shuffleColors(mag, z, swap, rankrhalo, ir, dm=0.1, dz=0.05, dr=0.05):
-
-    pos = np.zeros((len(mag), 3))
-    idx_swap = np.zeros(len(mag[swap]), dtype=np.int)
-    swapped = np.zeros(len(z), dtype=np.bool)
-
-    pos[:, 0] = mag
-    pos[:, 1] = z
-    pos[:, 2] = np.abs(rankrhalo - 0.5)
-
-    max_distances = np.array([dm, dz, dr])
-    neg_max_distances = np.array([-dm, -dz, -dr])
-
-    with fast3tree(pos) as tree:
-
-        for i, p in enumerate(pos[swap]):
-
-            idx, tpos = tree.query_box(
-                p + neg_max_distances, p + max_distances, output='both')
-            isred_samp = ir[idx]
-            swap_samp = swapped[idx]
-            rankrhalo_samp = rankrhalo[idx]
-            idx = idx[(isred_samp) & (~swap_samp) & (rankrhalo_samp > 0.5)]
-            if len(idx) > 0:
-                swapid = np.random.choice(idx)
-                idx_swap[i] = swapid
-                swapped[swapid] = True
-            else:
-                idx_swap[i] = -1
-
-        print('Number of bad swaps: {}'.format(np.sum(idx_swap == -1)))
-        max_distances *= 5
-        neg_max_distances *= 5
-        isbad, = np.where(idx_swap == -1)
-
-        for i, p in enumerate(pos[swap][idx_swap == -1]):
-            idx, tpos = tree.query_box(
-                p + neg_max_distances, p + max_distances, output='both')
-            isred_samp = ir[idx]
-            swap_samp = swapped[idx]
-            rankrhalo_samp = rankrhalo[idx]
-            idx = idx[(isred_samp) & (~swap_samp) & (rankrhalo_samp > 0.5)]
-            if len(idx) > 0:
-                swapid = np.random.choice(idx)
-                idx_swap[i] = swapid
-                swapped[swapid] = True
-            else:
-                idx_swap[isbad[i]] = -1
-        idx_swap[idx_swap == -1] = np.arange(len(idx_swap))[idx_swap == -1]
-
-    return idx_swap
-
 
 def load_model(cfg):
 
@@ -137,11 +40,11 @@ def load_model(cfg):
     return model, filters
 
 
-def reassign_colors(g, h, mr, mm, cfg, mhalo=6e12):
+def reassign_colors_cam(g, h, cfg, mhalo=12.466, corr=0.749, alpham=0.0689):
 
     model, filters = load_model(cfg)
 
-    centrals = h[(h['HOST_HALOID'] == h['HALOID']) & (h['M200B'] > mhalo)]
+    centrals = h[(h['HOST_HALOID'] == -1) & (h['M200B'] > 10**mhalo)]
     cpos = np.zeros((len(centrals), 3))
 
     pos = np.zeros((len(g), 3))
@@ -153,26 +56,30 @@ def reassign_colors(g, h, mr, mm, cfg, mhalo=6e12):
     cpos[:, 1] = centrals['PY']
     cpos[:, 2] = centrals['PZ']
 
-    rhalo14 = np.zeros(len(pos))
+    rhalo = np.zeros(len(pos))
 
     with fast3tree(cpos) as tree:
         for i in range(len(pos)):
             d = tree.query_nearest_distance(pos[i, :])
-            rhalo14[i] = d
+            rhalo[i] = d
 
+    mr = copy(g['MAG_R_EVOL'])
+    mr[mr<-22] = -22
+    mr[mr>-18] = -18
     gr = g['AMAG'][:, 0] - g['AMAG'][:, 1]
-    isred = gr > (-0.22 - 0.05 * g['AMAG'][:, 1])
 
-    rankrhalo = rankRhalo(g['Z_COS'], g['MAG_R_EVOL'], np.log10(rhalo14), 0.1, 0.3)
-    swap, pswap = determineSwap(g['MAG_R_EVOL'], rankrhalo, isred, 1, 1.0)
-    idx_swap = shuffleColors(g['MAG_R_EVOL'], g['Z_COS'], swap, rankrhalo, isred)
+    idx = np.argsort(rhalo)
+    rhalo_sorted = rhalo[idx]
+    rank_rhalo = np.arange(len(rhalo))/len(rhalo)
+    corr_coeff = corr * (mr + 22) ** (alpham)
+    corr_coeff[corr_coeff > 1] = 1.
+    noisy_rank_rhalo = abunmatch.noisy_percentile(rank_rhalo, corr_coeff)
 
-    from copy import copy
-    sedid_swap = g['SEDID'][swap]
-    sedid_swap1 = g['SEDID'][idx_swap]
-    temp_sedid = copy(g['SEDID'])
-    temp_sedid[swap] = sedid_swap1
-    temp_sedid[idx_swap] = sedid_swap
+    g = g[idx]
+    gr = g['AMAG'][:,0] - g['AMAG'][:,1]
+
+    idx_swap = abunmatch.conditional_abunmatch(g['MAG_R_EVOL'], noisy_rank_rhalo, g['MAG_R_EVOL'], -gr, 99, return_indexes=True)
+    temp_sedid = g['SEDID'][idx_swap]
 
     coeffs = model.colorModel.trainingSet[temp_sedid]['COEFFS']
 
@@ -189,14 +96,14 @@ def reassign_colors(g, h, mr, mm, cfg, mhalo=6e12):
 
     return g
 
-
 if __name__ == '__main__':
 
     filepath = sys.argv[1]
     hfilepath = sys.argv[2]
     cfg = sys.argv[3]
-    mr = sys.argv[4]
-    mm = sys.argv[5]
+    mhalo = float(sys.argv[4])
+    corr = float(sys.argv[5])
+    alpham = float(sys.argv[6])
 
     files = glob(filepath)
     comm = MPI.COMM_WORLD
@@ -207,17 +114,21 @@ if __name__ == '__main__':
 
     files = files[rank::size]
 
+    rbins = np.linspace(0, 4000, 11)
+
     for i in range(len(files)):
+        print(files[i])
         g = fitsio.read(files[i])
         r = np.sqrt(g['PX']**2 + g['PY']**2 + g['PZ']**2)
 
         pix8 = int(files[i].split('.')[-2])
         pix = ud_map[pix8]
-
         h = fitsio.read(hfilepath.format(pix), columns=['PX', 'PY', 'PZ', 'HOST_HALOID', 'HALOID', 'M200B'])
         hr = np.sqrt(h['PX']**2 + h['PY']**2 + h['PZ']**2)
-        config = parseConfig(cfg)
+        hpix = hp.vec2pix(8, h['PX'], h['PY'], h['PZ'], nest=True)
+        print('halo pix in gal pix: {}'.format(np.in1d(pix8, hpix)))
 
+        config = parseConfig(cfg)
         cc = config['Cosmology']
         nb_config = config['NBody']
 
@@ -226,16 +137,28 @@ if __name__ == '__main__':
         domain = Domain(cosmo, **nb_config.pop('Domain'))
         domain.decomp(None, 1, 1)
 
+#        for j in range(len(rbins)-1):
+#            idx = (rbins[j] < r) & (r < rbins[j+1])
+#            hidx  = ((rbins[j] - 50) < hr) & (hr < (rbins[j+1] + 50))
+#            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, corr=corr, alpham=alpham)
+
+#            ofile = files[i].replace('fits', 'cam_allz.fits')
+#            print(ofile)
+#            if os.path.exists(ofile):
+#                with fitsio.FITS(ofile, 'rw') as f:
+#                    f[-1].append(gi)
+#            else:
+#                fitsio.write(ofile, gi)
+
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
             idx = ((domain.rbins[d.boxnum][d.rbin] <= r) &
                    (r < domain.rbins[d.boxnum][d.rbin + 1]))
-
             hidx = (((domain.rbins[d.boxnum][d.rbin]-100) <= hr) &
-                   (hr < (domain.rbins[d.boxnum][d.rbin + 1]+100)))
+                   (hr < (domain.rbins[d.boxnum][d.rbin + 1]+100.)))
 
-            gi = reassign_colors(g[idx], h[hidx], mr, mm, cfg, mhalo=6e12)
-            ofile = files[i].replace('fits', 'swapped.fits')
+            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, corr=corr, alpham=alpham)
+            ofile = files[i].replace('fits', 'cam.fits')
 
             if os.path.exists(ofile):
                 with fitsio.FITS(ofile, 'rw') as f:
