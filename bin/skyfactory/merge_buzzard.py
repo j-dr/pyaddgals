@@ -2,6 +2,7 @@ from mpi4py import MPI
 import numpy as np
 import fitsio as fio
 import healpy as hp
+import h5py
 import glob
 import yaml
 import os
@@ -86,6 +87,8 @@ class buzzard_flat_cat(object):
 
         if debug:
             shape = np.zeros(self.maxrows, dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -100,6 +103,8 @@ class buzzard_flat_cat(object):
                              + [('flags', 'i8')])
         else:
             shape = np.zeros(self.maxrows, dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -170,7 +175,7 @@ class buzzard_flat_cat(object):
             gold['dec'][lenst:lenst + len(truth)] = obs['DEC']
             gold['redshift'][lenst:lenst + len(truth)] = truth['Z']
             gold['hpix'][lenst:lenst + len(truth)] = hp.ang2pix(
-                4096, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
+                16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
             gold['lss-sample'][lenst:lenst + len(truth)] = obs['LSS_FLAG']
             gold['wl-sample'][lenst:lenst + len(truth)] = obs['WL_FLAG']
             gold['mag_r'][lenst:lenst + len(truth)] = obs['MAG_R']
@@ -184,6 +189,8 @@ class buzzard_flat_cat(object):
                 gold['ivar_i'][lenst:lenst + len(truth)] = obs['IVAR_I']
                 gold['ivar_z'][lenst:lenst + len(truth)] = obs['IVAR_Z']
 
+            shape['ra'][lenst:lenst + len(truth)] = truth['RA']
+            shape['dec'][lenst:lenst + len(truth)] = truth['DEC']
             shape['coadd_objects_id'][lenst:lenst + len(truth)] = truth['ID']
             shape['e1'][lenst:lenst + len(truth)] = obs['EPSILON1']
             shape['e2'][lenst:lenst + len(truth)] = obs['EPSILON2']
@@ -259,6 +266,8 @@ class buzzard_flat_cat(object):
 
         if debug:
             shape = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -273,6 +282,8 @@ class buzzard_flat_cat(object):
                              + [('flags', 'i8')])
         else:
             shape = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
+                             + [('ra', 'f4')]
+                             + [('dec', 'f4')]
                              + [('e1', 'f4')]
                              + [('e2', 'f4')]
                              + [('g1', 'f4')]
@@ -339,7 +350,7 @@ class buzzard_flat_cat(object):
         gold['dec'] = obs['DEC']
         gold['redshift'] = truth['Z']
         gold['hpix'] = hp.ang2pix(
-            4096, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
+            16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
         gold['lss-sample'] = sample['LSS_FLAG']
         gold['wl-sample'] = sample['WL_FLAG']
         gold['mag_r'] = obs['MAG_R']
@@ -354,6 +365,8 @@ class buzzard_flat_cat(object):
             gold['ivar_z'] = obs['IVAR_Z']
 
         shape['coadd_objects_id'] = truth['ID']
+        shape['ra'] = obs['RA']
+        shape['dec'] = obs['DEC']
         shape['e1'] = obs['EPSILON1']
         shape['e2'] = obs['EPSILON2']
         shape['g1'] = truth['GAMMA1']
@@ -402,7 +415,7 @@ class buzzard_flat_cat(object):
                            self.simname + '_{}'.format(self.obsdir[:-1]) +
                            '_gold*[0-9].fits')
         size = len(gfiles)
-
+        count = 0
         for i in range(size):
             try:
                 gold = fio.read(self.odir + '/' +
@@ -427,7 +440,7 @@ class buzzard_flat_cat(object):
                 photoz['mc-z'] = bpz['Z_MC']
                 photoz['mode-z'] = bpz['MODE_Z']
 
-            if i == 0:
+            if count == 0:
                 gout.write(gold[idx])
                 sout.write(shape[idx])
                 pout.write(photoz[idx])
@@ -435,6 +448,113 @@ class buzzard_flat_cat(object):
                 gout[-1].append(gold[idx])
                 sout[-1].append(shape[idx])
                 pout[-1].append(photoz[idx])
+            count += 1
+
+    def merge_rank_files_h5(self, merge_with_bpz=False):
+        mcal_inc = {'coadd_objects_id': 'coadd_object_id',
+                    'flags': 'flags',
+                    'weight' : 'mask_frac',
+                    'ra': 'ra',
+                    'dec': 'dec',
+                    'e1': 'e1',
+                    'e2': 'e2',
+                    'g1': 'g1',
+                    'g2': 'g2',
+                    'kappa': 'kappa',
+                    'size': 'size',
+                    }
+
+        gold_inc = {'coadd_objects_id': 'coadd_object_id',
+                    'hpix': 'hpix_16384',
+                    'flags_gold': 'flags_gold',
+                    'ra': 'ra',
+                    'dec': 'dec',
+                    'redshift': 'z',
+                    'mag_g': 'mag_g',
+                    'magerr_g': 'mag_err_g',
+                    'mag_r': 'mag_r',
+                    'magerr_r': 'mag_err_r',
+                    'mag_i': 'mag_i',
+                    'magerr_i': 'mag_err_i',
+                    'mag_z': 'mag_z',
+                    'magerr_z': 'mag_err_z',
+                    'ivar_g': 'ivar_g',
+                    'ivar_r': 'ivar_r',
+                    'ivar_i': 'ivar_i',
+                    'ivar_z': 'ivar_z'}
+
+        bpz_inc = {'coadd_objects_id': 'coadd_object_id',
+                   'mc-z': 'zmc_sof',
+                   'mean-z': 'zmean_sof'}
+
+        gout = h5py.File(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
+        sout = h5py.File(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_shape.h5', 'w')
+        pout = h5py.File(self.odir + '/' + self.simname +
+                         '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'w')
+
+        gfiles = glob.glob(self.odir + '/' +
+                           self.simname + '_{}'.format(self.obsdir[:-1]) +
+                           '_gold*[0-9].fits')
+        size = len(gfiles)
+        total_length = 0
+        iter_end = 0
+
+        for i in range(size):
+            try:
+                hdr = fio.read_header(self.odir + '/' +
+                                      self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                      '_gold.{}.fits'.format(i), 1)
+                total_length += hdr['NAXIS2']
+
+            except OSError as e:
+                continue
+
+        for i in range(size):
+            try:
+                gold = fio.read(self.odir + '/' +
+                                self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                '_gold.{}.fits'.format(i))
+                shape = fio.read(self.odir + '/' +
+                                 self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                 '_shape.{}.fits'.format(i))
+                bpz = fio.read(self.odir + '/' +
+                               self.simname + '_{}'.format(self.obsdir[:-1]) +
+                               '_pz.{}.fits'.format(i))
+            except OSError as e:
+                print('File rank {} has no galaxies in it'.format(i))
+                continue
+
+            lencat = len(gold)
+
+            for name in gold_inc:
+                if i == 0:
+                    gout.create_dataset('catalog/gold/' + gold_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=gold.dtype[name],
+                                        chunks=(1000000,))
+                gout['catalog/gold/' + gold_inc[name]][iter_end:iter_end + lencat] = gold[name]
+
+            for name in mcal_inc:
+                if i == 0:
+                    sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=shape.dtype[name],
+                                        chunks=(1000000,))
+                sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+
+            for name in bpz_inc:
+                if i == 0:
+                    pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                        shape=(total_length,), dtype=bpz.dtype[name],
+                                        chunks=(1000000,))
+                pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
+
+            #because shifter is dumb
+            iter_end += lencat
+
+        gout.close()
+        pout.close()
+        sout.close()
 
 
 if __name__ == '__main__':
