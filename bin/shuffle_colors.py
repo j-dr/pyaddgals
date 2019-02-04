@@ -93,6 +93,8 @@ def reassign_colors_cam(g, h, cfg, mhalo=12.466, corr=0.749, alpham=0.0689):
     g['SEDID'] = temp_sedid
     g['AMAG'] = amag
     g['TMAG'] = omag
+    for im in range(len(filters)):
+        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])        
 
     return g
 
