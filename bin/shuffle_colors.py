@@ -137,7 +137,7 @@ if __name__ == '__main__':
         cosmo = Cosmology(**cc)
 
         domain = Domain(cosmo, **nb_config.pop('Domain'))
-        domain.decomp(None, 1, 1)
+        domain.decomp(None, 0, 1)
 
 #        for j in range(len(rbins)-1):
 #            idx = (rbins[j] < r) & (r < rbins[j+1])
