@@ -28,7 +28,7 @@ def load_model(cfg):
     cosmo = Cosmology(**cc)
 
     domain = Domain(cosmo, **nb_config.pop('Domain'))
-    domain.decomp(comm, comm.rank, comm.size)
+    domain.decomp(None, 0, 1)
 
     for d in domain.yieldDomains():
         nbody = NBody(cosmo, d, **nb_config)
