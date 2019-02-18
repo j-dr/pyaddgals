@@ -432,7 +432,7 @@ def apply_nonuniform_errormodel(g, oname, d, dhdr,
                 obs['OMAGERR'][guse[bad],ind] = 99.0
 
             if filter_obs and (ind in refnames):
-                oidx &= obs['OMAG'][:,ind] < d['LIMMAGS'][pixind,ind]
+                oidx &= obs['OMAG'][:,ind] < (d['LIMMAGS'][pixind,ind] + 0.5)
 
         else:
             obs[mnames[ind]]  = 99.0
@@ -466,7 +466,7 @@ def apply_nonuniform_errormodel(g, oname, d, dhdr,
                 obs[menames[ind]][guse[bad]] = 99.0
 
             if (filter_obs) and (mnames[ind] in refnames):
-                oidx[guse] &= obs[mnames[ind]][guse] < d['LIMMAGS'][pixind,ind]
+                oidx[guse] &= obs[mnames[ind]][guse] < (d['LIMMAGS'][pixind,ind] + 0.5)
                 
 
     obs['RA']              = g['RA']
@@ -611,7 +611,7 @@ def apply_uniform_errormodel(g, oname, survey, magfile=None, usemags=None,
             obs['OMAGERR'][bad,ind] = 99.0
 
             if filter_obs and (ind in refnames):
-                oidx &= obs['OMAG'][:,ind] < maglims[ind]
+                oidx &= obs['OMAG'][:,ind] < (maglims[ind] + 0.5)
 
         else:
             obs[mnames[ind]]  = 99.0
@@ -629,7 +629,7 @@ def apply_uniform_errormodel(g, oname, survey, magfile=None, usemags=None,
 
             if (filter_obs) and (mnames[ind] in refnames):
                 print('filtering {}'.format(mnames[ind]))
-                oidx &= obs[mnames[ind]] < maglims[ind]
+                oidx &= obs[mnames[ind]] < (maglims[ind] + 0.5)
             else:
                 print('mnames[ind]: {}'.format(mnames[ind]))
                 
