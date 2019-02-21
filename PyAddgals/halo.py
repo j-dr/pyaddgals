@@ -66,14 +66,28 @@ class HaloCatalog(object):
                     'vy': (12, np.float), 'vz': (13, np.float),
                     'rs': (6, np.float), 'radius': (5, np.float),
                     'pid': (14, np.int), 'id': (0, np.int)}
+        elif fmt == 'OutLightcone':
+            return {'HALOID': (0, np.int), 'HOST_HALOID': (1, np.int), 'MVIR': (2, np.float), 'VMAX': (3, np.float),
+                    'VRMS': (4, np.float), 'RVIR': (5, np.float), 'RS': (6, np.float), 'NP': (7, np.float),
+                    'PX': (8, np.float), 'PY': (9, np.float), 'PZ': (10, np.float), 'VX': (11, np.float),
+                    'VY': (12, np.float), 'VZ': (13, np.float), 'JX': (14, np.float), 'JY': (15, np.float),
+                    'JZ': (16, np.float), 'SPIN': (17, np.float), 'Z': (18, np.float), 'Z_COS': (19, np.float),
+                    'M200B': (20, np.float), 'M200C': (21, np.float), 'M500C': (22, np.float),
+                    'M2500C': (23, np.float), 'XOFF': (24, np.float), 'VOFF': (25, np.float),
+                    'B_TO_A': (27, np.float), 'C_TO_A': (28, np.float), 'A[X]': (29, np.float),
+                    'A[Y]': (30, np.float), 'A[Z]': (31, np.float), 'B[X]': (32, np.float),
+                    'B[Y]': (33, np.float), 'B[Z]': (34, np.float), 'C[X]': (35, np.float), 'C[Y]': (36, np.float),
+                    'C[Z]': (37, np.float), 'TRA': (38, np.float), 'TDEC': (39, np.float), 'RA': (40, np.float),
+                    'DEC': (41, np.float)}
+
         else:
             raise(NotImplementedError("fmt {} not recognized".format(fmt)))
 
     def readRockstarLightconeFile(self):
 
         cdict = self.getColumnDict(self.nbody.domain.fmt)
-
-        reader = TabularAsciiReader(self.nbody.halofile[self.nbody.boxnum], cdict)
+        reader = TabularAsciiReader(
+            self.nbody.halofile[self.nbody.boxnum], cdict)
         catalog = reader.read_ascii()
         names = catalog.dtype.names
 
@@ -137,9 +151,11 @@ class HaloCatalog(object):
 
         cdict = self.getColumnDict(self.nbody.domain.fmt)
 
-        halofile = self.nbody.halofile[self.nbody.boxnum].format(snapnum=snapnum)
+        halofile = self.nbody.halofile[self.nbody.boxnum].format(
+            snapnum=snapnum)
 
-        halornnfile = self.nbody.halodensfile[self.nbody.boxnum].format(snapnum=snapnum)
+        halornnfile = self.nbody.halodensfile[self.nbody.boxnum].format(
+            snapnum=snapnum)
 
         reader = TabularAsciiReader(halofile, cdict)
         catalog = reader.read_ascii()

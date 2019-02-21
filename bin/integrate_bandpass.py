@@ -6,12 +6,14 @@ from PyAddgals.addgalsModel import ADDGALSModel
 
 from mpi4py import MPI
 from glob import glob
+from copy import copy
 import numpy as np
 import fitsio
 import sys
+import os
 
 
-def main(config, outpath, magflag):
+def main(config, outpath, magflag, clobber=False):
 
     files = config['Runtime']['outpath']
     files = glob(files)
@@ -37,7 +39,13 @@ def main(config, outpath, magflag):
     nk = len(filters)
 
     for f in files:
-        g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R', 'MU'])
+
+        pixnum = f.split('.')[-2]
+        fname = '{}-{}.{}.fits'.format(outpath, magflag, pixnum)
+        if os.path.exists(fname) & (not clobber):
+            continue
+
+        g = fitsio.read(f, columns=['SEDID', 'Z', 'MAG_R_EVOL', 'MU'])
         mags = np.zeros(len(g), dtype=np.dtype([('TMAG', (np.float, nk)),
                                                 ('AMAG', (np.float, nk)),
                                                 ('LMAG', (np.float, nk)),
@@ -47,17 +55,18 @@ def main(config, outpath, magflag):
                                                 ('IVAR', (np.float, nk)),
                                                 ('Z', np.float)]))
         mags['Z'] = g['Z']
-        mags['TMAG'], mags['AMAG'] = model.colorModel.computeMagnitudes(g['MAG_R'],
+        z_a = copy(mags['Z'])
+        z_a[z_a < 1e-6] = 1e-6
+
+        mags['TMAG'], mags['AMAG'] = model.colorModel.computeMagnitudes(g['MAG_R_EVOL'],
                                                                         g['Z'],
                                                                         train['COEFFS'][g['SEDID']],
                                                                         filters)
 
-        pixnum = f.split('.')[-2]
-        fname = '{}-{}.{}.fits'.format(outpath, magflag, pixnum)
         for i in range(len(filters)):
             mags['LMAG'][:, i] = mags['TMAG'][:, i] - 2.5 * np.log10(g['MU'])
 
-        fitsio.write(fname, mags)
+        fitsio.write(fname, mags, clobber=clobber)
 
 
 if __name__ == '__main__':
@@ -66,6 +75,11 @@ if __name__ == '__main__':
     outpath = sys.argv[2]
     magflag = sys.argv[3]
 
+    if len(sys.argv)>4:
+        clobber = True
+    else:
+        clobber = False
+
     config = parseConfig(config_file)
 
-    main(config, outpath, magflag)
+    main(config, outpath, magflag, clobber=clobber)
