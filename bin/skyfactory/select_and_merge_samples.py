@@ -83,7 +83,6 @@ def WL_cuts(obs, truth, pz, sys_map_vals,
     mag_mask = ((obs['MAGERR_R'] < maglim_cut_factor) & (obs['MAGERR_I'] < maglim_cut_factor) &
                 (obs['MAGERR_Z'] < maglim_cut_factor))
     size_mask = np.sqrt(obs['SIZE']**2 + psf_size**2) > rgrp_cut * psf_size
-
     other_mask = (np.isfinite(
         sys_map_vals['maglim_r']) * np.isfinite(sys_map_vals['psf_fwhm_r']))
 
