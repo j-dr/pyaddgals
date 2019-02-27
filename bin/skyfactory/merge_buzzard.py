@@ -302,6 +302,7 @@ class buzzard_flat_cat(object):
                           + [('mode-z', 'f8')]
                           + [('redshift', 'f8')]
                           + [('weight', 'f8')]
+                          + [('z_cos'), 'f4']
                           + [('flags', 'f8')])
 
         lenst = 0
@@ -349,6 +350,7 @@ class buzzard_flat_cat(object):
         gold['ra'] = obs['RA']
         gold['dec'] = obs['DEC']
         gold['redshift'] = truth['Z']
+
         gold['hpix'] = hp.ang2pix(
             16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
         gold['lss-sample'] = sample['LSS_FLAG']
@@ -385,6 +387,7 @@ class buzzard_flat_cat(object):
             photoz['mode-z'] = pz['MODE_Z']
 
         photoz['redshift'] = truth['Z']
+        photoz['z_cos'] = truth['Z_COS']
         photoz['weight'] += 1.
 
         if ifile == 0:
@@ -485,7 +488,9 @@ class buzzard_flat_cat(object):
 
         bpz_inc = {'coadd_objects_id': 'coadd_object_id',
                    'mc-z': 'zmc_sof',
-                   'mean-z': 'zmean_sof'}
+                   'mean-z': 'zmean_sof',
+                   'redshift': 'z',
+                   'z_cos': 'z_cos'}
 
         gout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
@@ -549,7 +554,6 @@ class buzzard_flat_cat(object):
                                         chunks=(1000000,))
                 pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
 
-            #because shifter is dumb
             iter_end += lencat
 
         gout.close()
