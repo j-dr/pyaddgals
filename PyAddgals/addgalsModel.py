@@ -1028,7 +1028,8 @@ class ColorModel(object):
                  filters=None, band_shift=0.1, use_redfraction=True,
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_z=None, rf_m=None,
                  rf_zm=None, rf_b=None, Q=0.0, no_colors=False,
-                 piecewise_mag_evolution=False, **kwargs):
+                 piecewise_mag_evolution=False, match_magonly=False,
+                 **kwargs):
 
         if redFractionModelFile is None:
             raise(ValueError('ColorModel must define redFractionModelFile'))
@@ -1056,6 +1057,10 @@ class ColorModel(object):
         self.Q = Q
         self.piecewise_mag_evolution = piecewise_mag_evolution
         self.no_colors = no_colors
+        self.match_magonly = match_magonly
+
+        if self.match_magonly:
+            self.ds = 1.0
 
         if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
             self.band_shift = [float(self.band_shift)]
@@ -1344,7 +1349,12 @@ class ColorModel(object):
                 idx = idx[tpos[:, 2] == int(isred)]
                 tpos = tpos[tpos[:, 2] == int(isred)]
                 tpos -= p
-                dt = np.abs(np.sum(tpos**2, axis=1))
+
+                if self.match_magonly:
+                    dt = np.abs(tpos[:, 0])
+                else:
+                    dt = np.abs(np.sum(tpos**2, axis=1))
+
                 try:
                     sed_idx[i] = idx[np.argmin(dt)]
                 except Exception as e:
@@ -1368,7 +1378,11 @@ class ColorModel(object):
                 idx = idx[tpos[:, 2] == int(isred)]
                 tpos = tpos[tpos[:, 2] == int(isred)]
                 tpos -= p
-                dt = np.abs(np.sum(tpos**2, axis=1))
+
+                if self.match_magonly:
+                    dt = np.abs(tpos[:, 0])
+                else:
+                    dt = np.abs(np.sum(tpos**2, axis=1))
 
                 try:
                     sed_idx[isbad[i]] = idx[np.argmin(dt)]
@@ -1376,6 +1390,7 @@ class ColorModel(object):
                     bad[i] = True
 
         return sed_idx, bad
+
 
     def computeMagnitudes(self, mag, z, coeffs, filters):
         """Compute observed and absolute magnitudes in the
@@ -1468,11 +1483,15 @@ class ColorModel(object):
         rspos = np.vstack([theta, phi, self.c * z_rsd]).T
         print('[{}] checking redshifts... max(z), min(z), max(z_rsd), min(z_rsd): {}, {}, {}, {}'.format(
             self.nbody.domain.rank, np.max(z), np.min(z), np.max(z_rsd), np.min(z_rsd)))
-        sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
-        end = time()
-        print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(
-            self.nbody.domain.rank, end - start))
-        sys.stdout.flush()
+
+        if not self.match_magonly:
+            sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
+            end = time()
+            print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(
+                self.nbody.domain.rank, end - start))
+                sys.stdout.flush()
+        else:
+            ranksigma5 = np.random.rand(len(z))
 
         start = time()
         if self.piecewise_mag_evolution:
@@ -1487,6 +1506,7 @@ class ColorModel(object):
             redfraction = self.computeRedFraction(z, mag_evol)
         else:
             redfraction = np.ones_like(z)
+
 
         sed_idx, bad = self.matchTrainingSet(
             mag, ranksigma5, redfraction, self.dm_sed, self.ds)
