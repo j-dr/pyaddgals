@@ -30,6 +30,7 @@ class buzzard_flat_cat(object):
             simnum=0,
             loop=False,
             merge=False,
+            already_merged=False,
             merge_with_bpz=False):
 
         self.maxrows = 100000000
@@ -45,6 +46,7 @@ class buzzard_flat_cat(object):
         self.simnum = str(simnum)
         self.simname = simname
         self.nzcut = nzcut
+        self.already_merged = already_merged
 
         if loop:
             self.loop_cats(debug=debug)
