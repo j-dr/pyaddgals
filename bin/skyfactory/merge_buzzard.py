@@ -24,7 +24,6 @@ class buzzard_flat_cat(object):
             truthname='truth.',
             pzname='Y1A1_bpz.',
             simname='Buzzard_v1.1',
-            odir='',
             debug=True,
             nzcut=True,
             simnum=0,
@@ -36,7 +35,6 @@ class buzzard_flat_cat(object):
         self.maxrows = 100000000
 
         self.rootdir = rootdir
-        self.odir = odir
         self.truthdir = truthdir
         self.truthname = truthname
         self.obsdir = obsdir
@@ -47,6 +45,7 @@ class buzzard_flat_cat(object):
         self.simname = simname
         self.nzcut = nzcut
         self.already_merged = already_merged
+        self.odir = self.obsdir
 
         if loop:
             self.loop_cats(debug=debug)
@@ -567,19 +566,39 @@ class buzzard_flat_cat(object):
                 gout['catalog/gold/' + gold_inc[name]][iter_end:iter_end + lencat] = gold[name]
 
             for name in mcal_inc:
-                if i == 0:
-                    sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
-                                        shape=(total_length,), dtype=shape.dtype[name],
-                                        chunks=(1000000,))
-                sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+                #old fits files don't have ra/dec in shape files
+                try:
+                    if i == 0:
+                        sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=shape.dtype[name],
+                                            chunks=(1000000,))
+                    sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+                except KeyError as e:
+                    if i == 0:
+                        sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=gold.dtype[name],
+                                            chunks=(1000000,))
+                    sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = gold[name]
+                        
 
             for name in bpz_inc:
-                if i == 0:
-                    pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
-                                        shape=(total_length,), dtype=bpz.dtype[name],
-                                        chunks=(1000000,))
-                pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
-
+                try:
+                    if i == 0:
+                        pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=bpz.dtype[name],
+                                            chunks=(1000000,))
+                    pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
+                except KeyError as e:
+                    if name == 'z_cos':
+                        if i == 0:
+                            pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                                shape=(total_length,), dtype=bpz.dtype['redshift'],
+                                                chunks=(1000000,))
+                        pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz['redshift']
+                    else:
+                        raise(e)
+                    
+                
             iter_end += lencat
 
         gout.close()
