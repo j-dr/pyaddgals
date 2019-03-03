@@ -1517,7 +1517,6 @@ class ColorModel(object):
 
         return temp_sedid
 
-
     def assignSEDs(self, pos, mag, z, z_rsd):
 
         start = time()
@@ -1531,8 +1530,8 @@ class ColorModel(object):
             sigma5, ranksigma5 = self.computeRankSigma5(z_rsd, mag, rspos)
             end = time()
             print('[{}] Finished computing sigma5 and rank sigma5. Took {}s'.format(
-                self.nbody.domain.rank, end - start))
-                sys.stdout.flush()
+                  self.nbody.domain.rank, end - start))
+            sys.stdout.flush()
         else:
             ranksigma5 = np.random.rand(len(z))
 
