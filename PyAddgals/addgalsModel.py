@@ -1475,6 +1475,49 @@ class ColorModel(object):
 
         return omag, amag
 
+    def reassign_colors_cam(self, px, py, pz, hpx, hpy, hpz,
+                            mhalo, mr, amag, mhalo=12.466, corr=0.749, alpham=0.0689):
+
+        centrals = h[(h['HOST_HALOID'] == -1) & (h['M200B'] > 10**mhalo)]
+        cpos = np.zeros((len(centrals), 3))
+
+        pos = np.zeros((len(g), 3))
+        pos[:, 0] = g['PX']
+        pos[:, 1] = g['PY']
+        pos[:, 2] = g['PZ']
+
+        cpos[:, 0] = centrals['PX']
+        cpos[:, 1] = centrals['PY']
+        cpos[:, 2] = centrals['PZ']
+
+        rhalo = np.zeros(len(pos))
+
+        with fast3tree(cpos) as tree:
+            for i in range(len(pos)):
+                d = tree.query_nearest_distance(pos[i, :])
+                rhalo[i] = d
+
+        mr = copy(g['MAG_R_EVOL'])
+        mr[mr < -22] = -22
+        mr[mr > -18] = -18
+        gr = amag[:, 0] - amag[:, 1]
+
+        idx = np.argsort(rhalo)
+        rhalo_sorted = rhalo[idx]
+        rank_rhalo = np.arange(len(rhalo)) / len(rhalo)
+        corr_coeff = corr * (mr + 22) ** (alpham)
+        corr_coeff[corr_coeff > 1] = 1.
+        noisy_rank_rhalo = abunmatch.noisy_percentile(rank_rhalo, corr_coeff)
+
+        g = g[idx]
+        gr = g['AMAG'][:, 0] - g['AMAG'][:, 1]
+
+        idx_swap = abunmatch.conditional_abunmatch(g['MAG_R_EVOL'], noisy_rank_rhalo, g['MAG_R_EVOL'], -gr, 99, return_indexes=True)
+        temp_sedid = g['SEDID'][idx_swap]
+
+        return temp_sedid
+
+
     def assignSEDs(self, pos, mag, z, z_rsd):
 
         start = time()
