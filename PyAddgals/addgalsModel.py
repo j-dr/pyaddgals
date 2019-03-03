@@ -1476,7 +1476,7 @@ class ColorModel(object):
         return omag, amag
 
     def reassign_colors_cam(self, px, py, pz, hpx, hpy, hpz,
-                            mhalo, mr, amag, mhalo=12.466, corr=0.749, alpham=0.0689):
+                            m200, mr, amag, mhalo=12.466, corr=0.749, alpham=0.0689):
 
         centrals = h[(h['HOST_HALOID'] == -1) & (h['M200B'] > 10**mhalo)]
         cpos = np.zeros((len(centrals), 3))
