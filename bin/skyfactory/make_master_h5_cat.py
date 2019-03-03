@@ -102,7 +102,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                           cats_redmapper[i] + '.' + file_ext)[1].read()
         cols = [name for name in cat.dtype.names]
         total_length = fitsio.FITS(
-            file + '_' + cats_redmapper[i] + '.' + file_ext)[1].read_header()['NAXIS2']
+            rmp_filebase + file + '_' + cats_redmapper[i] + '.' + file_ext)[1].read_header()['NAXIS2']
         s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
                                   np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
         for name in cols:
