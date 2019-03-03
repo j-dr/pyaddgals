@@ -494,6 +494,7 @@ if __name__ == '__main__':
     rmp_filebase = cfg['redmapper_filebase']
     maskfile = cfg['footprint_maskfile']
     regionfile = cfg['regionfile']
+    goodmask_value = int(cfg.pop('goodmask_value', 1))
 
     h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
                                 file=rmfile)
@@ -504,5 +505,6 @@ if __name__ == '__main__':
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
     else:
-        generate_jk_centers_from_mask(maskfile, regionfile)
+        generate_jk_centers_from_mask(maskfile, regionfile,
+                                      good=goodmask_value)
         assign_jk_regions(outfile, regionfile)
