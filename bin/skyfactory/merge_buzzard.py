@@ -454,6 +454,7 @@ class buzzard_flat_cat(object):
             count += 1
 
     def merge_rank_files_h5(self, merge_with_bpz=False):
+
         mcal_inc = {'coadd_objects_id': 'coadd_object_id',
                     'flags': 'flags',
                     'weight' : 'mask_frac',
@@ -499,18 +500,29 @@ class buzzard_flat_cat(object):
         pout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'w')
 
-        gfiles = glob.glob(self.odir + '/' +
-                           self.simname + '_{}'.format(self.obsdir[:-1]) +
-                           '_gold*[0-9].fits')
+        if not self.already_merged:
+            gfiles = glob.glob(self.odir + '/' +
+                            self.simname + '_{}'.format(self.obsdir[:-1]) +
+                            '_gold*[0-9].fits')
+        else:
+            gfiles = [(self.odir + '/' + self.simname + '_{}'.format(self.obsdir[:-1]) +
+                      '_gold.fits')]
+
         size = len(gfiles)
         total_length = 0
         iter_end = 0
 
         for i in range(size):
             try:
-                hdr = fio.read_header(self.odir + '/' +
-                                      self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                      '_gold.{}.fits'.format(i), 1)
+                if not self.already_merged:
+                    hdr = fio.read_header(self.odir + '/' +
+                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                          '_gold.{}.fits'.format(i), 1)
+                else:
+                    hdr = fio.read_header(self.odir + '/' +
+                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                          '_gold.fits', 1)
+
                 total_length += hdr['NAXIS2']
 
             except OSError as e:
@@ -518,15 +530,27 @@ class buzzard_flat_cat(object):
 
         for i in range(size):
             try:
-                gold = fio.read(self.odir + '/' +
-                                self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                '_gold.{}.fits'.format(i))
-                shape = fio.read(self.odir + '/' +
-                                 self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                 '_shape.{}.fits'.format(i))
-                bpz = fio.read(self.odir + '/' +
-                               self.simname + '_{}'.format(self.obsdir[:-1]) +
-                               '_pz.{}.fits'.format(i))
+                if not self.already_merged:
+                    gold = fio.read(self.odir + '/' +
+                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                    '_gold.{}.fits'.format(i))
+                    shape = fio.read(self.odir + '/' +
+                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                     '_shape.{}.fits'.format(i))
+                    bpz = fio.read(self.odir + '/' +
+                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                   '_pz.{}.fits'.format(i))
+                else:
+                    gold = fio.read(self.odir + '/' +
+                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                    '_gold.fits')
+                    shape = fio.read(self.odir + '/' +
+                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                     '_shape.fits')
+                    bpz = fio.read(self.odir + '/' +
+                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                   '_pz.fits')
+
             except OSError as e:
                 print('File rank {} has no galaxies in it'.format(i))
                 continue
@@ -575,4 +599,5 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
 
     if rank == 0:
-        obj = buzzard_flat_cat(**cfg)
+        cat = buzzard_flat_cat(**cfg)
+        cat.merge_rank_files_h5()
