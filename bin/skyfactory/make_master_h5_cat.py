@@ -113,18 +113,23 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
 
     # Loop over redmapper randoms and put in h5 file
     for i in range(len(cats_redmapper_random)):
-        cat = fitsio.FITS(rmp_filebase + file + '_' +
-                          cats_redmapper_random[i] + '.' + file_ext)[1].read()
-        cols = [name for name in cat.dtype.names]
-        total_length = fitsio.FITS(
-            rmp_filebase + file + '_' + cats_redmapper_random[i] + '.' + file_ext)[1].read_header()['NAXIS2']
-        s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                  np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
-        for name in cols:
-            f.create_dataset('randoms/redmapper/' + cats_redmapper_random_table[i] + '/' + name.lower(
-            ), maxshape=(total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
-            f['randoms/redmapper/' + cats_redmapper_random_table[i] +
-                '/' + name.lower()][:] = cat[name][s]
+        try:
+            cat = fitsio.FITS(rmp_filebase + file + '_' +
+                              cats_redmapper_random[i] + '.' + file_ext)[1].read()
+
+            cols = [name for name in cat.dtype.names]
+            total_length = fitsio.FITS(
+                rmp_filebase + file + '_' + cats_redmapper_random[i] + '.' + file_ext)[1].read_header()['NAXIS2']
+            s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
+                                      np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
+            for name in cols:
+                f.create_dataset('randoms/redmapper/' + cats_redmapper_random_table[i] + '/' + name.lower(
+                ), maxshape=(total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
+                f['randoms/redmapper/' + cats_redmapper_random_table[i] +
+                    '/' + name.lower()][:] = cat[name][s]
+        except OSError as e:
+            print(e)
+            print('Redmapper randoms do not exist')
 
     # Make combined catalog version and add in new h5 table
     if make_combined:
