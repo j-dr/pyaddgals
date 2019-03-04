@@ -331,11 +331,23 @@ def assign_jk_regions(mastercat, regionsfile, nside=512):
 def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
                     shapefile='y3v02-mcal-002-blind-v1.h5', goldfile='Y3_GOLD_2_2.h5',
                     bpzfile='Y3_GOLD_2_2_BPZ.h5', rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5',
-                    mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None):
+                    mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None,
+                    good=1):
     """
     Create master h5 file that links the individual catalog h5 files and
     outfile='./Y3_mastercat_v1_6_20_18.h5'; shapefile='y3v02-mcal-002-blind-v1.h5'; goldfile='Y3_GOLD_2_2.h5'; rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5'; bpzfile='Y3_GOLD_2_2_BPZ.h5'; dnffile='Y3_GOLD_2_2_DNF.h5'; mapfile='Y3_GOLD_2_2_1_maps.h5'
     """
+
+    # still need to add mask to gold h5 file
+    mask = fitsio.read(maskfile)
+    mask = mask == good
+    hpix = np.where(mask)[0].astype(int)
+
+    with h5py.File(goldfile, 'r+') as fp:
+        fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
+                          shape=(np.sum(mask),), dtype=hpix.dtype,
+                          chunks=(1000000,))
+        fp['masks/gold/hpix'][:] = hpix
 
     # Open catalog h5 files for sorting by healpix id
     f = h5py.File(goldfile, 'r+')
@@ -505,7 +517,7 @@ if __name__ == '__main__':
                                 file=rmfile)
 
     make_master_bcc(outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                    maskfile=maskfile)
+                    maskfile=maskfile, good=goodmask_value)
 
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
