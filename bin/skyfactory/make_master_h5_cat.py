@@ -340,7 +340,7 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
 
     # still need to add mask to gold h5 file
     mask = fitsio.read(maskfile)
-    mask = mask == good
+    mask = mask['SIGNAL'] == good
     hpix = np.where(mask)[0].astype(int)
 
     with h5py.File(goldfile, 'r+') as fp:
