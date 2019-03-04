@@ -339,8 +339,8 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
     """
 
     # still need to add mask to gold h5 file
-    mask = fitsio.read(maskfile)
-    mask = mask['SIGNAL'] == good
+    mask = hp.read_map(maskfile, nest=True, partial=True)
+    mask = mask == good
     hpix = np.where(mask)[0].astype(int)
 
     with h5py.File(goldfile, 'r+') as fp:
@@ -436,8 +436,7 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
                      shape=(len(c),), dtype=int, chunks=(1000000,))
     f['index/gold/select'][:] = c
 
-    mask = np.in1d(f['masks/redmagic/combined_sample_fid/hpix']
-                   [:], f['masks/gold/hpix'][:])
+    mask = np.in1d(f['masks/redmagic/combined_sample_fid/hpix'][:], f['masks/gold/hpix'][:])
     s = np.argsort(f['masks/redmagic/combined_sample_fid/hpix'][:][mask])
     for col in f['masks/redmagic/combined_sample_fid/'].keys():
         c = f['masks/redmagic/combined_sample_fid/' + col][:][mask][s]
