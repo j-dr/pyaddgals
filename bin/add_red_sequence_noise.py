@@ -767,7 +767,7 @@ if __name__ == '__main__':
     filepath = sys.argv[1]
     buzzard_rs_model = sys.argv[2]
     data_rs_model = sys.argv[3]
-    nbands = sys.argv[4]
+    nbands = int(sys.argv[4])
 
     files = glob(filepath)
 
