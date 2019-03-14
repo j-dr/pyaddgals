@@ -182,7 +182,7 @@ class MStar(object):
         self.band = band.strip()
 
         try:
-            self.mstar_file = '/nfs/slac/g/ki/ki19/des/erykoff/src/redmapper/redmapper/data/mstar/mstar_%s_%s.fit' % (
+            self.mstar_file = '/scratch/users/jderose/SkyFactory-config/Addgals/mstar/mstar_%s_%s.fit' % (
                 self.survey, self.band)
         except:
             raise IOError("Could not find mstar resource mstar_%s_%s.fit" % (
@@ -417,7 +417,7 @@ class RedSequenceColorPar(object):
         bvalues = np.zeros(nmag)
         do_lupcorr = False
         try:
-            for i in xrange(nmag):
+            for i in range(nmag):
                 bvalues[i] = hdr['BVALUE%1d' % (i + 1)]
             do_lupcorr = True
         except:
@@ -498,7 +498,7 @@ class RedSequenceColorPar(object):
         # c/slope
         self.c = np.zeros((nz, ncol), dtype=np.float64)
         self.slope = np.zeros((nz, ncol), dtype=np.float64)
-        for j in xrange(ncol):
+        for j in range(ncol):
             jstring = '%02d' % (j)
             spl = CubicSpline(pars[0]['Z' + jstring], pars[0]['C' + jstring])
             self.c[:, j] = spl(self.z)
@@ -511,15 +511,15 @@ class RedSequenceColorPar(object):
         self.covmat = np.zeros((ncol, ncol, nz), dtype=np.float64)
 
         # diagonals
-        for j in xrange(ncol):
+        for j in range(ncol):
             spl = CubicSpline(pars[0]['COVMAT_Z'], pars[0]['SIGMA'][j, j, :])
             self.sigma[j, j, :] = spl(self.z)
 
             self.covmat[j, j, :] = self.sigma[j, j, :] * self.sigma[j, j, :]
 
         # off-diagonals
-        for j in xrange(ncol):
-            for k in xrange(j + 1, ncol):
+        for j in range(ncol):
+            for k in range(j + 1, ncol):
                 spl = CubicSpline(pars[0]['COVMAT_Z'],
                                   pars[0]['SIGMA'][j, k, :])
                 self.sigma[j, k, :] = spl(self.z)
@@ -585,7 +585,7 @@ class RedSequenceColorPar(object):
         # luminosity function integrations
         self.lumnorm = np.zeros((self.lumrefmagbins.size, nz))
         self.alpha = alpha
-        for i in xrange(nz):
+        for i in range(nz):
             f = 10.**(0.4 * (self.alpha + 1.0) * (self._mstar[i] - self.lumrefmagbins)) * np.exp(-10.**(
                 0.4 * (self._mstar[i] - self.lumrefmagbins)))
             self.lumnorm[:, i] = refmagbinsize * np.cumsum(f)
@@ -595,24 +595,24 @@ class RedSequenceColorPar(object):
         if (do_lupcorr):
             bnmgy = bvalues * 1e9
 
-            for i in xrange(nz):
+            for i in range(nz):
                 mags = np.zeros((self.refmagbins.size, nmag))
                 lups = np.zeros((self.refmagbins.size, nmag))
 
                 mags[:, ref_ind] = self.refmagbins
 
                 # go redward
-                for j in xrange(ref_ind + 1, nmag):
+                for j in range(ref_ind + 1, nmag):
                     mags[:, j] = mags[:, j - 1] - (self.c[i, j - 1] + self.slope[i, j - 1] * (
                         mags[:, ref_ind] - self.pivotmag[i]))
                 # blueward
-                for j in xrange(ref_ind - 1, -1, -1):
+                for j in range(ref_ind - 1, -1, -1):
                     mags[:, j] = mags[:, j + 1] + \
                         (self.c[i, j] + self.slope[i, j] *
                          (mags[:, ref_ind] - self.pivotmag[i]))
 
                 # and the luptitude conversion
-                for j in xrange(nmag):
+                for j in range(nmag):
                     flux = 10.**((mags[:, j] - 22.5) / (-2.5))
                     lups[:, j] = 2.5 * np.log10(1.0 / bvalues[j]) - np.arcsinh(
                         0.5 * flux / bnmgy[j]) / (0.4 * np.log(10.0))
@@ -780,6 +780,6 @@ if __name__ == '__main__':
         g = fitsio.read(files[i])
 
         g = add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands)
-        ofile = files[i].replace('fits', 'rs_scat.fits')
+        ofile = files[i].replace('lensed', 'lensed_rs_scat')
 
         fitsio.write(ofile, g)
