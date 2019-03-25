@@ -491,8 +491,8 @@ class buzzard_flat_cat(object):
         bpz_inc = {'coadd_objects_id': 'coadd_object_id',
                    'mc-z': 'zmc_sof',
                    'mean-z': 'zmean_sof',
-                   'redshift': 'z',
-                   'z_cos': 'z_cos'}
+                   'redshift': 'z'}#,
+#                   'z_cos': 'z_cos'}
 
         gout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
@@ -579,7 +579,7 @@ class buzzard_flat_cat(object):
                                             shape=(total_length,), dtype=gold.dtype[name],
                                             chunks=(1000000,))
                     sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = gold[name]
-                        
+
 
             for name in bpz_inc:
                 try:
@@ -597,8 +597,8 @@ class buzzard_flat_cat(object):
                         pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz['redshift']
                     else:
                         raise(e)
-                    
-                
+
+
             iter_end += lencat
 
         gout.close()
