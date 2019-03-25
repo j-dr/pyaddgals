@@ -1,6 +1,7 @@
 import fitsio
 import numpy as np
 import sys
+import os
 from mpi4py import MPI
 from glob import glob
 from numpy.lib.recfunctions import merge_arrays
@@ -177,12 +178,12 @@ def gaussFunction(x, *p):
 # mstar LUT code
 ######################################
 class MStar(object):
-    def __init__(self, survey, band):
+    def __init__(self, survey, band, mstarpath):
         self.survey = survey.strip()
         self.band = band.strip()
 
         try:
-            self.mstar_file = '/scratch/users/jderose/SkyFactory-config/Addgals/mstar/mstar_%s_%s.fit' % (
+            self.mstar_file = mstarpath + '/mstar_%s_%s.fit' % (
                 self.survey, self.band)
         except:
             raise IOError("Could not find mstar resource mstar_%s_%s.fit" % (
@@ -380,7 +381,8 @@ class RedSequenceColorPar(object):
 
     """
 
-    def __init__(self, filename, zbinsize=None, minsig=0.01, fine=False, zrange=None):
+    def __init__(self, filename, zbinsize=None, minsig=0.01, fine=False, zrange=None,
+                 mstarpath=None):
 
         pars, hdr = fitsio.read(filename, ext=1, header=True)
         try:
@@ -444,7 +446,7 @@ class RedSequenceColorPar(object):
         self.zbinsize = zbinsize
         self.zbinscale = int(1. / zbinsize)
 
-        ms = MStar(mstar_survey, mstar_band)
+        ms = MStar(mstar_survey, mstar_band, mstarpath)
 
         refmagbinsize = 0.01
         if (lowzmode):
@@ -768,18 +770,22 @@ if __name__ == '__main__':
     buzzard_rs_model = sys.argv[2]
     data_rs_model = sys.argv[3]
     nbands = int(sys.argv[4])
+    mstarpath = sys.argv[5]
 
     files = glob(filepath)
 
-    buzzard_rs_model = RedSequenceColorPar(buzzard_rs_model)
-    data_rs_model = RedSequenceColorPar(data_rs_model)
+    buzzard_rs_model = RedSequenceColorPar(buzzard_rs_model, mstarpath=mstarpath)
+    data_rs_model = RedSequenceColorPar(data_rs_model, mstarpath=mstarpath)
 
     files = files[rank::size]
 
     for i in range(len(files)):
+        ofile = files[i].replace('lensed', 'lensed_rs_scat')
+
+        if os.path.exists(ofile):
+            continue
         g = fitsio.read(files[i])
 
         g = add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands)
-        ofile = files[i].replace('lensed', 'lensed_rs_scat')
 
         fitsio.write(ofile, g)
