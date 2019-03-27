@@ -741,7 +741,7 @@ def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands):
         zidx = buzzard_rs_model.z.searchsorted(g['Z'])
         ds[:, i] = data_rs_model.sigma[i, i, zidx]**2 - buzzard_rs_model.sigma[i, i, zidx]**2
         ds[ds[:, i] < 0, i] = 0
-        ds[:, i] = 2 * np.sqrt(ds[:, i])
+        ds[:, i] = np.sqrt(ds[:, i])
 
     for i in range(nbands - 2):
         ds[:, i] = ds[:, i]**2 - ds[:, i + 1]**2
