@@ -137,6 +137,8 @@ if __name__ == '__main__':
 
         if halo_nside == 8:
             h = h[hpix == pix8]
+            hr = hr[hpix == pix8]
+            hpix = hpix[hpix == pix8]
 
         config = parseConfig(cfg)
         cc = config['Cosmology']
