@@ -529,6 +529,7 @@ class ColorModel(object):
             sys.stdout.flush()
         else:
             ranksigma5 = np.zeros_like(z)
+            sigma5 = ranksigma5
 
         start = time()
         if self.piecewise_mag_evolution:
