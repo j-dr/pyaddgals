@@ -929,7 +929,7 @@ class RdelModel(object):
         z = z[zidx]
         mag = mag[zidx]
 
-        deltabins = np.linspace(0.01, 15, n_dens_bins + 1)
+        deltabins = np.linspace(0.001, 15, n_dens_bins + 1)
         deltamean = (deltabins[1:] + deltabins[:-1]) / 2
 
         density = np.zeros(n_gal)
