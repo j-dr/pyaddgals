@@ -24,18 +24,17 @@ class buzzard_flat_cat(object):
             truthname='truth.',
             pzname='Y1A1_bpz.',
             simname='Buzzard_v1.1',
-            odir='',
             debug=True,
             nzcut=True,
             simnum=0,
             loop=False,
             merge=False,
+            already_merged=False,
             merge_with_bpz=False):
 
         self.maxrows = 100000000
 
         self.rootdir = rootdir
-        self.odir = odir
         self.truthdir = truthdir
         self.truthname = truthname
         self.obsdir = obsdir
@@ -45,6 +44,8 @@ class buzzard_flat_cat(object):
         self.simnum = str(simnum)
         self.simname = simname
         self.nzcut = nzcut
+        self.already_merged = already_merged
+        self.odir = self.obsdir
 
         if loop:
             self.loop_cats(debug=debug)
@@ -302,6 +303,7 @@ class buzzard_flat_cat(object):
                           + [('mode-z', 'f8')]
                           + [('redshift', 'f8')]
                           + [('weight', 'f8')]
+                          + [('z_cos'), 'f4']
                           + [('flags', 'f8')])
 
         lenst = 0
@@ -349,6 +351,7 @@ class buzzard_flat_cat(object):
         gold['ra'] = obs['RA']
         gold['dec'] = obs['DEC']
         gold['redshift'] = truth['Z']
+
         gold['hpix'] = hp.ang2pix(
             16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
         gold['lss-sample'] = sample['LSS_FLAG']
@@ -385,6 +388,7 @@ class buzzard_flat_cat(object):
             photoz['mode-z'] = pz['MODE_Z']
 
         photoz['redshift'] = truth['Z']
+        photoz['z_cos'] = truth['Z_COS']
         photoz['weight'] += 1.
 
         if ifile == 0:
@@ -451,6 +455,7 @@ class buzzard_flat_cat(object):
             count += 1
 
     def merge_rank_files_h5(self, merge_with_bpz=False):
+
         mcal_inc = {'coadd_objects_id': 'coadd_object_id',
                     'flags': 'flags',
                     'weight' : 'mask_frac',
@@ -485,7 +490,9 @@ class buzzard_flat_cat(object):
 
         bpz_inc = {'coadd_objects_id': 'coadd_object_id',
                    'mc-z': 'zmc_sof',
-                   'mean-z': 'zmean_sof'}
+                   'mean-z': 'zmean_sof',
+                   'redshift': 'z'}#,
+#                   'z_cos': 'z_cos'}
 
         gout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
@@ -494,18 +501,29 @@ class buzzard_flat_cat(object):
         pout = h5py.File(self.odir + '/' + self.simname +
                          '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'w')
 
-        gfiles = glob.glob(self.odir + '/' +
-                           self.simname + '_{}'.format(self.obsdir[:-1]) +
-                           '_gold*[0-9].fits')
+        if not self.already_merged:
+            gfiles = glob.glob(self.odir + '/' +
+                            self.simname + '_{}'.format(self.obsdir[:-1]) +
+                            '_gold*[0-9].fits')
+        else:
+            gfiles = [(self.odir + '/' + self.simname + '_{}'.format(self.obsdir[:-1]) +
+                      '_gold.fits')]
+
         size = len(gfiles)
         total_length = 0
         iter_end = 0
 
         for i in range(size):
             try:
-                hdr = fio.read_header(self.odir + '/' +
-                                      self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                      '_gold.{}.fits'.format(i), 1)
+                if not self.already_merged:
+                    hdr = fio.read_header(self.odir + '/' +
+                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                          '_gold.{}.fits'.format(i), 1)
+                else:
+                    hdr = fio.read_header(self.odir + '/' +
+                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                          '_gold.fits', 1)
+
                 total_length += hdr['NAXIS2']
 
             except OSError as e:
@@ -513,15 +531,27 @@ class buzzard_flat_cat(object):
 
         for i in range(size):
             try:
-                gold = fio.read(self.odir + '/' +
-                                self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                '_gold.{}.fits'.format(i))
-                shape = fio.read(self.odir + '/' +
-                                 self.simname + '_{}'.format(self.obsdir[:-1]) +
-                                 '_shape.{}.fits'.format(i))
-                bpz = fio.read(self.odir + '/' +
-                               self.simname + '_{}'.format(self.obsdir[:-1]) +
-                               '_pz.{}.fits'.format(i))
+                if not self.already_merged:
+                    gold = fio.read(self.odir + '/' +
+                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                    '_gold.{}.fits'.format(i))
+                    shape = fio.read(self.odir + '/' +
+                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                     '_shape.{}.fits'.format(i))
+                    bpz = fio.read(self.odir + '/' +
+                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                   '_pz.{}.fits'.format(i))
+                else:
+                    gold = fio.read(self.odir + '/' +
+                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                    '_gold.fits')
+                    shape = fio.read(self.odir + '/' +
+                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                     '_shape.fits')
+                    bpz = fio.read(self.odir + '/' +
+                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                                   '_pz.fits')
+
             except OSError as e:
                 print('File rank {} has no galaxies in it'.format(i))
                 continue
@@ -536,20 +566,39 @@ class buzzard_flat_cat(object):
                 gout['catalog/gold/' + gold_inc[name]][iter_end:iter_end + lencat] = gold[name]
 
             for name in mcal_inc:
-                if i == 0:
-                    sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
-                                        shape=(total_length,), dtype=shape.dtype[name],
-                                        chunks=(1000000,))
-                sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+                #old fits files don't have ra/dec in shape files
+                try:
+                    if i == 0:
+                        sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=shape.dtype[name],
+                                            chunks=(1000000,))
+                    sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = shape[name]
+                except KeyError as e:
+                    if i == 0:
+                        sout.create_dataset('catalog/unsheared/metacal/' + mcal_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=gold.dtype[name],
+                                            chunks=(1000000,))
+                    sout['catalog/unsheared/metacal/' + mcal_inc[name]][iter_end:iter_end + lencat] = gold[name]
+
 
             for name in bpz_inc:
-                if i == 0:
-                    pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
-                                        shape=(total_length,), dtype=bpz.dtype[name],
-                                        chunks=(1000000,))
-                pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
+                try:
+                    if i == 0:
+                        pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                            shape=(total_length,), dtype=bpz.dtype[name],
+                                            chunks=(1000000,))
+                    pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz[name]
+                except KeyError as e:
+                    if name == 'z_cos':
+                        if i == 0:
+                            pout.create_dataset('catalog/bpz/' + bpz_inc[name], maxshape=(total_length,),
+                                                shape=(total_length,), dtype=bpz.dtype['redshift'],
+                                                chunks=(1000000,))
+                        pout['catalog/bpz/' + bpz_inc[name]][iter_end:iter_end + lencat] = bpz['redshift']
+                    else:
+                        raise(e)
 
-            #because shifter is dumb
+
             iter_end += lencat
 
         gout.close()
@@ -571,4 +620,5 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
 
     if rank == 0:
-        obj = buzzard_flat_cat(**cfg)
+        cat = buzzard_flat_cat(**cfg)
+        cat.merge_rank_files_h5()

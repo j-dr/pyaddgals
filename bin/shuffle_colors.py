@@ -94,7 +94,7 @@ def reassign_colors_cam(g, h, cfg, mhalo=12.466, corr=0.749, alpham=0.0689):
     g['AMAG'] = amag
     g['TMAG'] = omag
     for im in range(len(filters)):
-        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])        
+        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
     return g
 
@@ -106,6 +106,7 @@ if __name__ == '__main__':
     mhalo = float(sys.argv[4])
     corr = float(sys.argv[5])
     alpham = float(sys.argv[6])
+    halo_nside = int(sys.argv[7])
 
     files = glob(filepath)
     comm = MPI.COMM_WORLD
@@ -130,6 +131,15 @@ if __name__ == '__main__':
         hpix = hp.vec2pix(8, h['PX'], h['PY'], h['PZ'], nest=True)
         print('halo pix in gal pix: {}'.format(np.in1d(pix8, hpix)))
 
+        # if halo_nside is 8, signifies that we want to cut halo halo
+        # to match the exact volume of the galaxy pixel. This is to test
+        # domain size effects on halo distance calculations
+
+        if halo_nside == 8:
+            h = h[hpix == pix8]
+            hr = hr[hpix == pix8]
+            hpix = hpix[hpix == pix8]
+
         config = parseConfig(cfg)
         cc = config['Cosmology']
         nb_config = config['NBody']
@@ -139,28 +149,20 @@ if __name__ == '__main__':
         domain = Domain(cosmo, **nb_config.pop('Domain'))
         domain.decomp(None, 0, 1)
 
-#        for j in range(len(rbins)-1):
-#            idx = (rbins[j] < r) & (r < rbins[j+1])
-#            hidx  = ((rbins[j] - 50) < hr) & (hr < (rbins[j+1] + 50))
-#            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, corr=corr, alpham=alpham)
-
-#            ofile = files[i].replace('fits', 'cam_allz.fits')
-#            print(ofile)
-#            if os.path.exists(ofile):
-#                with fitsio.FITS(ofile, 'rw') as f:
-#                    f[-1].append(gi)
-#            else:
-#                fitsio.write(ofile, gi)
-
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
             idx = ((domain.rbins[d.boxnum][d.rbin] <= r) &
                    (r < domain.rbins[d.boxnum][d.rbin + 1]))
-            hidx = (((domain.rbins[d.boxnum][d.rbin]-100) <= hr) &
-                   (hr < (domain.rbins[d.boxnum][d.rbin + 1]+100.)))
+
+            if halo_nside < 8:
+                hidx = (((domain.rbins[d.boxnum][d.rbin] - 100) <= hr) &
+                        (hr < (domain.rbins[d.boxnum][d.rbin + 1] + 100.)))
+            else:
+                hidx = (((domain.rbins[d.boxnum][d.rbin]) <= hr) &
+                        (hr < (domain.rbins[d.boxnum][d.rbin + 1])))
 
             gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, corr=corr, alpham=alpham)
-            ofile = files[i].replace('fits', 'cam.fits')
+            ofile = files[i].replace('fits', 'cam_hnside{}.fits'.format(halo_nside))
 
             if os.path.exists(ofile):
                 with fitsio.FITS(ofile, 'rw') as f:

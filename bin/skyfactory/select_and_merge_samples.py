@@ -204,7 +204,7 @@ if __name__ == "__main__":
                            for sample in cfg['samples']])
 
     flatcat = buzzard_flat_cat(simname=cfg['merge']['simname'], obsdir=cfg['merge']['obsdir'],
-                               nzcut=cfg['merge']['nzcut'], odir=cfg['merge']['obsdir'])
+                               nzcut=cfg['merge']['nzcut'])
 
     for of, tf, pz in zip(ofiles[rank::size], tfiles[rank::size], pzfiles[rank::size]):
 
