@@ -566,8 +566,8 @@ class ADDGALSModel(GalaxyModel):
                   self.rdelModel.lcenModel['b'][idx],
                   self.rdelModel.lcenModel['k'][idx]]
 
-        assigned, lcen, bad = assignLcenNodens(z, mag, dens, mass_halo, density_halo,
-                                               z_halo, params, self.rdelModel.scatter)
+        assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
+                                         z_halo, params, self.rdelModel.scatter)
 
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
