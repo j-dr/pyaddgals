@@ -306,7 +306,10 @@ class ADDGALSModel(GalaxyModel):
     def __init__(self, nbody, luminosityFunctionConfig=None,
                  rdelModelConfig=None,
                  colorModelConfig=None,
-                 shapeModelConfig=None):
+                 shapeModelConfig=None,
+                 use_dens=False,
+                 dMr=0.015,
+                 dz=0.01):
 
         self.nbody = nbody
 
@@ -329,6 +332,10 @@ class ADDGALSModel(GalaxyModel):
             self.nbody, self.luminosityFunction, **rdelModelConfig)
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
         self.c = 3e5
+        self.use_dens = use_dens
+
+        self.dMr = dMr
+        self.dz = dz
 
         if shapeModelConfig is None:
             self.shapeModel = None
@@ -566,8 +573,15 @@ class ADDGALSModel(GalaxyModel):
                   self.rdelModel.lcenModel['b'][idx],
                   self.rdelModel.lcenModel['k'][idx]]
 
-        assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
-                                         z_halo, params, self.rdelModel.scatter)
+        if self.use_dens:
+            assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
+                                            z_halo, params, self.rdelModel.scatter,
+                                            dMr=self.dMr, dz=self.dz)
+        else:
+            assigned, lcen, bad = assignLcenNodens(z, mag, dens, mass_halo, density_halo,
+                                                   z_halo, params, self.rdelModel.scatter,
+                                                   self.dMr, self.dz)
+
 
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
