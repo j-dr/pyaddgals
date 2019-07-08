@@ -309,7 +309,8 @@ class ADDGALSModel(GalaxyModel):
                  shapeModelConfig=None,
                  use_dens=False,
                  dMr=0.015,
-                 dz=0.01):
+                 dz=0.01,
+                 delete_after_assignment=True):
 
         self.nbody = nbody
 
@@ -333,6 +334,7 @@ class ADDGALSModel(GalaxyModel):
         self.colorModel = ColorModel(self.nbody, **colorModelConfig)
         self.c = 3e5
         self.use_dens = use_dens
+        self.delete_after_assignment = delete_after_assignment
 
         self.dMr = dMr
         self.dz = dz
@@ -403,11 +405,18 @@ class ADDGALSModel(GalaxyModel):
         sys.stdout.flush()
 
         # sort galaxies by magnitude
-        idx = mag.argsort()
-        z = z[idx]
-        mag = mag[idx]
-        density = density[idx]
-        del idx
+        if self.use_dens:
+            idx = density.argsort()
+            z = z[idx]
+            mag = mag[idx]
+            density = density[idx]
+            del idx
+        else:
+            idx = mag.argsort()
+            z = z[idx]
+            mag = mag[idx]
+            density = density[idx]
+            del idx
 
         start = time()
         mag_cen, assigned, bad_cen = self.assignHalos(z, mag, density)
@@ -575,13 +584,12 @@ class ADDGALSModel(GalaxyModel):
 
         if self.use_dens:
             assigned, lcen, bad = assignLcen(z, mag, dens, mass_halo, density_halo,
-                                            z_halo, params, self.rdelModel.scatter,
-                                            dMr=self.dMr, dz=self.dz)
+                                             z_halo, params, self.rdelModel.scatter,
+                                             dMr=self.dMr, dz=self.dz)
         else:
             assigned, lcen, bad = assignLcenNodens(z, mag, dens, mass_halo, density_halo,
                                                    z_halo, params, self.rdelModel.scatter,
                                                    self.dMr, self.dz)
-
 
         print('n_bad halos: {}'.format(np.sum(bad)))
         sys.stdout.flush()
@@ -643,8 +651,9 @@ class ADDGALSModel(GalaxyModel):
         z_asn = z_part[idx]
         density_asn = density_part[idx]
 
-        self.nbody.particleCatalog.delete()
-        del z_part, density_part
+        if self.delete_after_assignment:
+            self.nbody.particleCatalog.delete()
+            del z_part, density_part
 
         print('[{}] number of bad assignments: {}'.format(
             self.nbody.domain.rank, np.sum(bad)))
