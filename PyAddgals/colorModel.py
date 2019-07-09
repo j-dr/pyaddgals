@@ -50,7 +50,7 @@ class ColorModel(object):
         self.match_magonly = match_magonly
 
         if self.match_magonly:
-            self.ds = 0.1
+            self.ds = 0.01
 
         if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
             self.band_shift = [float(self.band_shift)]
