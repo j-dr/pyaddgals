@@ -308,8 +308,8 @@ class ADDGALSModel(GalaxyModel):
                  colorModelConfig=None,
                  shapeModelConfig=None,
                  use_dens=False,
-                 dMr=0.015,
-                 dz=0.01,
+                 dMr=0.02,
+                 dz=0.02,
                  delete_after_assignment=True):
 
         self.nbody = nbody

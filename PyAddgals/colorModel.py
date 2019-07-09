@@ -50,7 +50,7 @@ class ColorModel(object):
         self.match_magonly = match_magonly
 
         if self.match_magonly:
-            self.ds = 1.0
+            self.ds = 0.1
 
         if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
             self.band_shift = [float(self.band_shift)]
@@ -296,7 +296,7 @@ class ColorModel(object):
         mag_train = self.trainingSet['ABSMAG'][:, 2]
 
         if self.match_magonly:
-            ranksigma5_train = np.random.rand(len(self.trainingSet['PSIGMA5']))
+            ranksigma5_train = np.zeros_like(self.trainingSet['PSIGMA5'])
         else:
             ranksigma5_train = self.trainingSet['PSIGMA5']
 
@@ -528,7 +528,8 @@ class ColorModel(object):
                   self.nbody.domain.rank, end - start))
             sys.stdout.flush()
         else:
-            ranksigma5 = np.random.rand(len(z))
+            print('[{}] Only matching SEDs on magnitude'.format(self.nbody.domain.rank))
+            ranksigma5 = np.zeros_like(z)
             sigma5 = ranksigma5
 
         start = time()
