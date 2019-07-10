@@ -529,7 +529,7 @@ class ColorModel(object):
             sys.stdout.flush()
         else:
             print('[{}] Only matching SEDs on magnitude'.format(self.nbody.domain.rank))
-            ranksigma5 = np.zeros_like(z)
+            ranksigma5 = np.random.rand(len(z))
             sigma5 = ranksigma5
 
         start = time()
