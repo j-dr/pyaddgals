@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit
 
 
-#@jit(nopython=True)
+@jit(nopython=True)
 def sampleConditionalGMM(fvec, idx, idx_c, lil, predmat, featcov, ifeatcov, mu,
                          weights, n_components, n_feat, npred):
     """Condition the model based on known values for some
