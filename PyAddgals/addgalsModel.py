@@ -307,7 +307,7 @@ class ADDGALSModel(GalaxyModel):
                  rdelModelConfig=None,
                  colorModelConfig=None,
                  shapeModelConfig=None,
-                 use_dens=False,
+                 use_dens=True,
                  dMr=0.02,
                  dz=0.02,
                  delete_after_assignment=True):
