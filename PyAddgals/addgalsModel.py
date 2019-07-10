@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 from scipy.special import erf
 from scipy.optimize import minimize
-from numba import jit, boolean, prange
+from numba import jit, boolean
 from time import time
 import numpy as np
 import fitsio
@@ -17,7 +17,7 @@ from . import luminosityFunction
 from . import shape
 
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True)
 def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
 
     n_gal = magnitude.size
@@ -30,7 +30,7 @@ def assign(magnitude, redshift, density, z_part, density_part, dz=0.01):
     bad = np.zeros(n_gal, dtype=boolean)
     nassigned = np.ones(density_part.size, dtype=boolean)
 
-    for i in prange(n_gal):
+    for i in range(n_gal):
 
         pidx = np.searchsorted(density_part, density[i])
         pidx -= 1
