@@ -296,7 +296,7 @@ class ColorModel(object):
         mag_train = self.trainingSet['ABSMAG'][:, 2]
 
         if self.match_magonly:
-            ranksigma5_train = np.zeros_like(self.trainingSet['PSIGMA5'])
+            ranksigma5_train = np.random.rand(len(self.trainingSet['PSIGMA5']))
         else:
             ranksigma5_train = self.trainingSet['PSIGMA5']
 
