@@ -50,7 +50,7 @@ class ColorModel(object):
         self.match_magonly = match_magonly
 
         if self.match_magonly:
-            self.ds = 1.0
+            self.ds = 0.01
 
         if isinstance(self.band_shift, str) | isinstance(self.band_shift, float):
             self.band_shift = [float(self.band_shift)]
@@ -358,11 +358,18 @@ class ColorModel(object):
             isbad = np.where(bad)[0]
             print('Number of bad SED assignments: {}'.format(len(isbad)))
 
-            def max_distances(m): return np.array(
-                [np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
+            if self.match_magonly:
+                def max_distances(m): return np.array(
+                    [np.max([(22.5 + m)**2 * dm, dm]), ds * 10, 1.1])
 
-            def neg_max_distances(m): return -1. * \
-                np.array([np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
+                def neg_max_distances(m): return -1. * \
+                    np.array([np.max([(22.5 + m)**2 * dm, dm]), ds * 10, 1.1])
+            else:
+                def max_distances(m): return np.array(
+                    [np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
+
+                def neg_max_distances(m): return -1. * \
+                    np.array([np.max([10 * (22.5 + m)**2 * dm, dm]), ds, 1.1])
 
             for i, p in enumerate(pos[bad]):
                 idx, tpos = tree.query_box(
@@ -528,6 +535,7 @@ class ColorModel(object):
                   self.nbody.domain.rank, end - start))
             sys.stdout.flush()
         else:
+            print('[{}] Only matching SEDs on magnitude'.format(self.nbody.domain.rank))
             ranksigma5 = np.random.rand(len(z))
             sigma5 = ranksigma5
 

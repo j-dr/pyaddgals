@@ -147,10 +147,10 @@ class LuminosityFunction(object):
         return nd
 
     def m_min_of_z(self, z):
-        if (self.magmin - self.cosmo.distanceModulus(z)) < -5:
+        if (self.magmin - self.cosmo.distanceModulus(z)) < -11:
             return self.magmin - self.cosmo.distanceModulus(z)
         else:
-            return -5.
+            return -11
 
     def m_max_of_z(self, z):
 
