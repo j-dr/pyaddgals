@@ -523,7 +523,7 @@ class ColorModel(object):
 
     def poly(self, z, m0, m1, m2, c, zhi, zlo):
         zlidx = z < zlo
-        zr = (z.reshape(-1, 1) - zlo)
+        zr = (z - zlo)
         zhi = zhi - zlo
         zidx = zr > zhi
         ar = 1 / (zr + 1) - 1
