@@ -7,7 +7,6 @@ import numpy as np
 import healpy as hp
 import fitsio
 import sys
-import os
 
 from PyAddgals.config import parseConfig
 from PyAddgals.cosmology import Cosmology
@@ -20,8 +19,6 @@ from fast3tree import fast3tree
 def load_model(cfg):
 
     config = parseConfig(cfg)
-
-    comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
     nb_config = config['NBody']
@@ -85,34 +82,34 @@ def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim, cc
     return idx_swap, rhalo
 
 
-def reassign_colors_cam(g, h, cfg, mhalo=12.466, scatter=0.749):
+def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749):
 
     model, filters = load_model(cfg)
 
-    gr = g['AMAG'][:, 0] - g['AMAG'][:, 1]
+    gr = gals['AMAG'][:, 0] - gals['AMAG'][:, 1]
 
-    idx_swap, rhalo = treefree_cam_rhaloscat(g['MAG_R_EVOL'], g['PX'], g['PY'], g['PZ'], h['PX'],
-                                             h['PY'], h['PZ'], h['M200B'], mhalo,
-                                             scatter, g['MAG_R_EVOL'], gr)
+    idx_swap, rhalo = treefree_cam_rhaloscat(gals['MAG_R_EVOL'], gals['PX'], gals['PY'],
+                                             gals['PZ'], halos['PX'],
+                                             halos['PY'], halos['PZ'], halos['M200B'],
+                                             mhalo, scatter, gals['MAG_R_EVOL'], gr)
 
-    temp_sedid = g['SEDID'][idx_swap]
-
+    temp_sedid = gals['SEDID'][idx_swap]
     coeffs = model.colorModel.trainingSet[temp_sedid]['COEFFS']
 
     # make sure we don't have any negative redshifts
-    z_a = copy(g['Z'])
+    z_a = copy(gals['Z'])
     z_a[z_a < 1e-6] = 1e-6
-    mag = g['MAG_R_EVOL']
+    mag = gals['MAG_R_EVOL']
 
     omag, amag = model.colorModel.computeMagnitudes(mag, z_a, coeffs, filters)
 
-    g['SEDID'] = temp_sedid
-    g['AMAG'] = amag
-    g['TMAG'] = omag
-    for im in range(len(filters)):
-        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+#    g['SEDID'] = temp_sedid
+#    g['AMAG'] = amag
+#    g['TMAG'] = omag
+#    for im in range(len(filters)):
+#        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
-    return g
+    return omag, amag, temp_sedid
 
 
 if __name__ == '__main__':
@@ -169,12 +166,19 @@ if __name__ == '__main__':
             hidx = (((domain.rbins[d.boxnum][d.rbin] - 100) <= hr) &
                     (hr < (domain.rbins[d.boxnum][d.rbin + 1] + 100.)))
 
-            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
+#            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
+            omag, amag, sedid = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
 
-            ofile = files[i].replace('fits', 'cam.fits')
+            g[idx]['TMAG'] = omag
+            g[idx]['AMAG'] = amag
+            g[idx]['SEDID'] = sedid
 
-            if os.path.exists(ofile):
-                with fitsio.FITS(ofile, 'rw') as f:
-                    f[-1].append(gi)
-            else:
-                fitsio.write(ofile, gi)
+        ofile = files[i].replace('fits', 'cam.fits')
+        print('[{}]: Writing to {}'.format(rank, ofile))
+#        if os.path.exists(ofile):
+#            with fitsio.FITS(ofile, 'rw') as f:
+#                f[-1].append(gi)
+#        else:
+        fitsio.write(ofile, g)
+
+        del g

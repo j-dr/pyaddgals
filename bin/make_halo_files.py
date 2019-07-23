@@ -35,7 +35,7 @@ def load_model(cfg):
     return model, config, d_config
 
 
-def write_halo_file(cfg, outpath):
+def write_halo_file(cfg, outpath, write_pos=True):
 
     model, config, d_config = load_model(cfg)
     parentfiles = config['NBody']['halofile']
@@ -85,6 +85,11 @@ def write_halo_file(cfg, outpath):
         matched_out['RA'] = 0.
         matched_out['DEC'] = 0.
 
+        hid_index = matched_out.dtype.names.index('HALOID')
+        name_list = list(matched_out.dtype.names)
+        name_list[hid_index] = 'ID'
+        matched_out.dtype.names = name_list
+
         pix = hp.vec2pix(2, vec[:, 0], vec[:, 1], vec[:, 2], nest=True)
         upix = np.unique(pix)
 
@@ -98,10 +103,26 @@ def write_halo_file(cfg, outpath):
             else:
                 fitsio.write(opath, matched_out[idx])
 
+            if write_pos:
+                pfname = outpath.replace('fits', 'lens.fits').format(p)
+
+                if os.path.exists(pfname):
+                    with fitsio.FITS(pfname, 'rw') as f:
+                        f[-1].append(matched_out[['ID', 'PX', 'PY', 'PZ']][idx])
+                else:
+                    fitsio.write(pfname, matched_out[['ID', 'PX', 'PY', 'PZ']][idx])
+
 
 if __name__ == '__main__':
 
     cfg = sys.argv[1]
     outpath = sys.argv[2]
+
+    outdir = '/'.join(outpath.split('/')[:-1])
+
+    try:
+        os.mkdir(outdir)
+    except OSError:
+        pass
 
     write_halo_file(cfg, outpath)
