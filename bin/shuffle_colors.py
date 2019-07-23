@@ -91,9 +91,9 @@ def reassign_colors_cam(g, h, cfg, mhalo=12.466, scatter=0.749):
 
     gr = g['AMAG'][:, 0] - g['AMAG'][:, 1]
 
-    idx_swap, rhalo = treefree_cam_rhaloscat(g['MAG_R_EVOl'], g['PX'], g['PY'], g['PZ'], h['PX'],
+    idx_swap, rhalo = treefree_cam_rhaloscat(g['MAG_R_EVOL'], g['PX'], g['PY'], g['PZ'], h['PX'],
                                              h['PY'], h['PZ'], h['M200B'], mhalo,
-                                             scatter, g['MAG_R_EVOl'], gr)
+                                             scatter, g['MAG_R_EVOL'], gr)
 
     temp_sedid = g['SEDID'][idx_swap]
 
