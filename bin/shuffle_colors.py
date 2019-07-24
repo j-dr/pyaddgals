@@ -165,11 +165,13 @@ if __name__ == '__main__':
         config = parseConfig(cfg)
         cc = config['Cosmology']
         nb_config = config['NBody']
+        nb_config['Domain']['pixlist'] = [0]
 
         cosmo = Cosmology(**cc)
 
         domain = Domain(cosmo, **nb_config.pop('Domain'))
         domain.decomp(None, 0, 1)
+        domain.
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
