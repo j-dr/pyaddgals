@@ -62,7 +62,8 @@ def compute_distances(px, py, pz, hpx, hpy, hpz, hmass, mcut):
     return rhalo
 
 
-def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim, cc, luminosity_train, gr_train, rhalo=None, rs=None):
+def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim,
+                           cc, luminosity_train, gr_train, rhalo=None, rs=None, rank=None):
 
     if rhalo is None:
         start = time()
@@ -84,12 +85,12 @@ def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim, cc
         luminosity, -logrhalo, luminosity_train, gr_train, 99, return_indexes=True)
     end = time()
 
-    print('[{}]: Finished abundance matching SEDs. Took {}s.'.format(end - start))
+    print('[{}]: Finished abundance matching SEDs. Took {}s.'.format(rank, end - start))
     sys.stdout.flush()
     return idx_swap, rhalo
 
 
-def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749):
+def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749, rank=None):
 
     model, filters = load_model(cfg)
 
@@ -98,7 +99,8 @@ def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749):
     idx_swap, rhalo = treefree_cam_rhaloscat(gals['MAG_R_EVOL'], gals['PX'], gals['PY'],
                                              gals['PZ'], halos['PX'],
                                              halos['PY'], halos['PZ'], halos['M200B'],
-                                             mhalo, scatter, gals['MAG_R_EVOL'], gr)
+                                             mhalo, scatter, gals['MAG_R_EVOL'], gr,
+                                             rank=rank)
 
     temp_sedid = gals['SEDID'][idx_swap]
     coeffs = model.colorModel.trainingSet[temp_sedid]['COEFFS']
@@ -112,7 +114,7 @@ def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749):
     omag, amag = model.colorModel.computeMagnitudes(mag, z_a, coeffs, filters)
     end = time()
 
-    print('[{}]: Done computing magnitudes. Took {}s'.format(end - start))
+    print('[{}]: Done computing magnitudes. Took {}s'.format(rank, end - start))
     sys.stdout.flush()
 #    g['SEDID'] = temp_sedid
 #    g['AMAG'] = amag
@@ -180,7 +182,9 @@ if __name__ == '__main__':
                     (hr < (domain.rbins[d.boxnum][d.rbin + 1] + 100.)))
 
 #            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
-            omag, amag, sedid = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
+            omag, amag, sedid = reassign_colors_cam(g[idx], h[hidx], cfg,
+                                                    mhalo=mhalo, scatter=scatter,
+                                                    rank=rank)
 
             g[idx]['TMAG'] = omag
             g[idx]['AMAG'] = amag
