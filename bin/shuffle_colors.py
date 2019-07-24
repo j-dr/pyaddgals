@@ -171,7 +171,6 @@ if __name__ == '__main__':
 
         domain = Domain(cosmo, **nb_config.pop('Domain'))
         domain.decomp(None, 0, 1)
-        domain.
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
