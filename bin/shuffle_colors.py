@@ -3,6 +3,7 @@ from halotools.empirical_models import abunmatch
 from copy import copy
 from glob import glob
 from mpi4py import MPI
+from time import time
 import numpy as np
 import healpy as hp
 import fitsio
@@ -64,9 +65,11 @@ def compute_distances(px, py, pz, hpx, hpy, hpz, hmass, mcut):
 def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim, cc, luminosity_train, gr_train, rhalo=None, rs=None):
 
     if rhalo is None:
+        start = time()
         rhalo = compute_distances(x, y, z, hpx, hpy, hpz,
                                   mass, masslim)
-        print('Finished computing rhalo')
+        end = time()
+        print('[{}]: Finished computing rhalo. Took {}s'.format(rank, end - start))
         sys.stdout.flush()
 
     logrhalo = np.log10(rhalo)
@@ -76,9 +79,13 @@ def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim, cc
     else:
         logrhalo += cc * np.random.randn(len(rhalo))
 
+    start = time()
     idx_swap = abunmatch.conditional_abunmatch(
         luminosity, -logrhalo, luminosity_train, gr_train, 99, return_indexes=True)
+    end = time()
 
+    print('[{}]: Finished abundance matching SEDs. Took {}s.'.format(end - start))
+    sys.stdout.flush()
     return idx_swap, rhalo
 
 
@@ -101,8 +108,12 @@ def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749):
     z_a[z_a < 1e-6] = 1e-6
     mag = gals['MAG_R_EVOL']
 
+    start = time()
     omag, amag = model.colorModel.computeMagnitudes(mag, z_a, coeffs, filters)
+    end = time()
 
+    print('[{}]: Done computing magnitudes. Took {}s'.format(end - start))
+    sys.stdout.flush()
 #    g['SEDID'] = temp_sedid
 #    g['AMAG'] = amag
 #    g['TMAG'] = omag
@@ -160,6 +171,8 @@ if __name__ == '__main__':
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
+            print('[{}]: working on rbin {}'.format(rank, domain.rbins[d.boxnum][d.rbin]))
+            sys.stdout.flush()
             idx = ((domain.rbins[d.boxnum][d.rbin] <= r) &
                    (r < domain.rbins[d.boxnum][d.rbin + 1]))
 
