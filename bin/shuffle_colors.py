@@ -187,9 +187,9 @@ if __name__ == '__main__':
                                                     mhalo=mhalo, scatter=scatter,
                                                     rank=rank)
 
-            g[idx]['TMAG'] = omag
-            g[idx]['AMAG'] = amag
-            g[idx]['SEDID'] = sedid
+            g['TMAG'][idx] = omag
+            g['AMAG'][idx] = amag
+            g['SEDID'][idx] = sedid
 
         ofile = files[i].replace('fits', 'cam.fits')
         print('[{}]: Writing to {}'.format(rank, ofile))
