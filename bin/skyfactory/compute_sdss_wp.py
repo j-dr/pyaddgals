@@ -339,6 +339,7 @@ if __name__ == '__main__':
 
     for i, f in enumerate(files):
         print(i)
+        sys.stdout.flush()
         gi = fitsio.read(f, columns=['PX', 'PY', 'PZ', 'TRA', 'TDEC',
                                      'Z', 'Z_COS', 'MAG_R', 'SEDID', 'TMAG', 'CENTRAL', 'M200'])
         zidx = (gi['Z'] < 0.25) & (gi['TMAG'][:, 1] < 20)
