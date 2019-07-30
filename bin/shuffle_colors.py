@@ -119,8 +119,6 @@ def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749, rank=None
 #    g['SEDID'] = temp_sedid
 #    g['AMAG'] = amag
 #    g['TMAG'] = omag
-#    for im in range(len(filters)):
-#        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
     return omag, amag, temp_sedid
 
@@ -132,6 +130,9 @@ if __name__ == '__main__':
     cfg = sys.argv[3]
     mhalo = float(sys.argv[4])
     scatter = float(sys.argv[5])
+
+    if len(sys.argv) > 5:
+        lensmags = bool(sys.argv[6])
 
     files = glob(filepath)
     halofiles = glob(hfilepath.format('*'))
@@ -191,12 +192,18 @@ if __name__ == '__main__':
             g['AMAG'][idx] = amag
             g['SEDID'][idx] = sedid
 
-        ofile = files[i].replace('fits', 'cam.fits')
+        if lensmags:
+            for im in range(g['TMAG'].shape[1]):
+                g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+
+            ofile = files[i].replace('lensed', 'lensed_cam')
+        else:
+            fs = files[i].split('.')
+            fs[0] = fs[0] + '_cam'
+            ofile = '.'.join(fs)
+
         print('[{}]: Writing to {}'.format(rank, ofile))
-#        if os.path.exists(ofile):
-#            with fitsio.FITS(ofile, 'rw') as f:
-#                f[-1].append(gi)
-#        else:
+
         fitsio.write(ofile, g)
 
         del g
