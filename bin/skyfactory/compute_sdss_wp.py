@@ -340,7 +340,7 @@ if __name__ == '__main__':
     for i, f in enumerate(files[:2]):
         print(i)
         sys.stdout.flush()
-        gi = fitsio.read(f, columns=['PX', 'PY', 'PZ', 'TRA', 'TDEC',
+        gi = fitsio.read(f, columns=['PX', 'PY', 'PZ', 'RA', 'DEC',
                                      'Z', 'Z_COS', 'MAG_R', 'SEDID', 'TMAG', 'CENTRAL', 'M200'])
         zidx = (gi['Z'] < 0.25) & (gi['TMAG'][:, 1] < 20)
 
@@ -349,8 +349,8 @@ if __name__ == '__main__':
             pyo = gi['PY'][zidx]
             pzo = gi['PZ'][zidx]
             zco = gi['Z_COS'][zidx]
-            rao = gi['TRA'][zidx]
-            deco = gi['TDEC'][zidx]
+            rao = gi['RA'][zidx]
+            deco = gi['DEC'][zidx]
             zo = gi['Z'][zidx]
             mo = gi['MAG_R'][zidx]
             co = gi['SEDID'][zidx]
@@ -362,8 +362,8 @@ if __name__ == '__main__':
             pyo = np.hstack([pyo, gi['PY'][zidx]])
             pzo = np.hstack([pzo, gi['PZ'][zidx]])
             zco = np.hstack([zo, gi['Z_COS'][zidx]])
-            rao = np.hstack([rao, gi['TRA'][zidx]])
-            deco = np.hstack([deco, gi['TDEC'][zidx]])
+            rao = np.hstack([rao, gi['RA'][zidx]])
+            deco = np.hstack([deco, gi['DEC'][zidx]])
             zo = np.hstack([zo, gi['Z'][zidx]])
             mo = np.hstack([mo, gi['MAG_R'][zidx]])
             co = np.hstack([co, gi['SEDID'][zidx]])
