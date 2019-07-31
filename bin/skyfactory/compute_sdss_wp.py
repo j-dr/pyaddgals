@@ -425,20 +425,30 @@ if __name__ == '__main__':
 
     rbins = np.logspace(-1, np.log10(50), 14)
 
+    print(rao)
+    print(deco)
+    print(zo)
+    sys.stdout.flush()
     wprp_22, wprppi_22, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'),
+        rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_22jk, wprppi_22jk, varwprp_22, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'),
+        rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     wprp_red22, wprppi_red22, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'),
+         rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_red22jk, wprppi_red22jk, varwprp_red22, varwprppi_red22, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'),
+        rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     wprp_blue22, wprppi_blue22, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'),
+        rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_blue22jk, wprppi_blue22jk, varwprp_blue22, varwprppi_blue22, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'),
+         rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     idx = (-21 < mo) & (mo < -20) & (19900 < czo) & (czo <
                                                      47650) & (14.5 < emag[:, 2]) & (emag[:, 2] < 20)
@@ -449,19 +459,19 @@ if __name__ == '__main__':
                                                           47650) & (~isred) & (14.5 < emag[:, 2]) & (emag[:, 2] < 20)
 
     wprp_21, wprppi_21, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'), rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_21jk, wprppi_21jk, varwprp_21, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'), rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     wprp_red21, wprppi_red21, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'), rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_red21jk, wprppi_red21jk, varwprp_red21, varwprppi_red21, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'), rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     wprp_blue21, wprppi_blue21, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'), rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_blue21jk, wprppi_blue21jk, varwprp_blue21, varwprppi_blue21, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'), rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     idx = (-20 < mo) & (mo < -19) & (8050 < czo) & (czo <
                                                     50000) & (14.5 < emag[:, 2]) & (emag[:, 2] < 17.6)
@@ -471,19 +481,19 @@ if __name__ == '__main__':
                                                          50000) & (~isred) & (14.5 < emag[:, 2]) & (emag[:, 2] < 17.6)
 
     wprp_20, wprppi_20, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=0, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'), rbins, nside=0, nest=True, pimax=60, nthreads=16)
     wprp_20jk, wprppi_20jk, varwprp_20, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx], deco[idx], zo[idx], rbins, nside=2, nest=True, pimax=60, nthreads=16)
+        rao[idx].astype('float32'), deco[idx].astype('float32'), zo[idx].astype('float32'), rbins, nside=2, nest=True, pimax=60, nthreads=16)
 
     wprp_red20, wprppi_red20, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=0, nest=True, pimax=40, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'), rbins, nside=0, nest=True, pimax=40, nthreads=16)
     wprp_red20jk, wprppi_red20jk, varwprp_red20, varwprppi_red20, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_red], deco[idx_red], zo[idx_red], rbins, nside=2, nest=True, pimax=40, nthreads=16)
+        rao[idx_red].astype('float32'), deco[idx_red].astype('float32'), zo[idx_red].astype('float32'), rbins, nside=2, nest=True, pimax=40, nthreads=16)
 
     wprp_blue20, wprppi_blue20, varwprp, varwprppi, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=0, nest=True, pimax=40, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'), rbins, nside=0, nest=True, pimax=40, nthreads=16)
     wprp_blue20jk, wprppi_blue20jk, varwprp_blue20, varwprppi_blue20, dd, dr, rr, nd, nr = compute_wprp(
-        rao[idx_blue], deco[idx_blue], zo[idx_blue], rbins, nside=2, nest=True, pimax=40, nthreads=16)
+        rao[idx_blue].astype('float32'), deco[idx_blue].astype('float32'), zo[idx_blue].astype('float32'), rbins, nside=2, nest=True, pimax=40, nthreads=16)
 
     np.savetxt('{}/wprp_22_21.txt'.format(valpath), wprp_22)
     np.savetxt('{}/varwprp_22_21.txt'.format(valpath), varwprp_22)
