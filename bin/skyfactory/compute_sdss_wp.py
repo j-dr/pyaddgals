@@ -337,7 +337,7 @@ if __name__ == '__main__':
 
     model = ADDGALSModel(nbody, **config['GalaxyModel']['ADDGALSModel'])
 
-    for i, f in enumerate(files[:2]):
+    for i, f in enumerate(files):
         print(i)
         sys.stdout.flush()
         gi = fitsio.read(f, columns=['PX', 'PY', 'PZ', 'RA', 'DEC',
