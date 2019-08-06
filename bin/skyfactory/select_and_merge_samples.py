@@ -4,10 +4,8 @@ from glob import glob
 from copy import copy
 from merge_buzzard import buzzard_flat_cat
 import numpy as np
-import healpy as hp
 import healpix_util as hu
 import fitsio
-import os
 import sys
 import yaml
 
@@ -16,26 +14,15 @@ MASKED_VAL = -9999
 
 def read_partial_map(filename, ext=1, masked_val=MASKED_VAL,
                      pix_col='PIXEL', val_col='SIGNAL'):
-    print('opening file')
-    sys.stdout.flush()
+
     f = fitsio.FITS(filename)[ext]
-    print('getting nside')
-    sys.stdout.flush()
+
     nside = int(f.read_header()['NSIDE'])
-    print('Making HealPix object')
-    sys.stdout.flush()
     hpix = hu.HealPix("ring", nside)
-    print('Making mask array')
-    sys.stdout.flush()
     m = masked_val * np.ones(hpix.npix)
-    print('reading data')
-    sys.stdout.flush()
     m_data = f.read()
-    print('Creating array')
-    sys.stdout.flush()
     m[m_data[pix_col]] = m_data[val_col]
-    print('returning map')
-    sys.stdout.flush()
+
     return hu.Map("ring", m)
 
 
@@ -75,38 +62,31 @@ def gold_cuts(gal_data, ra_col='RA', dec_col='DEC',
 
 
 def WL_cuts(obs, truth, pz, sys_map_vals,
-            maglim_cut_factor, rgrp_cut, z_col):
+            maglim_cut_factor, rgrp_cut, z_col, nz_cut):
 
     psf_size = 0.26 * 0.5 * sys_map_vals['psf_fwhm_r']
-    mag_mask = ((obs['MAGERR_R'] < maglim_cut_factor) & (obs['MAGERR_I'] < maglim_cut_factor) &
-                (obs['MAGERR_Z'] < maglim_cut_factor))
-    size_mask = np.sqrt(obs['SIZE']**2 + psf_size**2) > rgrp_cut * psf_size
-    other_mask = (np.isfinite(
-        sys_map_vals['maglim_r']) * np.isfinite(sys_map_vals['psf_fwhm_r']))
+    mask = ((obs['MAGERR_R'] < maglim_cut_factor) & (obs['MAGERR_I'] < maglim_cut_factor) &
+            (obs['MAGERR_Z'] < maglim_cut_factor))
+    mask &= np.sqrt(obs['SIZE']**2 + psf_size**2) > rgrp_cut * psf_size
 
-    good = mag_mask * size_mask * other_mask
+    del psf_size
 
-    return good
+    mask &= (np.isfinite(sys_map_vals['maglim_r']) * np.isfinite(sys_map_vals['psf_fwhm_r']))
+
+    mask &= obs['MAG_I'] < (nz_cut[0] + nz_cut[1] * truth['Z'])
+
+    return mask
 
 
-def LSS_cuts(obs, truth, pz, sys_map_vals, zcol):
+def LSS_cuts(obs, truth, pz, sys_map_vals, zcol,
+             nz_cut):
 
     if 'MEAN_Z' == zcol:
         z = pz[zcol]
     else:
         z = truth[zcol]
 
-    mask = (obs['MAG_I'] > 17.5) & \
-        (obs['MAG_I'] < 22) & \
-        (obs['MAG_I'] < (19.0 + 3.0 * z)) & \
-        ((obs['MAG_I'] - obs['MAG_Z'] + 2.0 * obs['MAG_R'] - obs['MAG_I']) > 1.7) & \
-        (-1 < (obs['MAG_G'] - obs['MAG_R'])) & \
-        ((obs['MAG_G'] - obs['MAG_R']) < 3) & \
-        (-1 < (obs['MAG_R'] - obs['MAG_I'])) & \
-        ((obs['MAG_R'] - obs['MAG_I']) < 2.5) & \
-        (-1 < (obs['MAG_I'] - obs['MAG_Z'])) & \
-        ((obs['MAG_I'] - obs['MAG_Z']) < 2.) & \
-        ((obs['RA'] < 15.) | (obs['RA'] > 290) | (obs['DEC'] < -35))
+    mask = (obs['MAG_I'] > 17.5) & (obs['MAG_I'] < (nz_cut[0] + nz_cut[1] * z))
 
     return mask
 
@@ -243,13 +223,21 @@ if __name__ == "__main__":
                         sys.stdout.flush()
                         sys_map_data[sample][name] = m
 
+            if 'nz_cut' in scfg.keys():
+                nz_cut = [float(c) for c in scfg['nz_cut']]
+            else:
+                nz_cut = [99, 0.0]
+
             if sample == 'LSS':
-                cut_fcn = LSS_cuts
+                def cut_fcn(o, t, p, sys_map_vals, zcol): LSS_cuts(o, t, p,
+                                                                   sys_map_vals,
+                                                                   zcol, nz_cut)
             elif sample == 'WL':
                 def cut_fcn(o, t, p, sys_map_vals, zcol): return WL_cuts(o, t, p,
                                                                          sys_map_vals,
                                                                          scfg['maglim_cut_factor'],
-                                                                         scfg['rgrp_cut'], zcol)
+                                                                         scfg['rgrp_cut'], zcol,
+                                                                         nz_cut)
 
             print('Making selections')
             sys.stdout.flush()
