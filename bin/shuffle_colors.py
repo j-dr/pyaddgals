@@ -3,11 +3,11 @@ from halotools.empirical_models import abunmatch
 from copy import copy
 from glob import glob
 from mpi4py import MPI
+from time import time
 import numpy as np
 import healpy as hp
 import fitsio
 import sys
-import os
 
 from PyAddgals.config import parseConfig
 from PyAddgals.cosmology import Cosmology
@@ -16,11 +16,10 @@ from PyAddgals.nBody import NBody
 from PyAddgals.addgalsModel import ADDGALSModel
 from fast3tree import fast3tree
 
+
 def load_model(cfg):
 
     config = parseConfig(cfg)
-
-    comm = MPI.COMM_WORLD
 
     cc = config['Cosmology']
     nb_config = config['NBody']
@@ -40,21 +39,18 @@ def load_model(cfg):
     return model, filters
 
 
-def reassign_colors_cam(g, h, cfg, mhalo=12.466, corr=0.749, alpham=0.0689):
+def compute_distances(px, py, pz, hpx, hpy, hpz, hmass, mcut):
+    idx = (hmass > 10**mcut)
+    cpos = np.zeros((np.sum(idx), 3))
 
-    model, filters = load_model(cfg)
+    pos = np.zeros((len(px), 3))
+    pos[:, 0] = px
+    pos[:, 1] = py
+    pos[:, 2] = pz
 
-    centrals = h[(h['HOST_HALOID'] == -1) & (h['M200B'] > 10**mhalo)]
-    cpos = np.zeros((len(centrals), 3))
-
-    pos = np.zeros((len(g), 3))
-    pos[:, 0] = g['PX']
-    pos[:, 1] = g['PY']
-    pos[:, 2] = g['PZ']
-
-    cpos[:, 0] = centrals['PX']
-    cpos[:, 1] = centrals['PY']
-    cpos[:, 2] = centrals['PZ']
+    cpos[:, 0] = hpx[idx]
+    cpos[:, 1] = hpy[idx]
+    cpos[:, 2] = hpz[idx]
 
     rhalo = np.zeros(len(pos))
 
@@ -63,40 +59,69 @@ def reassign_colors_cam(g, h, cfg, mhalo=12.466, corr=0.749, alpham=0.0689):
             d = tree.query_nearest_distance(pos[i, :])
             rhalo[i] = d
 
-    mr = copy(g['MAG_R_EVOL'])
-    mr[mr<-22] = -22
-    mr[mr>-18] = -18
-    gr = g['AMAG'][:, 0] - g['AMAG'][:, 1]
+    return rhalo
 
-    idx = np.argsort(rhalo)
-    rhalo_sorted = rhalo[idx]
-    rank_rhalo = np.arange(len(rhalo))/len(rhalo)
-    corr_coeff = corr * (mr + 22) ** (alpham)
-    corr_coeff[corr_coeff > 1] = 1.
-    noisy_rank_rhalo = abunmatch.noisy_percentile(rank_rhalo, corr_coeff)
 
-    g = g[idx]
-    gr = g['AMAG'][:,0] - g['AMAG'][:,1]
+def treefree_cam_rhaloscat(luminosity, x, y, z, hpx, hpy, hpz, mass, masslim,
+                           cc, luminosity_train, gr_train, rhalo=None, rs=None, rank=None):
 
-    idx_swap = abunmatch.conditional_abunmatch(g['MAG_R_EVOL'], noisy_rank_rhalo, g['MAG_R_EVOL'], -gr, 99, return_indexes=True)
-    temp_sedid = g['SEDID'][idx_swap]
+    if rhalo is None:
+        start = time()
+        rhalo = compute_distances(x, y, z, hpx, hpy, hpz,
+                                  mass, masslim)
+        end = time()
+        print('[{}]: Finished computing rhalo. Took {}s'.format(rank, end - start))
+        sys.stdout.flush()
 
+    logrhalo = np.log10(rhalo)
+
+    if rs is not None:
+        logrhalo += (cc + rs * rhalo) * np.random.randn(len(rhalo))
+    else:
+        logrhalo += cc * np.random.randn(len(rhalo))
+
+    start = time()
+    idx_swap = abunmatch.conditional_abunmatch(
+        luminosity, -logrhalo, luminosity_train, gr_train, 99, return_indexes=True)
+    end = time()
+
+    print('[{}]: Finished abundance matching SEDs. Took {}s.'.format(rank, end - start))
+    sys.stdout.flush()
+    return idx_swap, rhalo
+
+
+def reassign_colors_cam(gals, halos, cfg, mhalo=12.466, scatter=0.749, rank=None):
+
+    model, filters = load_model(cfg)
+
+    gr = gals['AMAG'][:, 0] - gals['AMAG'][:, 1]
+
+    idx_swap, rhalo = treefree_cam_rhaloscat(gals['MAG_R_EVOL'], gals['PX'], gals['PY'],
+                                             gals['PZ'], halos['PX'],
+                                             halos['PY'], halos['PZ'], halos['M200B'],
+                                             mhalo, scatter, gals['MAG_R_EVOL'], gr,
+                                             rank=rank)
+
+    temp_sedid = gals['SEDID'][idx_swap]
     coeffs = model.colorModel.trainingSet[temp_sedid]['COEFFS']
 
     # make sure we don't have any negative redshifts
-    z_a = copy(g['Z'])
+    z_a = copy(gals['Z'])
     z_a[z_a < 1e-6] = 1e-6
-    mag = g['MAG_R_EVOL']
+    mag = gals['MAG_R_EVOL']
 
+    start = time()
     omag, amag = model.colorModel.computeMagnitudes(mag, z_a, coeffs, filters)
+    end = time()
 
-    g['SEDID'] = temp_sedid
-    g['AMAG'] = amag
-    g['TMAG'] = omag
-    for im in range(len(filters)):
-        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+    print('[{}]: Done computing magnitudes. Took {}s'.format(rank, end - start))
+    sys.stdout.flush()
+#    g['SEDID'] = temp_sedid
+#    g['AMAG'] = amag
+#    g['TMAG'] = omag
 
-    return g
+    return omag, amag, temp_sedid
+
 
 if __name__ == '__main__':
 
@@ -104,11 +129,13 @@ if __name__ == '__main__':
     hfilepath = sys.argv[2]
     cfg = sys.argv[3]
     mhalo = float(sys.argv[4])
-    corr = float(sys.argv[5])
-    alpham = float(sys.argv[6])
-    halo_nside = int(sys.argv[7])
+    scatter = float(sys.argv[5])
+
+    if len(sys.argv) > 5:
+        lensmags = bool(sys.argv[6])
 
     files = glob(filepath)
+    halofiles = glob(hfilepath.format('*'))
     comm = MPI.COMM_WORLD
     size = comm.size
     rank = comm.rank
@@ -117,32 +144,29 @@ if __name__ == '__main__':
 
     files = files[rank::size]
 
-    rbins = np.linspace(0, 4000, 11)
+    for i, f in enumerate(halofiles):
+        hi = fitsio.read(f, columns=['PX', 'PY', 'PZ', 'HOST_HALOID', 'M200B', 'Z_COS'])
+        hi = hi[hi['HOST_HALOID'] == -1]
+
+        if i == 0:
+            h = hi
+        else:
+            h = np.hstack([h, hi])
+
+    h = h[h['HOST_HALOID'] == -1]
+    del hi
+
+    hr = np.sqrt(h['PX']**2 + h['PY']**2 + h['PZ']**2)
 
     for i in range(len(files)):
         print(files[i])
         g = fitsio.read(files[i])
         r = np.sqrt(g['PX']**2 + g['PY']**2 + g['PZ']**2)
 
-        pix8 = int(files[i].split('.')[-2])
-        pix = ud_map[pix8]
-        h = fitsio.read(hfilepath.format(pix), columns=['PX', 'PY', 'PZ', 'HOST_HALOID', 'HALOID', 'M200B'])
-        hr = np.sqrt(h['PX']**2 + h['PY']**2 + h['PZ']**2)
-        hpix = hp.vec2pix(8, h['PX'], h['PY'], h['PZ'], nest=True)
-        print('halo pix in gal pix: {}'.format(np.in1d(pix8, hpix)))
-
-        # if halo_nside is 8, signifies that we want to cut halo halo
-        # to match the exact volume of the galaxy pixel. This is to test
-        # domain size effects on halo distance calculations
-
-        if halo_nside == 8:
-            h = h[hpix == pix8]
-            hr = hr[hpix == pix8]
-            hpix = hpix[hpix == pix8]
-
         config = parseConfig(cfg)
         cc = config['Cosmology']
         nb_config = config['NBody']
+        nb_config['Domain']['pixlist'] = [0]
 
         cosmo = Cosmology(**cc)
 
@@ -151,21 +175,35 @@ if __name__ == '__main__':
 
         for d in domain.yieldDomains():
             nbody = NBody(cosmo, d, **nb_config)
+            print('[{}]: working on rbin {}'.format(rank, domain.rbins[d.boxnum][d.rbin]))
+            sys.stdout.flush()
             idx = ((domain.rbins[d.boxnum][d.rbin] <= r) &
                    (r < domain.rbins[d.boxnum][d.rbin + 1]))
 
-            if halo_nside < 8:
-                hidx = (((domain.rbins[d.boxnum][d.rbin] - 100) <= hr) &
-                        (hr < (domain.rbins[d.boxnum][d.rbin + 1] + 100.)))
-            else:
-                hidx = (((domain.rbins[d.boxnum][d.rbin]) <= hr) &
-                        (hr < (domain.rbins[d.boxnum][d.rbin + 1])))
+            hidx = (((domain.rbins[d.boxnum][d.rbin] - 100) <= hr) &
+                    (hr < (domain.rbins[d.boxnum][d.rbin + 1] + 100.)))
 
-            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, corr=corr, alpham=alpham)
-            ofile = files[i].replace('fits', 'cam_hnside{}.fits'.format(halo_nside))
+#            gi = reassign_colors_cam(g[idx], h[hidx], cfg, mhalo=mhalo, scatter=scatter)
+            omag, amag, sedid = reassign_colors_cam(g[idx], h[hidx], cfg,
+                                                    mhalo=mhalo, scatter=scatter,
+                                                    rank=rank)
 
-            if os.path.exists(ofile):
-                with fitsio.FITS(ofile, 'rw') as f:
-                    f[-1].append(gi)
-            else:
-                fitsio.write(ofile, gi)
+            g['TMAG'][idx] = omag
+            g['AMAG'][idx] = amag
+            g['SEDID'][idx] = sedid
+
+        if lensmags:
+            for im in range(g['TMAG'].shape[1]):
+                g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+
+            ofile = files[i].replace('lensed', 'lensed_cam')
+        else:
+            fs = files[i].split('.')
+            fs[0] = fs[0] + '_cam'
+            ofile = '.'.join(fs)
+
+        print('[{}]: Writing to {}'.format(rank, ofile))
+
+        fitsio.write(ofile, g)
+
+        del g

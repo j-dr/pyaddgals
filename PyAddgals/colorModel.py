@@ -19,6 +19,7 @@ class ColorModel(object):
                  dm_rank=0.1, ds=0.05, dm_sed=0.1, rf_z=None, rf_m=None,
                  rf_zm=None, rf_b=None, Q=0.0, no_colors=False,
                  piecewise_mag_evolution=False, match_magonly=False,
+                 third_order_mag_evolution=False,
                  **kwargs):
 
         if redFractionModelFile is None:
@@ -46,6 +47,7 @@ class ColorModel(object):
         self.rf_b = rf_b
         self.Q = Q
         self.piecewise_mag_evolution = piecewise_mag_evolution
+        self.third_order_mag_evolution = third_order_mag_evolution
         self.no_colors = no_colors
         self.match_magonly = match_magonly
 
@@ -519,6 +521,20 @@ class ColorModel(object):
 
         return temp_sedid
 
+    def poly(self, z, m0, m1, m2, c, zhi, zlo):
+        zlidx = z < zlo
+        zr = (z - zlo)
+        zhi = zhi - zlo
+        zidx = zr > zhi
+        ar = 1 / (zr + 1) - 1
+        ahi = 1 / (zhi + 1) - 1
+
+        dm = c + m0 * ar + m1 * ar**2 + m2 * ar**3
+        dm[zlidx] = 0
+        dm[zidx] = c + m0 * (ahi) + m1 * (ahi)**2 + m2 * (ahi)**3 + (ar[zidx] - ahi) * (m0 + 2 * m1 * (ahi) + 3 * m2 * (ahi)**2)
+
+        return dm
+
     def assignSEDs(self, pos, mag, z, z_rsd):
 
         start = time()
@@ -545,6 +561,8 @@ class ColorModel(object):
             mag_evol = mag + self.Q[0] * (1. / (1 + z) - 1. / (1 + 0.1)) + self.Q[3]
             mag_evol[zidx] = (mag[zidx] + self.Q[1] * (1. / (1 + z[zidx]) - 1. / (1 + 0.1)) +
                               self.Q[0] * (1. / (1 + self.Q[2]) - 1. / (1 + 0.1))) + self.Q[3]
+        elif self.third_order_mag_evolution:
+            mag_evol = mag + self.poly(z, *self.Q)
         else:
             mag_evol = mag + self.Q * (1 / (1 + z) - 1 / 1.1)
 
