@@ -525,14 +525,14 @@ class buzzard_flat_cat(object):
         gold['coadd_objects_id'] = truth['ID']
         gold['ra'] = obs['RA']
         gold['dec'] = obs['DEC']
-        gold['tra'] = obs['TRA']
-        gold['tdec'] = obs['TDEC']
-        gold['px'] = obs['PX']
-        gold['py'] = obs['PY']
-        gold['pz'] = obs['PZ']
-        gold['vx'] = obs['VX']
-        gold['vy'] = obs['VY']
-        gold['vz'] = obs['VZ']
+        gold['tra'] = truth['TRA']
+        gold['tdec'] = truth['TDEC']
+        gold['px'] = truth['PX']
+        gold['py'] = truth['PY']
+        gold['pz'] = truth['PZ']
+        gold['vx'] = truth['VX']
+        gold['vy'] = truth['VY']
+        gold['vz'] = truth['VZ']
 
         gold['hpix'] = hp.ang2pix(
             16384, np.pi / 2. - np.radians(obs['DEC']), np.radians(obs['RA']), nest=True)
