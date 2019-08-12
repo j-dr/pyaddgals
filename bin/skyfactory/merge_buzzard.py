@@ -502,7 +502,7 @@ class buzzard_flat_cat(object):
 
         lenst = 0
 
-        if os.path.exists(self.odir + '/' + self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(rank)):
+        if os.path.exists(self.obsdir + '/' + self.simname + '_{}'.format(self.obsname) + '_gold.{}.fits'.format(rank)):
             ifile = 1
         elif not os.path.exists(self.odir):
             try:
@@ -513,12 +513,12 @@ class buzzard_flat_cat(object):
         else:
             ifile = 0
 
-        gout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(rank), 'rw')
-        sout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(rank), 'rw')
-        pout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(rank), 'rw')
+        gout = fio.FITS(self.obsdir + '/' + self.simname +
+                        '_{}'.format(self.obsname) + '_gold.{}.fits'.format(rank), 'rw')
+        sout = fio.FITS(self.obsdir + '/' + self.simname +
+                        '_{}'.format(self.obsname) + '_shape.{}.fits'.format(rank), 'rw')
+        pout = fio.FITS(self.obsdir + '/' + self.simname +
+                        '_{}'.format(self.obsname) + '_pz.{}.fits'.format(rank), 'rw')
 
         # insert selection function here to mask truth/obs (if can be run on individual files)
 
@@ -720,19 +720,19 @@ class buzzard_flat_cat(object):
                    'redshift': 'z',
                    'redshift_cos': 'redshift_cos'}
 
-        gout = h5py.File(self.odir + '/' + self.simname +
-                         '_{}'.format(self.obsdir[:-1]) + '_gold.h5', 'w')
-        sout = h5py.File(self.odir + '/' + self.simname +
-                         '_{}'.format(self.obsdir[:-1]) + '_shape.h5', 'w')
-        pout = h5py.File(self.odir + '/' + self.simname +
-                         '_{}'.format(self.obsdir[:-1]) + '_bpz.h5', 'w')
+        gout = h5py.File(self.obsdir + '/' + self.simname +
+                         '_{}'.format(self.obsname) + '_gold.h5', 'w')
+        sout = h5py.File(self.obsdir + '/' + self.simname +
+                         '_{}'.format(self.obsname) + '_shape.h5', 'w')
+        pout = h5py.File(self.obsdir + '/' + self.simname +
+                         '_{}'.format(self.obsname) + '_bpz.h5', 'w')
 
         if not self.already_merged:
-            gfiles = glob.glob(self.odir + '/' +
-                               self.simname + '_{}'.format(self.obsdir[:-1]) +
+            gfiles = glob.glob(self.obsdir + '/' +
+                               self.simname + '_{}'.format(self.self.obsname) +
                                '_gold*[0-9].fits')
         else:
-            gfiles = [(self.odir + '/' + self.simname + '_{}'.format(self.obsdir[:-1]) +
+            gfiles = [(self.obsdir + '/' + self.simname + '_{}'.format(self.self.obsname) +
                        '_gold.fits')]
 
         size = len(gfiles)
@@ -742,12 +742,12 @@ class buzzard_flat_cat(object):
         for i in range(size):
             try:
                 if not self.already_merged:
-                    hdr = fio.read_header(self.odir + '/' +
-                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    hdr = fio.read_header(self.obsdir + '/' +
+                                          self.simname + '_{}'.format(self.self.obsname) +
                                           '_gold.{}.fits'.format(i), 1)
                 else:
-                    hdr = fio.read_header(self.odir + '/' +
-                                          self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    hdr = fio.read_header(self.obsdir + '/' +
+                                          self.simname + '_{}'.format(self.self.obsname) +
                                           '_gold.fits', 1)
 
                 total_length += hdr['NAXIS2']
@@ -758,24 +758,24 @@ class buzzard_flat_cat(object):
         for i in range(size):
             try:
                 if not self.already_merged:
-                    gold = fio.read(self.odir + '/' +
-                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    gold = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                     '_gold.{}.fits'.format(i))
-                    shape = fio.read(self.odir + '/' +
-                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    shape = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                      '_shape.{}.fits'.format(i))
-                    bpz = fio.read(self.odir + '/' +
-                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    bpz = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                    '_pz.{}.fits'.format(i))
                 else:
-                    gold = fio.read(self.odir + '/' +
-                                    self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    gold = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                     '_gold.fits')
-                    shape = fio.read(self.odir + '/' +
-                                     self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    shape = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                      '_shape.fits')
-                    bpz = fio.read(self.odir + '/' +
-                                   self.simname + '_{}'.format(self.obsdir[:-1]) +
+                    bpz = fio.read(self.obsdir + '/' +
+                                    self.simname + '_{}'.format(self.self.obsname) +
                                    '_pz.fits')
 
             except OSError as e:
