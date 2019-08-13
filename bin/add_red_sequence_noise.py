@@ -732,7 +732,7 @@ class RedSequenceColorPar(object):
             return lumrefmagind
 
 
-def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands):
+def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
 
     ds = np.zeros((len(g), nbands - 1))
     isred = (g['AMAG'][:, 0] - g['AMAG'][:, 1]) > (0.095 - 0.035 * g['AMAG'][:, 1])
@@ -751,7 +751,7 @@ def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands):
     mag = np.copy(g['TMAG'])
 
     for i in range(nbands - 1):
-        mag[isred, i] += ds[isred, i] * np.random.randn(len(g[isred]))
+        mag[isred, i] += rs_mult * ds[isred, i] * np.random.randn(len(g[isred]))
 
     g['TMAG'] = mag
     for im in range(nbands):
@@ -772,6 +772,11 @@ if __name__ == '__main__':
     nbands = int(sys.argv[4])
     mstarpath = sys.argv[5]
 
+    if len(sys.argv) > 6:
+        rs_mult = float(sys.argv[6])
+    else:
+        rs_mult = 1.0
+
     files = glob(filepath)
 
     buzzard_rs_model = RedSequenceColorPar(buzzard_rs_model, mstarpath=mstarpath)
@@ -786,6 +791,6 @@ if __name__ == '__main__':
             continue
         g = fitsio.read(files[i])
 
-        g = add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands)
+        g = add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
 
         fitsio.write(ofile, g)
