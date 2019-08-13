@@ -211,7 +211,8 @@ if __name__ == "__main__":
                                          'Z_COS', 'PX', 'PY', 'PZ',
                                          'VX', 'VY', 'VZ', 'TRA', 'TDEC',
                                          'SEDID', 'LMAG', 'TMAG',
-                                         'M200', 'R200', 'RHALO', 'HALOID'])
+                                         'M200', 'R200', 'RHALO', 'HALOID',
+                                         'CENTRAL'])
         truth = truth[idx]
 
         sys.stdout.flush()
