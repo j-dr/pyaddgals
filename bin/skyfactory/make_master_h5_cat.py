@@ -328,7 +328,52 @@ def assign_jk_regions(mastercat, regionsfile, nside=512):
     f.close()
 
 
-def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
+def make_mcal_selection(f, x_opt):
+
+    psfmap = {'PIXEL': f['maps/hpix'][:], 'SIGNAL': f['maps/i/fwhm'][:]}
+
+    pidx = psfmap['PIXEL'].argsort()
+    psfmap['SIGNAL'] = psfmap['SIGNAL'][pidx]
+    psfmap['PIXEL'] = psfmap['PIXEL'][pidx]
+    del pidx
+
+    gpix = hp.ang2pix(4096, f['catalog/gold/ra'][:], f['catalog/gold/dec'][:],
+                      lonlat=True)
+    psfidx = psfmap['PIXEL'].searchsorted(gpix)
+    del gpix
+
+    gpsf = 0.26 * 0.5 * psfmap['SIGNAL'][psfidx]
+    del psfmap['PIXEL'], psfmap['SIGNAL']
+    del psfmap
+
+    idx = np.sqrt(f['catalog/metacal/unsheared/size']**2 + gpsf**2) > (x_opt[2] * gpsf)
+    del gpsf
+
+    idx = np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
+    idx &= np.abs(f['catalog/metacal/unsheared/e2'][:]) < 1
+    idx &= f['catalog/gold/mag_err_r'] < 0.25
+    idx &= f['catalog/gold/mag_err_i'] < 0.25
+    idx &= f['catalog/gold/mag_err_z'] < 0.25
+    idx &= f['catalog/gold/mag_i'][:] < (x_opt[0] + x_opt[1] * f['catalog/bpz/redshift'][:])
+
+    return idx
+
+
+def make_altlens_selection(f, x_opt):
+
+    mag_i = f['catalog/gold/mag_i'][:]
+    z = f['catalog/bpz/redshift'][:]
+    idx = (mag_i < (x_opt[0] * z + x_opt[1]))
+    del z
+
+    idx &= (mag_i > 17.5)
+    idx &= (f['catalog/gold/mag_err_i'] < 0.1)
+    del mag_i
+
+    return idx
+
+
+def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5',
                     shapefile='y3v02-mcal-002-blind-v1.h5', goldfile='Y3_GOLD_2_2.h5',
                     bpzfile='Y3_GOLD_2_2_BPZ.h5', rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5',
                     mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None,
@@ -361,15 +406,21 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
         c = f['catalog']['gold'][col][:]
         f['catalog']['gold'][col][:] = c[s]
 
+    del s
+
     s = np.argsort(m['catalog']['unsheared']['metacal']['coadd_object_id'][:])
     for col in m['catalog']['unsheared']['metacal'].keys():
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
+    del s
+
     s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
     for col in b['catalog']['bpz'].keys():
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
+
+    del s
 
     s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
     for col in f['catalog']['gold'].keys():
@@ -402,7 +453,12 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
     f['/randoms'] = h5py.ExternalLink(rmfile, "/randoms")
     f['/masks/gold'] = h5py.ExternalLink(goldfile, "/masks/gold")
     f['/masks/redmagic'] = h5py.ExternalLink(rmfile, "/masks/redmagic")
-#    f['/maps']              = h5py.ExternalLink(mapfile,   "/maps")
+    f['/maps'] = h5py.ExternalLink(mapfile, "/maps")
+
+    f['catalog/metacal/unsheared/ra'] = f['catalog/gold/ra']
+    f['catalog/metacal/unsheared/dec'] = f['catalog/gold/dec']
+    f['catalog/metacal/unsheared/tra'] = f['catalog/gold/tra']
+    f['catalog/metacal/unsheared/tdec'] = f['catalog/gold/tdec']
 
     # include index coadd id array in master file
     coadd = f['catalog/gold/coadd_object_id'][:]
@@ -482,7 +538,7 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
     # construct shape catalog selection flags for default expected selection (in index form), both with and without gold flags
     flags = f['catalog/metacal/unsheared/flags'][:]
     for table, suffix in tuple(zip(['unsheared'], [''])):
-        idx = (flags == 0)
+        idx = (flags == 0) & make_mcal_selection(f, x_opt)
         f.create_dataset('index/metacal/' + table + '/select', maxshape=(
             np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
         f['index/metacal/' + table + '/select'][:] = np.where(idx)[0]
@@ -490,6 +546,37 @@ def make_master_bcc(outfile='./Y3_mastercat_v2_6_20_18.h5',
         f.create_dataset('index/select' + suffix, maxshape=(np.sum(idx),),
                          shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
         f['index/select' + suffix][:] = np.where(idx)[0]
+        del idx
+
+    idx = (flags == 0) & make_altlens_selection(f, x_opt_altlens)
+    f.create_dataset('index/maglim/select', maxshape=(
+                     np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+    f['index/maglim/select'][:] = np.where(idx)[0]
+
+    f.close()
+
+
+def match_shape_noise(filename, zbins, sigma_e_data):
+
+    f = h5py.File(filename, 'r+')
+    size_tot = len(f['catalog/metacal/unsheared/e1'][:])
+    f.create_dataset('catalog/metacal/unsheared/e1_matched_se', maxshape=(
+                     size_tot,), shape=(size_tot,), dtype=int, chunks=(1000000,))
+    f.create_dataset('catalog/metacal/unsheared/e2_matched_se', maxshape=(
+                     size_tot,), shape=(size_tot,), dtype=int, chunks=(1000000,))
+
+    idx = f['index/metacal/select'][:]
+    zmean = f['catalog/bpz/zmean_sof'][:][idx]
+    e1 = f['catalog/metacal/unsheared/e1'][:][idx]
+    e2 = f['catalog/metacal/unsheared/e1'][:][idx]
+
+    for i in range(len(zbins)):
+        idxi = (zbins[i] < zmean) & (zmean < zbins[i + 1])
+        sigma_e = np.std(e1[idxi])
+        ds = np.sqrt((sigma_e_data[i]**2 - sigma_e**2))
+
+        f['catalog/metacal/unsheared/e1_matched_se'][:][idx[idxi]] = e1[idxi] + ds * np.random.randn(np.sum(idxi))
+        f['catalog/metacal/unsheared/e2_matched_se'][:][idx[idxi]] = e2[idxi] + ds * np.random.randn(np.sum(idxi))
 
     f.close()
 
@@ -517,6 +604,8 @@ if __name__ == '__main__':
 
     make_master_bcc(outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
                     maskfile=maskfile, good=goodmask_value)
+
+    match_shape_noise(outfile, cfg['zbins'], cfg['sigma_e_data'])
 
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
