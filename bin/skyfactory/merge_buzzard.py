@@ -663,8 +663,6 @@ class buzzard_flat_cat(object):
         mcal_inc = {'coadd_objects_id': 'coadd_object_id',
                     'flags': 'flags',
                     'weight': 'mask_frac',
-                    'ra': 'ra',
-                    'dec': 'dec',
                     'e1': 'e1',
                     'e2': 'e2',
                     'g1': 'g1',
