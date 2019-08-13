@@ -729,10 +729,10 @@ class buzzard_flat_cat(object):
 
         if not self.already_merged:
             gfiles = glob.glob(self.obsdir + '/' +
-                               self.simname + '_{}'.format(self.self.obsname) +
+                               self.simname + '_{}'.format(self.obsname) +
                                '_gold*[0-9].fits')
         else:
-            gfiles = [(self.obsdir + '/' + self.simname + '_{}'.format(self.self.obsname) +
+            gfiles = [(self.obsdir + '/' + self.simname + '_{}'.format(self.obsname) +
                        '_gold.fits')]
 
         size = len(gfiles)
@@ -743,11 +743,11 @@ class buzzard_flat_cat(object):
             try:
                 if not self.already_merged:
                     hdr = fio.read_header(self.obsdir + '/' +
-                                          self.simname + '_{}'.format(self.self.obsname) +
+                                          self.simname + '_{}'.format(self.obsname) +
                                           '_gold.{}.fits'.format(i), 1)
                 else:
                     hdr = fio.read_header(self.obsdir + '/' +
-                                          self.simname + '_{}'.format(self.self.obsname) +
+                                          self.simname + '_{}'.format(self.obsname) +
                                           '_gold.fits', 1)
 
                 total_length += hdr['NAXIS2']
@@ -759,23 +759,23 @@ class buzzard_flat_cat(object):
             try:
                 if not self.already_merged:
                     gold = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                     '_gold.{}.fits'.format(i))
                     shape = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                      '_shape.{}.fits'.format(i))
                     bpz = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                    '_pz.{}.fits'.format(i))
                 else:
                     gold = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                     '_gold.fits')
                     shape = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                      '_shape.fits')
                     bpz = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.self.obsname) +
+                                    self.simname + '_{}'.format(self.obsname) +
                                    '_pz.fits')
 
             except OSError as e:
