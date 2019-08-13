@@ -597,12 +597,15 @@ if __name__ == '__main__':
     rmp_filebase = cfg['redmapper_filebase']
     maskfile = cfg['footprint_maskfile']
     regionfile = cfg['regionfile']
+    x_opt = cfg['x_opt']
+    x_opt_altlens = cfg['x_opt_altlens']
+
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
     h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
                                 file=rmfile)
 
-    make_master_bcc(outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
+    make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
                     maskfile=maskfile, good=goodmask_value)
 
     match_shape_noise(outfile, cfg['zbins'], cfg['sigma_e_data'])
