@@ -42,6 +42,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     f = h5py.File(rmg_filebase + file + '.h5', 'w')
     # Loop over redmagic cats fits files and dump into h5
     for i in range(len(cats_redmagic)):
+        print('working on {}'.format(cats_redmagic[i]))
         # Read fits file
         cat = fitsio.FITS(rmg_filebase + file + '_' +
                           cats_redmagic[i] + '.' + file_ext)[1].read()
@@ -388,11 +389,14 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     mask = mask == good
     hpix = np.where(mask)[0].astype(int)
 
-    with h5py.File(goldfile, 'r+') as fp:
-        fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
-                          shape=(np.sum(mask),), dtype=hpix.dtype,
-                          chunks=(1000000,))
-        fp['masks/gold/hpix'][:] = hpix
+    try:
+        with h5py.File(goldfile, 'r+') as fp:
+            fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
+                              shape=(np.sum(mask),), dtype=hpix.dtype,
+                              chunks=(1000000,))
+            fp['masks/gold/hpix'][:] = hpix
+    except e:
+        pass
 
     # Open catalog h5 files for sorting by healpix id
     f = h5py.File(goldfile, 'r+')
@@ -455,10 +459,10 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['/masks/redmagic'] = h5py.ExternalLink(rmfile, "/masks/redmagic")
     f['/maps'] = h5py.ExternalLink(mapfile, "/maps")
 
-    f['catalog/metacal/unsheared/ra'] = f['catalog/gold/ra']
-    f['catalog/metacal/unsheared/dec'] = f['catalog/gold/dec']
-    f['catalog/metacal/unsheared/tra'] = f['catalog/gold/tra']
-    f['catalog/metacal/unsheared/tdec'] = f['catalog/gold/tdec']
+    f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(goldfile, 'catalog/gold/ra')
+    f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(goldfile, 'catalog/gold/dec')
+    f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(goldfile, 'catalog/gold/tra')
+    f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(goldfile, 'catalog/gold/tdec')
 
     # include index coadd id array in master file
     coadd = f['catalog/gold/coadd_object_id'][:]
