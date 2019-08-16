@@ -395,7 +395,7 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
                               shape=(np.sum(mask),), dtype=hpix.dtype,
                               chunks=(1000000,))
             fp['masks/gold/hpix'][:] = hpix
-    except e:
+    except:
         pass
 
     # Open catalog h5 files for sorting by healpix id
