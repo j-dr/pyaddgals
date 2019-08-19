@@ -603,6 +603,7 @@ if __name__ == '__main__':
     regionfile = cfg['regionfile']
     x_opt = cfg['x_opt']
     x_opt_altlens = cfg['x_opt_altlens']
+    mapfile = cfg['mapfile']
 
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
@@ -610,7 +611,7 @@ if __name__ == '__main__':
                                 file=rmfile)
 
     make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                    maskfile=maskfile, good=goodmask_value)
+                    maskfile=maskfile, good=goodmask_value, mapfile=mapfile)
 
     match_shape_noise(outfile, cfg['zbins'], cfg['sigma_e_data'])
 
