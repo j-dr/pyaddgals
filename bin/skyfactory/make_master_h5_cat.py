@@ -22,8 +22,8 @@ cats_redmapper_random_table = ['lgt5', 'lgt20']
 
 # Details for combining redmagic samples
 combined_dict = {
-    'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04'],
-    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95]],
+    'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04', 'redmagic_higherlum_1.5-01'],
+    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95], [0.85, 0.95]],
     'label': 'combined_sample_fid',
     'fracgood': 0.8,
     'zlum': 4.,
