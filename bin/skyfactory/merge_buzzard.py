@@ -760,20 +760,20 @@ class buzzard_flat_cat(object):
                                     self.simname + '_{}'.format(self.obsname) +
                                     '_gold.{}.fits'.format(i))
                     shape = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.obsname) +
+                                     self.simname + '_{}'.format(self.obsname) +
                                      '_shape.{}.fits'.format(i))
                     bpz = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.obsname) +
+                                   self.simname + '_{}'.format(self.obsname) +
                                    '_pz.{}.fits'.format(i))
                 else:
                     gold = fio.read(self.obsdir + '/' +
                                     self.simname + '_{}'.format(self.obsname) +
                                     '_gold.fits')
                     shape = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.obsname) +
+                                     self.simname + '_{}'.format(self.obsname) +
                                      '_shape.fits')
                     bpz = fio.read(self.obsdir + '/' +
-                                    self.simname + '_{}'.format(self.obsname) +
+                                   self.simname + '_{}'.format(self.obsname) +
                                    '_pz.fits')
 
             except OSError as e:
@@ -781,6 +781,19 @@ class buzzard_flat_cat(object):
                 continue
 
             lencat = len(gold)
+
+            assert(gold['coadd_object_id'] == shape['coadd_object_id'])
+            assert(gold['coadd_object_id'] == bpz['coadd_object_id'])
+
+            uid, idx = np.unique(gold['coadd_object_id'], return_index=True)
+            ndup = lencat - len(uid)
+
+            if ndup > 0:
+                print('Number of duplicate ids: {}. These shouldnt exist, getting rid of them'.format(ndup))
+                gold = gold[idx]
+                shape = shape[idx]
+                bpz = bpz[idx]
+                lencat = len(gold)
 
             for name in gold_inc:
                 if i == 0:
