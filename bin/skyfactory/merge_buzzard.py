@@ -782,10 +782,10 @@ class buzzard_flat_cat(object):
 
             lencat = len(gold)
 
-            assert(gold['coadd_object_id'] == shape['coadd_object_id'])
-            assert(gold['coadd_object_id'] == bpz['coadd_object_id'])
+            assert(gold['coadd_objects_id'] == shape['coadd_objects_id'])
+            assert(gold['coadd_objects_id'] == bpz['coadd_objects_id'])
 
-            uid, idx = np.unique(gold['coadd_object_id'], return_index=True)
+            uid, idx = np.unique(gold['coadd_objects_id'], return_index=True)
             ndup = lencat - len(uid)
 
             if ndup > 0:
