@@ -457,7 +457,10 @@ class ADDGALSModel(GalaxyModel):
         bad = np.hstack([bad_cen, bad])
 
         # done with halo catalog now
-        self.nbody.haloCatalog.delete()
+        if self.delete_after_assignment:
+            self.nbody.haloCatalog.delete()
+        else:
+            pass
 
         self.nbody.galaxyCatalog.catalog['PX'] = pos[:, 0]
         self.nbody.galaxyCatalog.catalog['PY'] = pos[:, 1]

@@ -22,8 +22,8 @@ cats_redmapper_random_table = ['lgt5', 'lgt20']
 
 # Details for combining redmagic samples
 combined_dict = {
-    'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04'],
-    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95]],
+    'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04', 'redmagic_higherlum_1.5-01'],
+    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95], [0.85, 0.95]],
     'label': 'combined_sample_fid',
     'fracgood': 0.8,
     'zlum': 4.,
@@ -42,6 +42,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     f = h5py.File(rmg_filebase + file + '.h5', 'w')
     # Loop over redmagic cats fits files and dump into h5
     for i in range(len(cats_redmagic)):
+        print('working on {}'.format(cats_redmagic[i]))
         # Read fits file
         cat = fitsio.FITS(rmg_filebase + file + '_' +
                           cats_redmagic[i] + '.' + file_ext)[1].read()
@@ -473,10 +474,10 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['/masks/redmagic'] = h5py.ExternalLink(rmfile, "/masks/redmagic")
     f['/maps'] = h5py.ExternalLink(mapfile, "/maps")
 
-    f['catalog/metacal/unsheared/ra'] = f['catalog/gold/ra']
-    f['catalog/metacal/unsheared/dec'] = f['catalog/gold/dec']
-    f['catalog/metacal/unsheared/tra'] = f['catalog/gold/tra']
-    f['catalog/metacal/unsheared/tdec'] = f['catalog/gold/tdec']
+    f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(goldfile, 'catalog/gold/ra')
+    f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(goldfile, 'catalog/gold/dec')
+    f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(goldfile, 'catalog/gold/tra')
+    f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(goldfile, 'catalog/gold/tdec')
 
     # include index coadd id array in master file
     coadd = f['catalog/gold/coadd_object_id'][:]
@@ -617,6 +618,7 @@ if __name__ == '__main__':
     regionfile = cfg['regionfile']
     x_opt = cfg['x_opt']
     x_opt_altlens = cfg['x_opt_altlens']
+    mapfile = cfg['mapfile']
 
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
@@ -624,7 +626,7 @@ if __name__ == '__main__':
                                 file=rmfile)
 
     make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                    maskfile=maskfile, good=goodmask_value)
+                    maskfile=maskfile, good=goodmask_value, mapfile=mapfile)
 
     match_shape_noise(outfile, cfg['zbins'], cfg['sigma_e_data'])
 
