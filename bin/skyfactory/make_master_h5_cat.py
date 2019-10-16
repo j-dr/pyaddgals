@@ -388,11 +388,14 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     mask = mask == good
     hpix = np.where(mask)[0].astype(int)
 
-    with h5py.File(goldfile, 'r+') as fp:
-        fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
-                          shape=(np.sum(mask),), dtype=hpix.dtype,
-                          chunks=(1000000,))
-        fp['masks/gold/hpix'][:] = hpix
+    try:
+        with h5py.File(goldfile, 'r+') as fp:
+            fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
+                              shape=(np.sum(mask),), dtype=hpix.dtype,
+                              chunks=(1000000,))
+            fp['masks/gold/hpix'][:] = hpix
+    except:
+        pass
 
     # Open catalog h5 files for sorting by healpix id
     f = h5py.File(goldfile, 'r+')
@@ -403,6 +406,7 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     s = np.argsort(f['catalog']['gold']['coadd_object_id'][:])
     for col in f['catalog']['gold'].keys():
         print(col)
+        sys.stdout.flush()
         c = f['catalog']['gold'][col][:]
         f['catalog']['gold'][col][:] = c[s]
 
@@ -410,6 +414,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     s = np.argsort(m['catalog']['unsheared']['metacal']['coadd_object_id'][:])
     for col in m['catalog']['unsheared']['metacal'].keys():
+        print(col)
+        sys.stdout.flush()
+
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
@@ -417,6 +424,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
     for col in b['catalog']['bpz'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
 
@@ -425,14 +435,22 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
     for col in f['catalog']['gold'].keys():
         print(col)
+        sys.stdout.flush()
+
         c = f['catalog']['gold'][col][:]
         f['catalog']['gold'][col][:] = c[s]
 
     for col in m['catalog']['unsheared']['metacal'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
     for col in b['catalog']['bpz'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
 
