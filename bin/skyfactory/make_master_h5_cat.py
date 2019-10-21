@@ -23,7 +23,7 @@ cats_redmapper_random_table = ['lgt5', 'lgt20']
 # Details for combining redmagic samples
 combined_dict = {
     'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04', 'redmagic_higherlum_1.5-01'],
-    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95], [0.85, 0.95]],
+    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85], [0.85, 0.95]],
     'label': 'combined_sample_fid',
     'fracgood': 0.8,
     'zlum': 4.,
@@ -249,14 +249,15 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     return rmg_filebase + file + '.h5'
 
 
-def generate_jk_centers_from_mask(maskfile, regionfile,
-                                  good=1, nrand=1e5):
+def generate_jk_centers_from_mask(outfile, regionfile, nrand=1e5):
 
-    mask = hp.read_map(maskfile, nest=True)
-    nside = int(np.sqrt(len(mask) // 12))
+    with h5py.File(outfile, 'r') as f:
+        mask = f['index/mask/hpix'][:]
+
+    nside = 4096
 
     pmap = np.zeros(12 * nside**2)
-    pmap[mask == good] = 1
+    pmap[mask] = 1
 
     pmap = hu.DensityMap('nest', pmap)
 
@@ -296,19 +297,21 @@ def assign_jk_regions(mastercat, regionsfile, nside=512):
     _, jk_idx = spatial.cKDTree(centers).query(pixcenters)
 
     for i, cat in enumerate(catalogs):
-        cat_size = len(f[cat + '/ra'])
-        ra = f[cat + '/ra'][:]
-        dec = f[cat + '/dec'][:]
-        pix = hp.ang2pix(nside, ra, dec, nest=True, lonlat=True)
-        jk_region = jk_idx[pix]
+        try:
+            cat_size = len(f[cat + '/ra'])
+            ra = f[cat + '/ra'][:]
+            dec = f[cat + '/dec'][:]
+            pix = hp.ang2pix(nside, ra, dec, nest=True, lonlat=True)
+            jk_region = jk_idx[pix]
+        except:
+            pass
 
         try:
             f.create_dataset('regions/' + cat + '/region', maxshape=(
                 cat_size,), shape=(cat_size,), dtype=int, chunks=(1000000,))
+            f['regions/' + cat + '/region'][:] = jk_region
         except:
             pass
-
-        f['regions/' + cat + '/region'][:] = jk_region
 
     f.create_dataset('regions/centers/ra', maxshape=(len(centers),),
                      shape=(len(centers),), dtype=centers.dtype, chunks=(len(centers),))
@@ -322,7 +325,7 @@ def assign_jk_regions(mastercat, regionsfile, nside=512):
                      shape=(len(centers),), dtype=centers.dtype, chunks=(len(centers),))
     f['regions/centers/dist'][:] = centers[:, 2]
 
-    f.create_dataset('regions/centers/dist', maxshape=(len(centers),),
+    f.create_dataset('regions/centers/number', maxshape=(len(centers),),
                      shape=(1,), dtype='>i8', chunks=(len(centers),))
     f['regions/centers/number'][:] = len(centers)
 
@@ -338,24 +341,27 @@ def make_mcal_selection(f, x_opt):
     psfmap['PIXEL'] = psfmap['PIXEL'][pidx]
     del pidx
 
-    gpix = hp.ang2pix(4096, f['catalog/gold/ra'][:], f['catalog/gold/dec'][:],
-                      lonlat=True)
+    gpix = f['catalog/gold/hpix_16384'][:] // (
+        hp.nside2npix(16384) // hp.nside2npix(4096))
+
     psfidx = psfmap['PIXEL'].searchsorted(gpix)
     del gpix
 
-    gpsf = 0.26 * 0.5 * psfmap['SIGNAL'][psfidx]
+    gpsf = psfmap['SIGNAL'][psfidx]
     del psfmap['PIXEL'], psfmap['SIGNAL']
     del psfmap
 
-    idx = np.sqrt(f['catalog/metacal/unsheared/size']**2 + gpsf**2) > (x_opt[2] * gpsf)
+    idx = np.sqrt(f['catalog/metacal/unsheared/size']
+                  [:]**2 + gpsf**2) > (x_opt[2] * gpsf)
     del gpsf
 
     idx = np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
     idx &= np.abs(f['catalog/metacal/unsheared/e2'][:]) < 1
-    idx &= f['catalog/gold/mag_err_r'] < 0.25
-    idx &= f['catalog/gold/mag_err_i'] < 0.25
-    idx &= f['catalog/gold/mag_err_z'] < 0.25
-    idx &= f['catalog/gold/mag_i'][:] < (x_opt[0] + x_opt[1] * f['catalog/bpz/redshift'][:])
+    idx &= f['catalog/gold/mag_err_r'][:] < 0.25
+    idx &= f['catalog/gold/mag_err_i'][:] < 0.25
+    idx &= f['catalog/gold/mag_err_z'][:] < 0.25
+    idx &= f['catalog/gold/mag_i'][:] < (x_opt[0] +
+                                         x_opt[1] * f['catalog/bpz/unsheared/z'][:])
 
     return idx
 
@@ -363,12 +369,12 @@ def make_mcal_selection(f, x_opt):
 def make_altlens_selection(f, x_opt):
 
     mag_i = f['catalog/gold/mag_i'][:]
-    z = f['catalog/bpz/redshift'][:]
+    z = f['catalog/bpz/unsheared/z'][:]
     idx = (mag_i < (x_opt[0] * z + x_opt[1]))
     del z
 
     idx &= (mag_i > 17.5)
-    idx &= (f['catalog/gold/mag_err_i'] < 0.1)
+    idx &= (f['catalog/gold/mag_err_i'][:] < 0.1)
     del mag_i
 
     return idx
@@ -396,9 +402,14 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
                               chunks=(1000000,))
             fp['masks/gold/hpix'][:] = hpix
     except:
-        pass
+        with h5py.File(goldfile, 'r+') as fp:
+            del fp['masks/gold/hpix']
+            fp.create_dataset('masks/gold/hpix', maxshape=(np.sum(mask),),
+                              shape=(np.sum(mask),), dtype=hpix.dtype,
+                              chunks=(1000000,))
+            fp['masks/gold/hpix'][:] = hpix
 
-    # Open catalog h5 files for sorting by healpix id
+    #    # Open catalog h5 files for sorting by healpix id
     f = h5py.File(goldfile, 'r+')
     b = h5py.File(bpzfile, 'r+')
     m = h5py.File(shapefile, 'r+')
@@ -454,14 +465,17 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
         
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
-
-    # Close h5 files to dump cache
+#
     f.close()
     b.close()
     m.close()
 
     # Create master h5 file and softlink all external data tables inside it
-    f = h5py.File(outfile, mode='w')
+    try:
+        f = h5py.File(outfile, mode='r+')
+    except:
+        f = h5py.File(outfile, mode='w')
+
     f['/catalog/metacal/unsheared'] = h5py.ExternalLink(
         shapefile, "/catalog/unsheared/metacal")
     f['/catalog/gold'] = h5py.ExternalLink(goldfile, "/catalog/gold")
@@ -469,15 +483,19 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['/catalog/redmagic'] = h5py.ExternalLink(rmfile, "/catalog/redmagic")
     f['/catalog/redmapper'] = h5py.ExternalLink(
         rmfile, "/catalog/redmapper")
-    f['/randoms'] = h5py.ExternalLink(rmfile, "/randoms")
+    f['/randoms/redmagic'] = h5py.ExternalLink(rmfile, "/randoms/redmagic")
     f['/masks/gold'] = h5py.ExternalLink(goldfile, "/masks/gold")
     f['/masks/redmagic'] = h5py.ExternalLink(rmfile, "/masks/redmagic")
     f['/maps'] = h5py.ExternalLink(mapfile, "/maps")
 
-    f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(goldfile, 'catalog/gold/ra')
-    f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(goldfile, 'catalog/gold/dec')
-    f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(goldfile, 'catalog/gold/tra')
-    f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(goldfile, 'catalog/gold/tdec')
+    f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(
+        goldfile, 'catalog/gold/ra')
+    f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(
+        goldfile, 'catalog/gold/dec')
+    f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(
+        goldfile, 'catalog/gold/tra')
+    f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(
+        goldfile, 'catalog/gold/tdec')
 
     # include index coadd id array in master file
     coadd = f['catalog/gold/coadd_object_id'][:]
@@ -489,35 +507,35 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['index/coadd_object_id'][:] = coadd
 
     # construct indices to map gold onto the shape catalog
-    idx = np.where(f['catalog/metacal/unsheared/flags'][:] < 2**28)[0]
-    f.create_dataset('index/metacal/match_gold', maxshape=(len(idx),),
-                     shape=(len(idx),), dtype=int, chunks=(1000000,))
-    f['index/metacal/match_gold'][:] = idx
 
+    f.create_dataset('index/metacal/match_gold', maxshape=(total_length,),
+                     shape=(total_length,), dtype=int, chunks=(1000000,))
+    f['index/metacal/match_gold'][:] = np.arange(total_length)
     gpix = f['catalog']['gold']['hpix_16384'][:]
 
     # construct indices to map gold onto the photoz catalogs
     for x in ['bpz']:
-        s = np.arange(len(coadd))
+        s = np.arange(total_length)
         f.create_dataset('index/' + x + '/match_gold', maxshape=(len(s),),
                          shape=(len(s),), dtype=int, chunks=(1000000,))
         f['index/' + x + '/match_gold'][:] = s
 
     # construct gold level selection flags (in index form)
-    goldflag = f['catalog/gold/flags_gold'][:]
-#    mask = np.in1d(gpix // (hp.nside2npix(16384) // hp.nside2npix(4096)), f['index/mask/hpix'][:], assume_unique=False)
-    c = np.where((goldflag == 0))[0]
-    f.create_dataset('index/gold/select', maxshape=(len(c),),
-                     shape=(len(c),), dtype=int, chunks=(1000000,))
-    f['index/gold/select'][:] = c
+    ngal = len(f['catalog/gold/flags_gold'])
+    f.create_dataset('index/gold/select', maxshape=(ngal,),
+                     shape=(ngal,), dtype=int, chunks=(1000000,))
+    f['index/gold/select'][:] = np.arange(ngal)
 
-    mask = np.in1d(f['masks/redmagic/combined_sample_fid/hpix'][:], f['masks/gold/hpix'][:])
+    mask = np.in1d(f['masks/redmagic/combined_sample_fid/hpix']
+                   [:], f['masks/gold/hpix'][:])
     s = np.argsort(f['masks/redmagic/combined_sample_fid/hpix'][:][mask])
     for col in f['masks/redmagic/combined_sample_fid/'].keys():
         c = f['masks/redmagic/combined_sample_fid/' + col][:][mask][s]
         f.create_dataset('index/mask/' + col, maxshape=(len(c),),
                          shape=(len(c),), dtype=int, chunks=(1000000,))
         f['index/mask/' + col][:] = c
+
+    del mask, s
 
     # construct indices to map gold onto the redmagic catalogs
     for table in f['catalog/redmagic'].keys():
@@ -549,55 +567,87 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     # construct gold-pz level selection flags (in index form)
     for x in ['bpz']:
-        c = np.where((goldflag == 0))[0]
-        f.create_dataset('index/' + x + '/select', maxshape=(len(c),),
-                         shape=(len(c),), dtype=int, chunks=(1000000,))
-        f['index/' + x + '/select'][:] = c
 
-    # construct shape catalog selection flags for default expected selection (in index form), both with and without gold flags
-    flags = f['catalog/metacal/unsheared/flags'][:]
+        f.create_dataset('index/' + x + '/select', maxshape=(ngal,),
+                         shape=(ngal,), dtype=int, chunks=(1000000,))
+        f['index/' + x + '/select'][:] = np.arange(ngal)
+
+    # construct shape catalog selection flags for default expected selection (in index form) including redmagic joint masking
+
     for table, suffix in tuple(zip(['unsheared'], [''])):
-        idx = (flags == 0) & make_mcal_selection(f, x_opt)
-        f.create_dataset('index/metacal/' + table + '/select', maxshape=(
-            np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
-        f['index/metacal/' + table + '/select'][:] = np.where(idx)[0]
-        idx = (goldflag == 0) & idx
-        f.create_dataset('index/select' + suffix, maxshape=(np.sum(idx),),
-                         shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+        idx = make_mcal_selection(f, x_opt)
+        idx &= np.in1d(f['catalog/gold/hpix_16384'][:] //
+                       (hp.nside2npix(16384) // hp.nside2npix(4096)), f['index/mask/hpix'][:])
+        try:
+            f.create_dataset('index/select' + suffix, maxshape=(
+                np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+        except:
+            del f['index/select' + suffix]
+            f.create_dataset('index/select' + suffix, maxshape=(
+                np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+
         f['index/select' + suffix][:] = np.where(idx)[0]
+
         del idx
 
-    idx = (flags == 0) & make_altlens_selection(f, x_opt_altlens)
-    f.create_dataset('index/maglim/select', maxshape=(
-                     np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+    idx = make_altlens_selection(f, x_opt_altlens)
+    idx &= np.in1d(f['catalog/gold/hpix_16384'][:] //
+                   (hp.nside2npix(16384) // hp.nside2npix(4096)), f['index/mask/hpix'][:])
+
+    try:
+        f.create_dataset('index/maglim/select', maxshape=(
+                         np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+    except:
+        del f['index/maglim/select']
+        f.create_dataset('index/maglim/select', maxshape=(
+                         np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
+
     f['index/maglim/select'][:] = np.where(idx)[0]
 
     f.close()
 
 
-def match_shape_noise(filename, zbins, sigma_e_data):
+def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
 
-    f = h5py.File(filename, 'r+')
-    size_tot = len(f['catalog/metacal/unsheared/e1'][:])
-    f.create_dataset('catalog/metacal/unsheared/e1_matched_se', maxshape=(
-                     size_tot,), shape=(size_tot,), dtype=int, chunks=(1000000,))
-    f.create_dataset('catalog/metacal/unsheared/e2_matched_se', maxshape=(
-                     size_tot,), shape=(size_tot,), dtype=int, chunks=(1000000,))
+    with h5py.File(filename, 'r') as f:
+        with h5py.File(mcalfilename, 'r+') as mf:
 
-    idx = f['index/metacal/select'][:]
-    zmean = f['catalog/bpz/zmean_sof'][:][idx]
-    e1 = f['catalog/metacal/unsheared/e1'][:][idx]
-    e2 = f['catalog/metacal/unsheared/e1'][:][idx]
+            size_tot = len(f['catalog/metacal/unsheared/e1'][:])
+            idx = f['index/select'][:]
+            zmean = f['catalog/bpz/unsheared/zmean_sof'][:][idx]
+            e1 = f['catalog/metacal/unsheared/e1'][:][idx]
+            e2 = f['catalog/metacal/unsheared/e2'][:][idx]
 
-    for i in range(len(zbins)):
-        idxi = (zbins[i] < zmean) & (zmean < zbins[i + 1])
-        sigma_e = np.std(e1[idxi])
-        ds = np.sqrt((sigma_e_data[i]**2 - sigma_e**2))
+            try:
+                mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+            except:
+                del mf['catalog/unsheared/metacal/e1_matched_se'], mf['catalog/unsheared/metacal/e2_matched_se']
 
-        f['catalog/metacal/unsheared/e1_matched_se'][:][idx[idxi]] = e1[idxi] + ds * np.random.randn(np.sum(idxi))
-        f['catalog/metacal/unsheared/e2_matched_se'][:][idx[idxi]] = e2[idxi] + ds * np.random.randn(np.sum(idxi))
+                mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
 
-    f.close()
+            e1_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
+            e2_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
+
+            for i in range(len(zbins) - 1):
+                idxi = (zbins[i] < zmean) & (zmean < zbins[i + 1])
+                sigma_e = np.std(e1[idxi])
+                ds = np.sqrt((sigma_e_data[i]**2 - sigma_e**2))
+
+                e1_sn[idx[idxi]] = e1[idxi] + ds * \
+                    np.random.randn(np.sum(idxi))
+                e2_sn[idx[idxi]] = e2[idxi] + ds * \
+                    np.random.randn(np.sum(idxi))
+
+                print(e1_sn[idx[idxi]])
+
+            mf['catalog/unsheared/metacal/e1_matched_se'][:] = e1_sn
+            mf['catalog/unsheared/metacal/e2_matched_se'][:] = e2_sn
 
 
 if __name__ == '__main__':
@@ -628,11 +678,10 @@ if __name__ == '__main__':
     make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
                     maskfile=maskfile, good=goodmask_value, mapfile=mapfile)
 
-    match_shape_noise(outfile, cfg['zbins'], cfg['sigma_e_data'])
+    match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
     else:
-        generate_jk_centers_from_mask(maskfile, regionfile,
-                                      good=goodmask_value)
+        generate_jk_centers_from_mask(outfile)
         assign_jk_regions(outfile, regionfile)
