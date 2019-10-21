@@ -760,6 +760,61 @@ def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1
     return g
 
 
+def shift_mean_red_sequence_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
+
+    dm = np.zeros((len(g['Z']), nbands - 1))
+
+    isred = (g['AMAG'][:, 0] - g['AMAG'][:, 1]) > (0.095 - 0.035 * g['AMAG'][:, 1])
+
+    for i in range(nbands - 1):
+        zidx = buzzard_rs_model.z.searchsorted(g['Z'])
+        dm[:, i] = data_rs_model.c[zidx, i] - buzzard_rs_model.c[zidx, i]
+
+    mag = np.copy(g['TMAG'])
+
+    for i in range(nbands - 1):
+        mag[isred, i] += dm[isred, i]
+
+    g['TMAG'] = mag
+    for im in range(nbands):
+        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+
+    return mag
+
+
+def shift_mean_and_add_red_sequence_noise_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
+
+    ds = np.zeros((len(g['Z']), nbands - 1))
+    dm = np.zeros((len(g['Z']), nbands - 1))
+
+    isred = (g['AMAG'][:, 0] - g['AMAG'][:, 1]) > (0.095 - 0.035 * g['AMAG'][:, 1])
+
+    for i in range(nbands - 1):
+        zidx = buzzard_rs_model.z.searchsorted(g['Z'])
+        dm[:, i] = data_rs_model.c[zidx, i] - buzzard_rs_model.c[zidx, i]
+
+    for i in range(nbands - 1):
+        zidx = buzzard_rs_model.z.searchsorted(g['Z'])
+        ds[:, i] = data_rs_model.sigma[i, i, zidx]**2 - buzzard_rs_model.sigma[i, i, zidx]**2
+        ds[ds[:, i] < 0, i] = 0
+        ds[:, i] = np.sqrt(ds[:, i])
+
+    for i in range(nbands - 2):
+        ds[:, i] = ds[:, i]**2 - ds[:, i + 1]**2
+        ds[ds[:, i] < 0, i] = 0
+        ds[:, i] = np.sqrt(ds[:, i])
+
+    mag = np.copy(g['TMAG'])
+
+    for i in range(nbands - 1):
+        mag[isred, i] += dm[isred, i] + rs_mult * ds[isred, i] * np.random.randn(len(g['Z'][isred]))
+
+    g['TMAG'] = mag
+    for im in range(nbands):
+        g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
+
+    return mag
+
 if __name__ == '__main__':
 
     comm = MPI.COMM_WORLD
