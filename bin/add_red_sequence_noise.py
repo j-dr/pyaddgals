@@ -760,7 +760,7 @@ def add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1
     return g
 
 
-def shift_mean_red_sequence_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
+def shift_mean_red_sequence(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
 
     dm = np.zeros((len(g['Z']), nbands - 1))
 
@@ -779,10 +779,10 @@ def shift_mean_red_sequence_allgal(buzzard_rs_model, data_rs_model, g, nbands, r
     for im in range(nbands):
         g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
-    return mag
+    return g
 
 
-def shift_mean_and_add_red_sequence_noise_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
+def shift_mean_and_add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=1.0):
 
     ds = np.zeros((len(g['Z']), nbands - 1))
     dm = np.zeros((len(g['Z']), nbands - 1))
@@ -813,7 +813,8 @@ def shift_mean_and_add_red_sequence_noise_allgal(buzzard_rs_model, data_rs_model
     for im in range(nbands):
         g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
-    return mag
+    return g
+
 
 if __name__ == '__main__':
 
@@ -855,7 +856,12 @@ if __name__ == '__main__':
     files = files[rank::size]
 
     for i in range(len(files)):
-        ofile = files[i].replace('lensed', 'lensed_rs_scat')
+        if add_scatter & (not shift_mean):
+            ofile = files[i].replace('lensed', 'lensed_rs_scat')
+        elif (not add_scatter) & shift_mean:
+            ofile = files[i].replace('lensed', 'lensed_rs_shift')
+        else:
+            ofile = files[i].replace('lensed', 'lensed_rs_scat_shift')
 
         if os.path.exists(ofile):
             continue
@@ -864,8 +870,8 @@ if __name__ == '__main__':
         if add_scatter & (not shift_mean):
             g = add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
         elif (not add_scatter) & shift_mean:
-            g = shift_mean_red_sequence_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
+            g = shift_mean_red_sequence(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
         else:
-            g = shift_mean_and_add_red_sequence_noise_allgal(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
+            g = shift_mean_and_add_red_sequence_noise(buzzard_rs_model, data_rs_model, g, nbands, rs_mult=rs_mult)
 
         fitsio.write(ofile, g)
