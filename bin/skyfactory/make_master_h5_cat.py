@@ -249,6 +249,43 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     return rmg_filebase + file + '.h5'
 
 
+def include_dnf(f, dnffile):
+
+    dnf = fitsio.read(dnffile)
+
+    ngal = len(f['catalog/gold/ra'])
+
+    dnfarray = np.zeros(ngal, dtype=dnf.dtype)
+    coadd_id = f['catalog/gold/coadd_object_id'][:]
+
+    iidx = np.argsort(coadd_id)
+    cat_idx = coadd_id.searchsorted(dnf['ID'], sorter=iidx)
+    dnfarray[iidx[cat_idx]] = dnf
+
+    cols = dnfarray.dtype.names
+    total_length = len(dnfarray)
+
+    for name in cols:
+        print(name)
+        if name.lower() == 'id':
+            try:
+                f.create_dataset('catalog/dnf/unsheared/coadd_object_id', maxshape=(
+                    total_length,), shape=(total_length,), dtype=int, chunks=(1000000,))
+            except Exception as e:
+                print(e)
+                pass
+            f['catalog/dnf/unsheared/coadd_object_id'][:] = dnfarray[name]
+        else:
+            try:
+                f.create_dataset('catalog/dnf/unsheared/' + name.lower(), maxshape=(
+                    total_length,), shape=(total_length,), dtype=dnfarray.dtype[name],
+                    chunks=(1000000,))
+            except Exception as e:
+                print(e)
+                pass
+            f['catalog/dnf/unsheared/' + name.lower()][:] = dnfarray[name]
+
+
 def generate_jk_centers_from_mask(outfile, regionfile, nrand=1e5):
 
     with h5py.File(outfile, 'r') as f:
@@ -284,7 +321,8 @@ def assign_jk_regions(mastercat, regionsfile, nside=512):
                 'catalog/redmapper/lgt5'
                 'randoms/redmagic/combined_sample_fid',
                 'randoms/redmapper/lgt20',
-                'randoms/redmapper/lgt5']
+                'randoms/redmapper/lgt5',
+                'randoms/maglim']
 
     f = h5py.File(mastercat, 'r+')
 
@@ -355,7 +393,7 @@ def make_mcal_selection(f, x_opt):
                   [:]**2 + gpsf**2) > (x_opt[2] * gpsf)
     del gpsf
 
-    idx = np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
+    idx &= np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
     idx &= np.abs(f['catalog/metacal/unsheared/e2'][:]) < 1
     idx &= f['catalog/gold/mag_err_r'][:] < 0.25
     idx &= f['catalog/gold/mag_err_i'][:] < 0.25
@@ -366,14 +404,14 @@ def make_mcal_selection(f, x_opt):
     return idx
 
 
-def make_altlens_selection(f, x_opt):
+def make_altlens_selection(f, x_opt, zdata='catalog/dnf/unsheared/z_mc'):
 
     mag_i = f['catalog/gold/mag_i'][:]
-    z = f['catalog/bpz/unsheared/z'][:]
-    idx = (mag_i < (x_opt[0] * z + x_opt[1]))
+    z = f[zdata][:]
+    idx = (mag_i < (x_opt[0] * z + x_opt[1])) & (z > 0)
     del z
 
-    idx &= (mag_i > 17.5)
+    idx &= (mag_i > 17.5) & (mag_i < 23)
     idx &= (f['catalog/gold/mag_err_i'][:] < 0.1)
     del mag_i
 
@@ -383,7 +421,7 @@ def make_altlens_selection(f, x_opt):
 def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5',
                     shapefile='y3v02-mcal-002-blind-v1.h5', goldfile='Y3_GOLD_2_2.h5',
                     bpzfile='Y3_GOLD_2_2_BPZ.h5', rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5',
-                    mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None,
+                    mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None, dnffile=None,
                     good=1):
     """
     Create master h5 file that links the individual catalog h5 files and
@@ -590,7 +628,12 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
         del idx
 
-    idx = make_altlens_selection(f, x_opt_altlens)
+    if dnffile is not None:
+        include_dnf(f, dnffile)
+        idx = make_altlens_selection(f, x_opt_altlens, zdata='catalog/dnf/unsheared/z_mc')
+    else:
+        idx = make_altlens_selection(f, x_opt_altlens, zdata='catalog/bpz/unsheared/z')
+
     idx &= np.in1d(f['catalog/gold/hpix_16384'][:] //
                    (hp.nside2npix(16384) // hp.nside2npix(4096)), f['index/mask/hpix'][:])
 
@@ -603,6 +646,11 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
                          np.sum(idx),), shape=(np.sum(idx),), dtype=int, chunks=(1000000,))
 
     f['index/maglim/select'][:] = np.where(idx)[0]
+
+    make_maglim_randoms(f, rmfile)
+
+    f['/randoms/maglim'] = h5py.ExternalLink(rmfile, "/randoms/maglim")
+
 
     f.close()
 
@@ -650,6 +698,82 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
             mf['catalog/unsheared/metacal/e2_matched_se'][:] = e2_sn
 
 
+def generateAngularRandoms(hpix, nrand, nside,
+                           nest=True):
+
+    fmask = np.zeros(12 * nside**2)
+    fmask[hpix] = 1
+
+    if nest:
+        pmap = hu.DensityMap('nest', fmask)
+    else:
+        pmap = hu.DensityMap('ring', fmask)
+
+    rand_ra, rand_dec = pmap.genrand(nrand, system='eq')
+
+    return rand_ra, rand_dec
+
+
+def make_maglim_randoms(f, rmgfile):
+
+    with h5py.File(rmgfile, 'r+') as fr:
+
+        maglim_select = f['index/maglim/select'][:]
+        mag_i_maglim = f['catalog/gold/mag_i'][:][maglim_select]
+        zmean_maglim = f['catalog/dnf/unsheared/z_mean'][:][maglim_select]
+
+        mag_i_max = np.max(mag_i_maglim[zmean_maglim < 1.05])
+
+        del mag_i_maglim, zmean_maglim
+
+        mask_hpix = f['maps/buzzard/hpix'][:]
+        depth_sof_i = f['maps/buzzard/i/sof_depth'][:]
+
+        mask_hpix = mask_hpix[depth_sof_i < mag_i_max]
+
+        del depth_sof_i
+
+        f.create_dataset('masks/maglim/hpix', maxshape=(len(mask_hpix),), shape=(len(mask_hpix),), dtype=mask_hpix.dtype, chunks=(100000,))
+        f['masks/maglim/hpix'][:] = mask_hpix
+
+        print('generating randoms')
+        rand_ra, rand_dec = generateAngularRandoms(
+            mask_hpix, int(len(maglim_select) * 20), 4096)
+        total_length = len(rand_ra)
+
+        print('sorting')
+        s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
+                                  np.radians(rand_dec), np.radians(rand_ra), nest=True))
+
+        print('creating datasets')
+        try:
+            fr.create_dataset('randoms/maglim/ra', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/dec', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/z', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/weight', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+        except:
+            del fr['randoms/maglim/ra'], fr['randoms/maglim/dec'], fr['randoms/maglim/z'], fr['randoms/maglim/weight']
+            fr.create_dataset('randoms/maglim/ra', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/dec', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/z', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+            fr.create_dataset('randoms/maglim/weight', maxshape=(total_length,),
+                              shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
+
+        print('writing')
+        fr['randoms/maglim/ra'][:] = rand_ra[s]
+        fr['randoms/maglim/dec'][:] = rand_dec[s]
+        fr['randoms/maglim/z'][:] = np.random.choice(
+            f['catalog/dnf/unsheared/z_mc'][:][maglim_select], size=len(rand_ra[s]))
+        fr['randoms/maglim/weight'][:] = np.ones_like(rand_ra[s])
+
+
 if __name__ == '__main__':
 
     cfgfile = sys.argv[1]
@@ -670,13 +794,18 @@ if __name__ == '__main__':
     x_opt_altlens = cfg['x_opt_altlens']
     mapfile = cfg['mapfile']
 
+    if 'dnffile' in cfg.keys():
+        dnffile = cfg['dnffile']
+    else:
+        dnffile = None
+
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
     h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
                                 file=rmfile)
 
     make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                    maskfile=maskfile, good=goodmask_value, mapfile=mapfile)
+                    maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile)
 
     match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
