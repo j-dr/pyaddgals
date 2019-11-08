@@ -234,9 +234,9 @@ if __name__ == "__main__":
 
     comm.Barrier()
 
-    if rank == 0:
-        if use_hdf5:
-            flatcat.merge_rank_files_h5()
-        else:
-            flatcat.merge_rank_files(
-                merge_with_bpz=cfg['merge']['merge_with_bpz'])
+#    if rank == 0:
+#        if use_hdf5:
+#            flatcat.merge_rank_files_h5()
+#        else:
+#            flatcat.merge_rank_files(
+#                merge_with_bpz=cfg['merge']['merge_with_bpz'])
