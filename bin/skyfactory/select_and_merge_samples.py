@@ -198,7 +198,7 @@ if __name__ == "__main__":
 
         obs = obsf[-1].read()
         truth = truthf[-1].read(columns=['ID', 'GAMMA1',
-                                         'GAMMA2', 'KAPPA', 'Z'])
+                                         'GAMMA2', 'KAPPA', 'Z', 'Z_COS'])
 
         sample_flags = np.zeros(len(obs), dtype=dtype_flag)
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
                 nz_cut = [99, 0.0]
 
             if sample == 'LSS':
-                def cut_fcn(o, t, p, sys_map_vals, zcol): LSS_cuts(o, t, p,
+                def cut_fcn(o, t, p, sys_map_vals, zcol): return LSS_cuts(o, t, p,
                                                                    sys_map_vals,
                                                                    zcol, nz_cut)
             elif sample == 'WL':

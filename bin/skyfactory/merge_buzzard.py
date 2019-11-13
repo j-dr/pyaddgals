@@ -127,7 +127,6 @@ class buzzard_flat_cat(object):
                           + [('flags', 'f8')])
 
         lenst = 0
-
         for ifile, filename in enumerate(glob.glob(self.rootdir + '/' + self.obsdir + '*' + self.obsname + '*[0-9].fits')):
 
             gout = fio.FITS(
@@ -313,7 +312,7 @@ class buzzard_flat_cat(object):
                           + [('mode-z', 'f8')]
                           + [('redshift', 'f8')]
                           + [('weight', 'f8')]
-                          + [('z_cos'), 'f4']
+                          + [('z_cos', 'f4')]
                           + [('flags', 'f8')])
 
         lenst = 0
@@ -330,11 +329,11 @@ class buzzard_flat_cat(object):
             ifile = 0
 
         gout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(rank), 'rw')
+                        '_{}'.format(self.obsname[:-1]) + '_gold.{}.fits'.format(rank), 'rw')
         sout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(rank), 'rw')
+                        '_{}'.format(self.obsname[:-1]) + '_shape.{}.fits'.format(rank), 'rw')
         pout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(rank), 'rw')
+                        '_{}'.format(self.obsname[:-1]) + '_pz.{}.fits'.format(rank), 'rw')
 #        alout = fio.FITS(self.odir + '/' + self.simname +
 #                         '_{}'.format(self.obsdir[:-1]) + '_alt_lens.{}.fits'.format(rank), 'rw')
 
