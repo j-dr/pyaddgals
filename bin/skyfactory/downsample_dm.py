@@ -283,6 +283,11 @@ if __name__ == '__main__':
     else:
         write_to_mastercat = False
 
+    if len(sys.argv) > 6:
+        only_mastercat = bool(sys.argv[6])
+    else:
+        only_mastercat = False
+
     addgals_config = parseConfig(addgals_cfg_file)
 
     with open(footprint_cfg_file, 'r') as fp:
@@ -304,7 +309,8 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    downsample(cosmo, partpath, mask, rot_matrix, rank, outbase)
+    if not only_mastercat:
+        downsample(cosmo, partpath, mask, rot_matrix, rank, outbase)
 
     comm.Barrier()
 
