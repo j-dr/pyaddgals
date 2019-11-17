@@ -153,12 +153,13 @@ def read_files_lightcone(files, z_min, z_max, cosmology,
     # temporarily store radii in z column
     parts['z_cos'] = np.sqrt(pos[:, 0]**2 + pos[:, 1]**2 + pos[:, 2]**2)
 
-    parts['z_cos'] = cosmo.zofR(parts['redshift'])
+    parts['z_cos'] = cosmo.zofR(parts['z_cos'])
 
     pix = hp.vec2pix(nside_jack, pos[:, 0], pos[:, 1], pos[:, 2], nest=True)
-    idx = ((z_min < parts['redshift']) & (parts['redshift'] <= z_max)
+    idx = ((z_min < parts['z_cos']) & (parts['z_cos'] <= z_max)
            & (pix == pix_jack))
     pos = pos[idx]
+    vel = vel[idx]
     parts = parts[idx]
     parts['px'] = pos[:, 0]
     parts['py'] = pos[:, 1]
@@ -211,9 +212,9 @@ def write_parts_to_mastercat(outbase, mastercat_file):
 
     with h5py.File(mastercat_file, 'r+') as fp:
 
-        for i, file in partfiles:
+        for i, f in enumerate(partfiles):
 
-            parts = fitsio.read(file)
+            parts = fitsio.read(f)
             cols = parts.dtype.names
             nparts = len(parts)
 
@@ -222,21 +223,21 @@ def write_parts_to_mastercat(outbase, mastercat_file):
                     fp.create_dataset('catalog/downsampled_dm/' + name,
                                       maxshape=(None,), shape=(nparts,),
                                       dtype=parts.dtype[name],
-                                      chunk=True)
+                                      chunks=True)
                     fp['catalog/downsampled_dm/' + name][:] = parts[name]
             else:
                 for name in cols:
                     ds_size = fp['catalog/downsampled_dm/' + name].shape[0]
                     fp['catalog/downsampled_dm/' + name].resize(ds_size + len(parts),
                                                                 axis=0)
-                    fp['catalog/downsampled_dm' + name][ds_size:] = parts[name]
+                    fp['catalog/downsampled_dm/' + name][ds_size:] = parts[name]
 
 
 def downsample(cosmo, lightcone_base, mask_pix, rot, rank, outbase,
                zrange=[0.0, 1.5], comoving_nd=1e-2, nside_jack=4):
 
     # rotate mask centers to simulation coordinates
-    vec = hp.pix2vec(4096, mask_pix, nest=True)
+    vec = np.array(hp.pix2vec(4096, mask_pix, nest=True)).T
     vec = np.dot(vec, rot)
 
     pix = hp.vec2pix(int(nside_jack), vec[:, 0], vec[:, 1], vec[:, 2],
