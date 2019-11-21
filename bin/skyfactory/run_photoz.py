@@ -39,6 +39,17 @@ def main():
                     continue
 
                 subprocess.call(['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
+        if alg == 'DNF':
+            for f in catfiles:
+                print(f)
+                fs = f.split('/')
+                fss = fs[-1].split('.')
+                fbase = '.'.join(fss[:-1])
+                opath = "{}/{}.DNF.fits".format(cfg['OPath'], fbase)
+                if os.path.exists(opath):
+                    continue
+
+                subprocess.call(['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
 
 def main_submany():
 
