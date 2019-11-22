@@ -15,7 +15,7 @@ def run_dnf_single_file(T, Terr, TZ, filename, outfile):
 
     GALAXY = fitsio.read(filename, columns=['FLUX_G', 'FLUX_R', 'FLUX_I', 'FLUX_Z',
                                             'MAGERR_G', 'MAGERR_R', 'MAGERR_I', 'MAGERR_Z',
-                                            'MAG_I'])
+                                            'MAG_I', 'ID'])
 
     GALAXY = GALAXY[GALAXY['MAG_I'] > 23]
 
@@ -52,8 +52,8 @@ def run_dnf_single_file(T, Terr, TZ, filename, outfile):
 
     print("mean Nneighbors=", np.mean(nneighbors))
 
-    out = np.zeros(Ngalaxies, dtype=np.dtype([('Z_MEAN', np.float), ('Z_MC', np.float), ('Z_SIGMA', np.float)]))
-
+    out = np.zeros(Ngalaxies, dtype=np.dtype([('ID', np.int64), ('Z_MEAN', np.float), ('Z_MC', np.float), ('Z_SIGMA', np.float)]))
+    out['ID'] = GALAXY['ID']
     out['Z_MEAN'] = z_photo
     out['Z_MC'] = z1
     out['Z_SIGMA'] = zerr_e
@@ -64,6 +64,11 @@ def run_dnf_single_file(T, Terr, TZ, filename, outfile):
 if __name__ == '__main__':
     GALAXY = fitsio.read(sys.argv[1])
     fileglob = glob(sys.argv[2])
+    if len(sys.argv) > 3:
+        merge = True
+    else:
+        merge = False
+
     Ngalaxies = len(GALAXY)
     print('Train galaxies=', Ngalaxies)
 
@@ -91,8 +96,24 @@ if __name__ == '__main__':
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    for filename in fileglob[rank::size]:
-        outfile = filename.replace('fits', 'dnf.fits')
-        run_dnf_single_file(T, Terr, TZ, filename, outfile)
+    if not merge:
+        for filename in fileglob[rank::size]:
+            outfile = filename.replace('fits', 'dnf.fits')
+            run_dnf_single_file(T, Terr, TZ, filename, outfile)
+    else:
+        for i, filename in enumerate(fileglob):
+            if i == 0:
+                outfile = filename.split('.')
+                outfile[-1] = 'combined.dnf'
+                outfile = '.'.join(outfile)
+
+            infile = filename.replace('fits', 'dnf.fits')
+            dnf_data = fitsio.read(infile)
+
+            f = fitsio.FITS(outfile, 'rw')
+            if len(f) > 1:
+                f[-1].append(dnf_data)
+            else:
+                f.write(dnf_data)
 
     sys.exit()
