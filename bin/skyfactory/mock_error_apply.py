@@ -449,13 +449,20 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         ra = g['TRA']
         dec = g['TDEC']
 
+        print('Using unlensed positions!')
+        sys.stdout.flush()
+
         if (ra == 0).all():
-            vec = np.zeros(len(g, 3))
+            print('TRA, TDEC were all 0. Converting cartesian positions to true angular positions.')
+            vec = np.zeros((len(g), 3))
             vec[:, 0] = g['PX']
             vec[:, 1] = g['PY']
             vec[:, 2] = g['PZ']
 
             ra, dec = hp.vec2ang(vec, lonlat=True)
+            print(ra)
+            print(dec)
+            sys.stdout.flush()
 
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
