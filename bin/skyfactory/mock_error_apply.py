@@ -308,7 +308,7 @@ def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
     return info_dict, redmapper_dtype
 
 
-def write_redmapper_files(galaxies, filename_base, info_dict, mask, depth,
+def write_redmapper_files(galaxies, filename_base, info_dict,
                           redmapper_dtype, maker):
 
     mask = info_dict['mask']
