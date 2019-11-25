@@ -903,7 +903,7 @@ if __name__ == "__main__":
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         mask_healsparse, mode,
                                                                         bands, refbands[0])
-        maker = redmapper.GalaxyCatalogMaker(obase, redmapper_info_dict, parallel=True)
+        maker = redmapper.GalaxyCatalogMaker(odir, redmapper_info_dict, parallel=True)
 
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
