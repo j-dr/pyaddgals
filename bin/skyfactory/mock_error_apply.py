@@ -442,6 +442,21 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
                 imtag = 'OMAG'
                 omag = g['OMAG']
 
+    if use_lmag:
+        ra = g['RA']
+        dec = g['DEC']
+    else:
+        ra = g['TRA']
+        dec = g['TDEC']
+
+        if (ra == 0).all():
+            vec = np.zeros(len(g, 3))
+            vec[:, 0] = g['PX']
+            vec[:, 1] = g['PY']
+            vec[:, 2] = g['PZ']
+
+            ra, dec = hp.vec2ang(vec, lonlat=True)
+
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
         menames = ['MAGERR_{0}'.format(b.upper()) for b in bands]
@@ -486,8 +501,8 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         minra = 0.0
         maxra = 360.
 
-    theta = (90 - g['DEC']) * np.pi / 180.
-    phi = (g['RA'] * np.pi / 180.)
+    theta = (90 - dec) * np.pi / 180.
+    phi = (ra * np.pi / 180.)
 
     pix = hp.ang2pix(dhdr['NSIDE'], theta, phi, nest=nest)
 
@@ -575,12 +590,8 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
 
-    if use_lmag:
-        obs['RA'] = g['RA']
-        obs['DEC'] = g['DEC']
-    else:
-        obs['RA'] = g['TRA']
-        obs['DEC'] = g['TDEC']
+    obs['RA'] = ra
+    obs['DEC'] = dec
 
     obs['ID'] = g['ID']
     obs['EPSILON1'] = g['EPSILON'][:, 0]
@@ -600,7 +611,7 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
     fitsio.write(oname, obs, clobber=True)
 
     if maker is not None:
-        write_redmapper_files(obs, odir, redmapper_info_dict,
+        write_redmapper_files(obs[oidx], odir, redmapper_info_dict,
                               redmapper_dtype, maker)
 
     return oidx
@@ -771,7 +782,7 @@ def apply_uniform_errormodel(g, oname, odir, survey, filename_base,
     fitsio.write(oname, obs, clobber=True)
 
     if maker is not None:
-        write_redmapper_files(obs, odir, redmapper_info_dict,
+        write_redmapper_files(obs[oidx], odir, redmapper_info_dict,
                               redmapper_dtype, maker)
 
 
