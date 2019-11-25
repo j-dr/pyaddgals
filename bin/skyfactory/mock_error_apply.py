@@ -327,7 +327,7 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
     gals['ztrue'] = galaxies['Z']
     gals['m200'] = galaxies['M200']
     gals['central'] = galaxies['CENTRAL']
-    gals['halo_id'] = galaxies['HALID']
+    gals['halo_id'] = galaxies['HALOID']
 
     for i, band in enumerate(bands):
         influx = galaxies['FLUX_%s' % (band.upper())]
