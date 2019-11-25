@@ -575,7 +575,7 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
 
-    if not use_lmag:
+    if use_lmag:
         obs['RA'] = g['RA']
         obs['DEC'] = g['DEC']
     else:
@@ -741,12 +741,12 @@ def apply_uniform_errormodel(g, oname, odir, survey, filename_base,
             else:
                 print('mnames[ind]: {}'.format(mnames[ind]))
 
-    print('filter_obs: {}'.format(filter_obs))
-    print('refnames: {}'.format(refnames))
-    print('maglims: {}'.format(maglims))
-    print('oidx.any(): {}'.format(oidx.any()))
+#    print('filter_obs: {}'.format(filter_obs))
+#    print('refnames: {}'.format(refnames))
+#    print('maglims: {}'.format(maglims))
+#    print('oidx.any(): {}'.format(oidx.any()))
 
-    if not use_lmag:
+    if use_lmag:
         obs['RA'] = g['RA']
         obs['DEC'] = g['DEC']
     else:
@@ -962,6 +962,6 @@ if __name__ == "__main__":
 
     if maker is not None:
         maker.finalize_catalog()
-        
+
     if rank == 0:
         print("*******Rotation and error model complete!*******")
