@@ -8,6 +8,7 @@ import sys
 import yaml
 import subprocess
 
+
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -20,7 +21,7 @@ def main():
     catfiles = np.array(glob(cfg['FilePath']))
     catfiles = catfiles[rank::size]
 
-    if rank==0:
+    if rank == 0:
         try:
             os.mkdir(cfg['OPath'])
         except:
@@ -28,7 +29,7 @@ def main():
 
     for alg in cfg['Algorithms']:
         a = cfg['Algorithms'][alg]
-        if alg=='BPZ':
+        if alg == 'BPZ':
             for f in catfiles:
                 print(f)
                 fs = f.split('/')
@@ -38,7 +39,21 @@ def main():
                 if os.path.exists(opath):
                     continue
 
-                subprocess.call(['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
+                subprocess.call(
+                    ['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
+        if alg == 'DNF':
+            subprocess.call(
+                ['cd', "{0}/pyaddgals/bin/skyfactory/".format(cfg['ExecPath'])])
+            for f in catfiles:
+                subprocess.call(
+                    ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), a['TrainFile'], f])
+
+            if rank==0:
+                subprocess.call(
+                ['python', "{0}/pyaddgals/bin/skyfactory/merge_dnf.py".format(cfg['ExecPath']), cfg['FilePath'], 'merge'])
+
+            subprocess.call(['cd', "-"])
+
 
 def main_submany():
 
@@ -55,9 +70,9 @@ def main_submany():
 
     for alg in cfg['Algorithms']:
         a = cfg['Algorithms'][alg]
-        if alg=='BPZ':
+        if alg == 'BPZ':
             for f in catfiles:
-#                print(f)
+                #                print(f)
                 fs = f.split('/')
                 fss = fs[-1].split('.')
                 fbase = '.'.join(fss[:-1])
@@ -74,7 +89,7 @@ def main_submany():
 
 if __name__ == '__main__':
 
-    if len(sys.argv)==2:
+    if len(sys.argv) == 2:
         main()
     else:
         main_submany()
