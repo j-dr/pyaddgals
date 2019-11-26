@@ -446,23 +446,25 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         ra = g['RA']
         dec = g['DEC']
     else:
-        ra = g['TRA']
-        dec = g['TDEC']
+#        ra = g['TRA']
+#        dec = g['TDEC']
 
         print('Using unlensed positions!')
-        sys.stdout.flush()
+#        print(ra)
+#        print(dec)
+#        sys.stdout.flush()
 
-        if (ra == 0).all():
-            print('TRA, TDEC were all 0. Converting cartesian positions to true angular positions.')
-            vec = np.zeros((len(g), 3))
-            vec[:, 0] = g['PX']
-            vec[:, 1] = g['PY']
-            vec[:, 2] = g['PZ']
+#        if (ra == 0).all():
+#            print('TRA, TDEC were all 0. Converting cartesian positions to true angular positions.')
+        vec = np.zeros((len(g), 3))
+        vec[:, 0] = g['PX']
+        vec[:, 1] = g['PY']
+        vec[:, 2] = g['PZ']
 
-            ra, dec = hp.vec2ang(vec, lonlat=True)
-            print(ra)
-            print(dec)
-            sys.stdout.flush()
+        ra, dec = hp.vec2ang(vec, lonlat=True)
+#        print(ra)
+#        print(dec)
+#        sys.stdout.flush()
 
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
@@ -508,10 +510,10 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         minra = 0.0
         maxra = 360.
 
-    theta = (90 - dec) * np.pi / 180.
-    phi = (ra * np.pi / 180.)
+#    theta = (90 - dec) * np.pi / 180.
+#    phi = (ra * np.pi / 180.)
 
-    pix = hp.ang2pix(dhdr['NSIDE'], theta, phi, nest=nest)
+    pix = hp.ang2pix(dhdr['NSIDE'], ra, dec, nest=nest, lonlat=True)
 
     guse = np.in1d(pix, d['HPIX'])
     guse, = np.where(guse)
@@ -917,11 +919,11 @@ if __name__ == "__main__":
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
-
+        outpath = '{}/{}_rmp'.format(odir, obase)
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         mask_healsparse, mode,
                                                                         bands, refbands[0])
-        maker = redmapper.GalaxyCatalogMaker(odir, redmapper_info_dict, parallel=True)
+        maker = redmapper.GalaxyCatalogMaker(outpath, redmapper_info_dict, parallel=True)
 
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
