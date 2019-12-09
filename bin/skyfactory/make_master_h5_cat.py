@@ -456,6 +456,7 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     s = np.argsort(f['catalog']['gold']['coadd_object_id'][:])
     for col in f['catalog']['gold'].keys():
         print(col)
+        sys.stdout.flush()
         c = f['catalog']['gold'][col][:]
         f['catalog']['gold'][col][:] = c[s]
 
@@ -463,6 +464,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     s = np.argsort(m['catalog']['unsheared']['metacal']['coadd_object_id'][:])
     for col in m['catalog']['unsheared']['metacal'].keys():
+        print(col)
+        sys.stdout.flush()
+
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
@@ -470,6 +474,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
     for col in b['catalog']['bpz'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
 
@@ -478,14 +485,22 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
     for col in f['catalog']['gold'].keys():
         print(col)
+        sys.stdout.flush()
+
         c = f['catalog']['gold'][col][:]
         f['catalog']['gold'][col][:] = c[s]
 
     for col in m['catalog']['unsheared']['metacal'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
     for col in b['catalog']['bpz'].keys():
+        print(col)
+        sys.stdout.flush()
+        
         c = b['catalog']['bpz'][col][:]
         b['catalog']['bpz'][col][:] = c[s]
 #
