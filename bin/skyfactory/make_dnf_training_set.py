@@ -30,8 +30,8 @@ if __name__ == '__main__':
             train[k] = g[k]
 
         if i == 0:
-            out = fitsio.FITS(outfile)
+            out = fitsio.FITS(outfile, 'w')
             out.write(train)
         else:
-            out = fitsio.FITS(outfile)
+            out = fitsio.FITS(outfile, 'rw')
             out[-1].append(train)
