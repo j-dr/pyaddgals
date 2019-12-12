@@ -16,7 +16,7 @@ if __name__ == '__main__':
                                     'MAGERR_G', 'MAGERR_R', 'MAGERR_I', 'MAGERR_Z', 'Z', 'Z_COS',
                                     'MAG_I'])
 
-        idx = g['MAG_I'] < 23
+        idx = np.where(g['MAG_I'] < 23)
         idx = np.random.choice(idx, size=len(idx) // 100)
         g = g[idx]
 
