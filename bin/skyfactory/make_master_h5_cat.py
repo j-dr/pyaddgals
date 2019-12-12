@@ -404,8 +404,7 @@ def make_mcal_selection(f, x_opt):
     return idx
 
 
-def make_altlens_selection(f, x_opt, zdata='catalog/dnf/unsheared/z_mc'):
-
+def make_altlens_selection(f, x_opt, mask_hpix, zdata='catalog/dnf/unsheared/z_mc'):
     mag_i = f['catalog/gold/mag_i'][:]
     z = f[zdata][:]
     idx = (mag_i < (x_opt[0] * z + x_opt[1])) & (z > 0)
@@ -414,6 +413,11 @@ def make_altlens_selection(f, x_opt, zdata='catalog/dnf/unsheared/z_mc'):
     idx &= (mag_i > 17.5) & (mag_i < 23)
     idx &= (f['catalog/gold/mag_err_i'][:] < 0.1)
     del mag_i
+
+    idx = np.where(idx)[0]
+    pix = hp.ang2pix(4096, f['catalog/gold/ra'][:][idx],
+                     f['catalog/gold/dec'][:][idx], lonlat=True)
+    idx = idx[np.in1d(pix, mask_hpix)]
 
     return idx
 
