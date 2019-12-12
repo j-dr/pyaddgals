@@ -48,9 +48,9 @@ def main():
                 subprocess.call(
                     ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), a['TrainFile'], f])
 
-            if rank==0:
+            if rank == 0:
                 subprocess.call(
-                ['python', "{0}/pyaddgals/bin/skyfactory/merge_dnf.py".format(cfg['ExecPath']), cfg['FilePath'], 'merge'])
+                    ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), cfg['TrainFile'], cfg['FilePath'], 'merge'])
 
             subprocess.call(['cd', "-"])
 

@@ -308,7 +308,7 @@ def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
     return info_dict, redmapper_dtype
 
 
-def write_redmapper_files(galaxies, filename_base, info_dict, mask, depth,
+def write_redmapper_files(galaxies, filename_base, info_dict,
                           redmapper_dtype, maker):
 
     mask = info_dict['mask']
@@ -327,7 +327,7 @@ def write_redmapper_files(galaxies, filename_base, info_dict, mask, depth,
     gals['ztrue'] = galaxies['Z']
     gals['m200'] = galaxies['M200']
     gals['central'] = galaxies['CENTRAL']
-    gals['halo_id'] = galaxies['HALID']
+    gals['halo_id'] = galaxies['HALOID']
 
     for i, band in enumerate(bands):
         influx = galaxies['FLUX_%s' % (band.upper())]
@@ -442,6 +442,30 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
                 imtag = 'OMAG'
                 omag = g['OMAG']
 
+    if use_lmag:
+        ra = g['RA']
+        dec = g['DEC']
+    else:
+#        ra = g['TRA']
+#        dec = g['TDEC']
+
+        print('Using unlensed positions!')
+#        print(ra)
+#        print(dec)
+#        sys.stdout.flush()
+
+#        if (ra == 0).all():
+#            print('TRA, TDEC were all 0. Converting cartesian positions to true angular positions.')
+        vec = np.zeros((len(g), 3))
+        vec[:, 0] = g['PX']
+        vec[:, 1] = g['PY']
+        vec[:, 2] = g['PZ']
+
+        ra, dec = hp.vec2ang(vec, lonlat=True)
+#        print(ra)
+#        print(dec)
+#        sys.stdout.flush()
+
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
         menames = ['MAGERR_{0}'.format(b.upper()) for b in bands]
@@ -486,10 +510,10 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         minra = 0.0
         maxra = 360.
 
-    theta = (90 - g['DEC']) * np.pi / 180.
-    phi = (g['RA'] * np.pi / 180.)
+#    theta = (90 - dec) * np.pi / 180.
+#    phi = (ra * np.pi / 180.)
 
-    pix = hp.ang2pix(dhdr['NSIDE'], theta, phi, nest=nest)
+    pix = hp.ang2pix(dhdr['NSIDE'], ra, dec, nest=nest, lonlat=True)
 
     guse = np.in1d(pix, d['HPIX'])
     guse, = np.where(guse)
@@ -575,12 +599,8 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
 
-    if not use_lmag:
-        obs['RA'] = g['RA']
-        obs['DEC'] = g['DEC']
-    else:
-        obs['RA'] = g['TRA']
-        obs['DEC'] = g['TDEC']
+    obs['RA'] = ra
+    obs['DEC'] = dec
 
     obs['ID'] = g['ID']
     obs['EPSILON1'] = g['EPSILON'][:, 0]
@@ -600,7 +620,7 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
     fitsio.write(oname, obs, clobber=True)
 
     if maker is not None:
-        write_redmapper_files(obs, odir, redmapper_info_dict,
+        write_redmapper_files(obs[oidx], odir, redmapper_info_dict,
                               redmapper_dtype, maker)
 
     return oidx
@@ -741,12 +761,12 @@ def apply_uniform_errormodel(g, oname, odir, survey, filename_base,
             else:
                 print('mnames[ind]: {}'.format(mnames[ind]))
 
-    print('filter_obs: {}'.format(filter_obs))
-    print('refnames: {}'.format(refnames))
-    print('maglims: {}'.format(maglims))
-    print('oidx.any(): {}'.format(oidx.any()))
+#    print('filter_obs: {}'.format(filter_obs))
+#    print('refnames: {}'.format(refnames))
+#    print('maglims: {}'.format(maglims))
+#    print('oidx.any(): {}'.format(oidx.any()))
 
-    if not use_lmag:
+    if use_lmag:
         obs['RA'] = g['RA']
         obs['DEC'] = g['DEC']
     else:
@@ -771,7 +791,7 @@ def apply_uniform_errormodel(g, oname, odir, survey, filename_base,
     fitsio.write(oname, obs, clobber=True)
 
     if maker is not None:
-        write_redmapper_files(obs, odir, redmapper_info_dict,
+        write_redmapper_files(obs[oidx], odir, redmapper_info_dict,
                               redmapper_dtype, maker)
 
 
@@ -899,11 +919,11 @@ if __name__ == "__main__":
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
-
+        outpath = '{}/{}_rmp'.format(odir, obase)
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         mask_healsparse, mode,
                                                                         bands, refbands[0])
-        maker = redmapper.GalaxyCatalogMaker(obase, redmapper_info_dict, parallel=True)
+        maker = redmapper.GalaxyCatalogMaker(outpath, redmapper_info_dict, parallel=True)
 
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
@@ -962,6 +982,6 @@ if __name__ == "__main__":
 
     if maker is not None:
         maker.finalize_catalog()
-        
+
     if rank == 0:
         print("*******Rotation and error model complete!*******")
