@@ -21,7 +21,10 @@ __email__= "juan.vicente@ciemat.es"
 
 import math
 import numpy as np
+#from numba import jit
 from sklearn import neighbors
+from time import time
+import sys
 
 
 def enf(T,z,V,Verr,zbins,pdf=True,bound=True,Nneighbors=40):
@@ -74,7 +77,7 @@ def enf(T,z,V,Verr,zbins,pdf=True,bound=True,Nneighbors=40):
 
     zt_true=np.int_(scale*z) 
     clf=neighbors.KNeighborsRegressor(n_neighbors=Nneighbors)
-    clf.fit(T,zt_true)  #multimagnitude-redshift association from the training sample
+    clf.fit(T[::2],zt_true)  #multimagnitude-redshift association from the training sample
     photoz=clf.predict(V)
     photoz=np.double(photoz)/scale
     Vdistances,Vneighbors= clf.kneighbors(V,n_neighbors=Nneighbors)  #neighbors computation
@@ -165,7 +168,7 @@ def enf(T,z,V,Verr,zbins,pdf=True,bound=True,Nneighbors=40):
     return photoz,photozerr,Vpdf,z1,nneighbors,radius
 
 
-
+#@jit
 def dnf(T,z,V,Verr,zbins,pdf=True,bound=False,radius=2.0,Nneighbors=80,magflux='flux'):
     """
     def dnf(T,z,V,Verr,zbins,pdf=True,bound=False,radius=2.0,Nneighbors=80,magflux='flux')
@@ -197,7 +200,7 @@ def dnf(T,z,V,Verr,zbins,pdf=True,bound=False,radius=2.0,Nneighbors=80,magflux='
     nfilters=T.shape[1]
     Nvalid=V.shape[0]
     Ntrain=T.shape[0]
-
+    
      #output declaration
     photoz=np.zeros(Nvalid,dtype='double')
     z1=np.zeros(Nvalid,dtype='double')  
@@ -217,10 +220,18 @@ def dnf(T,z,V,Verr,zbins,pdf=True,bound=False,radius=2.0,Nneighbors=80,magflux='
     else:
         Nneighborspre=2000  
 
-    clf=neighbors.KNeighborsRegressor(n_neighbors=Nneighborspre)
+    start = time()
+    clf=neighbors.KNeighborsRegressor(n_neighbors=Nneighborspre, n_jobs=4)
     clf.fit(T,z)  #multimagnitude-redshift association from the training sample
+    end = time()
+    print('Fitting kneighbors took: {}s'.format(end - start))
+    
     #photoz=clf.predict(V)
+    start = time()
     Vdistances,Vneighbors= clf.kneighbors(V,n_neighbors=Nneighborspre)  #neighbors computation
+    end = time()
+    print('Finding euclidean neighbors took {}s'.format(end - start))
+
     closestNeighborDistance=Vdistances[:,0]
     Vclosest=Vneighbors[:,0]
     

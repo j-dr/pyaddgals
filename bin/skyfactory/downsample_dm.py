@@ -220,10 +220,17 @@ def write_parts_to_mastercat(outbase, mastercat_file):
 
             if i == 0:
                 for name in cols:
-                    fp.create_dataset('catalog/downsampled_dm/' + name,
-                                      maxshape=(None,), shape=(nparts,),
-                                      dtype=parts.dtype[name],
-                                      chunks=True)
+                    try:
+                        fp.create_dataset('catalog/downsampled_dm/' + name,
+                                          maxshape=(None,), shape=(nparts,),
+                                          dtype=parts.dtype[name],
+                                          chunks=True)
+                    except:
+                        del fp['catalog/downsampled_dm/' + name]
+                        fp.create_dataset('catalog/downsampled_dm/' + name,
+                                          maxshape=(None,), shape=(nparts,),
+                                          dtype=parts.dtype[name],
+                                          chunks=True)                        
                     fp['catalog/downsampled_dm/' + name][:] = parts[name]
             else:
                 for name in cols:

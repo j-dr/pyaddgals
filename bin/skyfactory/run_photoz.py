@@ -42,17 +42,17 @@ def main():
                 subprocess.call(
                     ['python', "{0}/redshift-wg/redshift_codes/photoz_codes/bpzv1/bpzv1.py".format(cfg['ExecPath']), a['CfgFile'], f])
         if alg == 'DNF':
-            subprocess.call(
-                ['cd', "{0}/pyaddgals/bin/skyfactory/".format(cfg['ExecPath'])])
+            wd = os.getcwd()
+            os.chdir("{0}/pyaddgals/bin/skyfactory/".format(cfg['ExecPath']))
             for f in catfiles:
                 subprocess.call(
                     ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), a['TrainFile'], f])
 
             if rank == 0:
                 subprocess.call(
-                    ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), cfg['TrainFile'], cfg['FilePath'], 'merge'])
+                    ['python', "{0}/pyaddgals/bin/skyfactory/run_dnf.py".format(cfg['ExecPath']), a['TrainFile'], cfg['FilePath'], 'merge'])
 
-            subprocess.call(['cd', "-"])
+            os.chdir(wd)
 
 
 def main_submany():

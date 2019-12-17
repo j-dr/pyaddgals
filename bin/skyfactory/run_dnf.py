@@ -1,6 +1,5 @@
 from __future__ import print_function
 from glob import glob
-from mpi4py import MPI
 import numpy as np
 import sys
 # import fnmatch
@@ -47,8 +46,18 @@ def run_dnf_single_file(T, Terr, TZ, filename, outfile):
     zbins = np.arange(start, stop, step)
 
     # DNF'call
-    z_photo, zerr_e, Vpdf, z1, nneighbors, closestDistance = nf.dnf(
-        T, TZ, V, Verr, zbins, pdf=True, Nneighbors=80, bound=False, radius=2.0, magflux='flux')
+    chunksize = 64000
+    nchunk = (Ngalaxies + chunksize - 1) // chunksize
+
+    z_photo = np.zeros(Ngalaxies)
+    z1 = np.zeros(Ngalaxies)
+    zerr_e = np.zeros(Ngalaxies)
+
+    for i in range(nchunk):
+        print("working on chunk {}".format(i))
+        sys.stdout.flush()
+        z_photo[i*chunksize:(i+1)*chunksize], zerr_e[i*chunksize:(i+1)*chunksize], Vpdf, z1[i*chunksize:(i+1)*chunksize], nneighbors, closestDistance = nf.dnf(
+            T, TZ, V[i*chunksize:(i+1)*chunksize], Verr[i*chunksize:(i+1)*chunksize], zbins, pdf=True, Nneighbors=80, bound=False, radius=2.0, magflux='flux')
 
     print("mean Nneighbors=", np.mean(nneighbors))
 
@@ -88,16 +97,18 @@ if __name__ == '__main__':
 
     Ntrain = Ngalaxies
     # TRAIN=GALAXY
-    T = G
-    Terr = Gerr
-    TZ = GALAXY['Z']
 
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    skip = 1
+    T = G[::skip]
+    Terr = Gerr[::skip]
+    TZ = GALAXY['Z'][::skip]
+
+#    comm = MPI.COMM_WORLD
+#    rank = comm.Get_rank()
+#    size = comm.Get_size()
 
     if not merge:
-        for filename in fileglob[rank::size]:
+        for filename in fileglob:
             outfile = filename.replace('fits', 'dnf.fits')
             run_dnf_single_file(T, Terr, TZ, filename, outfile)
     else:
