@@ -93,6 +93,15 @@ def write_halo_file(cfg, outpath, write_pos=True):
         pix = hp.vec2pix(2, vec[:, 0], vec[:, 1], vec[:, 2], nest=True)
         upix = np.unique(pix)
 
+        # make sure output path exists
+        ps = outpath.split('/')
+        outdir = '/'.join(ps[:-1])
+
+        try:
+            os.mkdir(outdir)
+        except Exception as e:
+            pass
+
         for p in upix:
             idx = pix == p
             opath = outpath.format(p)
