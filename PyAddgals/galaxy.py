@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from numpy.lib.recfunctions import repack_fields
 import numpy as np
 import healpy as hp
 import fitsio
@@ -174,9 +175,9 @@ class GalaxyCatalog(object):
             if write_pos:
                 if os.path.exists(pfname):
                     with fitsio.FITS(pfname, 'rw') as f:
-                        f[-1].append(out[['ID', 'PX', 'PY', 'PZ']][idx])
+                        f[-1].append(repack_fields(out[['ID', 'PX', 'PY', 'PZ']][idx]))
                 else:
-                    fitsio.write(pfname, out[['ID', 'PX', 'PY', 'PZ']][idx])
+                    fitsio.write(pfname, repack_fields(out[['ID', 'PX', 'PY', 'PZ']][idx]))
 
         del out
 

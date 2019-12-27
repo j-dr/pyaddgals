@@ -3,7 +3,6 @@ from __future__ import print_function, division
 from glob import glob
 from mpi4py import MPI
 from rot_mock_tools import rot_mock_file
-import numpy.lib.recfunctions as rf
 import redmapper
 import healsparse
 import numpy as np
@@ -403,7 +402,7 @@ def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
     return out
 
 
-def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
+def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 survey, magfile=None, usemags=None,
                                 nest=False, bands=None, all_obs_fields=True,
                                 dbase_style=True, use_lmag=True,
@@ -446,25 +445,14 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
         ra = g['RA']
         dec = g['DEC']
     else:
-#        ra = g['TRA']
-#        dec = g['TDEC']
-
         print('Using unlensed positions!')
-#        print(ra)
-#        print(dec)
-#        sys.stdout.flush()
 
-#        if (ra == 0).all():
-#            print('TRA, TDEC were all 0. Converting cartesian positions to true angular positions.')
         vec = np.zeros((len(g), 3))
         vec[:, 0] = g['PX']
         vec[:, 1] = g['PY']
         vec[:, 2] = g['PZ']
 
         ra, dec = hp.vec2ang(vec, lonlat=True)
-#        print(ra)
-#        print(dec)
-#        sys.stdout.flush()
 
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
@@ -626,7 +614,7 @@ def apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
     return oidx
 
 
-def apply_uniform_errormodel(g, oname, odir, survey, filename_base,
+def apply_uniform_errormodel(g, obase, odir, survey, filename_base,
                              magfile=None, usemags=None,
                              bands=None, all_obs_fields=True,
                              dbase_style=True, use_lmag=True,
@@ -919,11 +907,16 @@ if __name__ == "__main__":
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
-        outpath = '{}/{}_rmp'.format(odir, obase)
+
+        fname = fnames[0]
+        fs = fname.split('.')
+        fp = fs[-2]
+        oname = "{0}/{1}_obs_rmp".format(odir, obase)
+
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         mask_healsparse, mode,
                                                                         bands, refbands[0])
-        maker = redmapper.GalaxyCatalogMaker(outpath, redmapper_info_dict, parallel=True)
+        maker = redmapper.GalaxyCatalogMaker(oname, redmapper_info_dict, parallel=True)
 
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
@@ -944,13 +937,11 @@ if __name__ == "__main__":
         fs = fname.split('.')
         fp = fs[-2]
 
-        oname = "{0}/{1}.{3}.fits".format(odir, obase, model, fp)
-
         if truth_only:
             continue
 
         if uniform:
-            apply_uniform_errormodel(g, oname, odir, model, magfile=mname,
+            apply_uniform_errormodel(g, obase, odir, model, magfile=mname,
                                      usemags=usemags,
                                      bands=bands,
                                      all_obs_fields=all_obs_fields,
@@ -964,7 +955,7 @@ if __name__ == "__main__":
                                      redmapper_dtype=redmapper_dtype)
 
         else:
-            oidx = apply_nonuniform_errormodel(g, oname, odir, d, dhdr,
+            oidx = apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                model, magfile=mname,
                                                usemags=usemags,
                                                nest=nest, bands=bands,
