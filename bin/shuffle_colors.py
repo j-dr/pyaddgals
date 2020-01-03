@@ -908,7 +908,7 @@ if __name__ == '__main__':
         red_sequence_shift_and_scatter = False
 
     files = glob(filepath)
-    halofiles = glob(hfilepath.format('*'))
+    halofiles = glob(hfilepath.format('*[0-9]'))
     comm = MPI.COMM_WORLD
     size = comm.size
     rank = comm.rank
