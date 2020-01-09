@@ -893,7 +893,7 @@ if __name__ == '__main__':
     mhalo = float(sys.argv[4])
     scatter = float(sys.argv[5])
 
-    if len(sys.argv > 6):
+    if len(sys.argv) > 6:
         red_sequence_shift_and_scatter = True
         buzzard_rs_model = sys.argv[6]
         data_rs_model = sys.argv[7]
@@ -910,7 +910,7 @@ if __name__ == '__main__':
     lensmags = False
 
     files = glob(filepath)
-    halofiles = glob(hfilepath.format('*'))
+    halofiles = glob(hfilepath.format('*[0-9]'))
     comm = MPI.COMM_WORLD
     size = comm.size
     rank = comm.rank
