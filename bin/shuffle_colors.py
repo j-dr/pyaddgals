@@ -907,6 +907,8 @@ if __name__ == '__main__':
     else:
         red_sequence_shift_and_scatter = False
 
+    lensmags = False
+
     files = glob(filepath)
     halofiles = glob(hfilepath.format('*'))
     comm = MPI.COMM_WORLD
