@@ -11,6 +11,7 @@ try:
 except:
     noht = True
 import fitsio
+from .. import config
 
 def _get_fname(s, cut):
     cut_str = '{0:g}'.format(cut)
@@ -160,15 +161,16 @@ def load_abundance_function(proxy='l', sample_cut=18, \
         in the format of Mag^{-1} (Mpc/h)^{-3}.
         If `log_phi` is True, the values will be in log10.
     """
+    base_dir = '{}/data/training/'.format(os.path.dirname(config.__file__))
     proxy = str(proxy).lower()
     if proxy.startswith('l'):
         if sample_cut < 0:
             sample_cut = -sample_cut
-        fn = _get_fname('/u/ki/rmredd/data/lf/tinker/lf_jt_{0}.dat', sample_cut)
+        fn = _get_fname(base_dir + 'lf_jt_{0}.dat', sample_cut)
     elif proxy.startswith('s'):
         if sample_cut == 19:
             sample_cut = 9.8
-        fn = _get_fname('/nfs/slac/g/ki/ki10/rmredd/sham_models/tinker_sm/smf_jt{0}_val.dat', sample_cut)
+        fn = _get_fname(base_dir + 'smf_jt{0}_val.dat', sample_cut)
     else:
         raise ValueError('`proxy` should be either "l" (luminosity) or "s" (stellar mass).')
 
@@ -190,7 +192,7 @@ def hlist2bin(hlistname, field_dict, outdir):
     reader = TabularAsciiReader(hlistname, field_dict)
     hs   = hlistname.split('/')
     hout = '{}/{}.fits.gz'.format(outdir, hs[-1])
-    
+
     #return if file already exists
     if os.path.isfile(hout): return
 
@@ -213,7 +215,3 @@ def hlist2bin(hlistname, field_dict, outdir):
 
 
 #def downsample_block(blockfiles):
-
-    
-        
-        
