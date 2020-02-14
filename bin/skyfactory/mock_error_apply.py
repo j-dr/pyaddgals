@@ -248,12 +248,12 @@ def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
     mask = healsparse.HealSparseMap.read(maskfile)
     depth = healsparse.HealSparseMap.read(depthmapfile)
 
-    area = np.sum(mask.getValuePixel(mask.validPixels)) * \
-        hp.nside2pixarea(mask.nsideSparse, degrees=True)
+    area = np.sum(mask.get_values_pix(mask.valid_pixels)) * \
+        hp.nside2pixarea(mask.nside_sparse, degrees=True)
 
     print('Area = ', area)
 
-    lim_ref = np.max(depth.getValuePixel(depth.validPixels)['m50'])
+    lim_ref = np.max(depth.get_values_pix(depth.valid_pixels)['m50'])
 
     print('Lim_ref = ', lim_ref)
 
@@ -347,8 +347,8 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
 
-    use, = np.where((mask.getValueRaDec(gals['ra'], gals['dec']) > 0) &
-                    (depth.getValueRaDec(gals['ra'], gals['dec'])['m50'] > gals['refmag']))
+    use, = np.where((mask.get_values_pos(gals['ra'], gals['dec']) > 0) &
+                    (depth.get_values_pos(gals['ra'], gals['dec'])['m50'] > gals['refmag']))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
