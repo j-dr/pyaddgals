@@ -1089,7 +1089,9 @@ if __name__ == "__main__":
     else:
         balrog_bands = None
         usebalmags = None
-
+        detection_file = None
+        matched_cat_file = None
+        
     for fname, mname in zip(fnames[rank::size], mnames[rank::size]):
         if rodir is not None:
             p = fname.split('.')[-2]
