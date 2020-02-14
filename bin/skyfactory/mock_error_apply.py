@@ -347,8 +347,8 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
 
-    use, = np.where((mask.get_values_pos(gals['ra'], gals['dec']) > 0) &
-                    (depth.get_values_pos(gals['ra'], gals['dec'])['m50'] > gals['refmag']))
+    use, = np.where((mask.get_values_pos(gals['ra'], gals['dec'], lonlat=True) > 0) &
+                    (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag']))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
@@ -458,7 +458,7 @@ def generate_bal_id(detection_catalog, true_deep_cat, sim_mag_true):
 
 
 def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag_in,
-                       matched_cat_sorter=None, zp=30., zp_data=30.,
+                       matched_cat_sorter=None, zp=22.5, zp_data=30.,
                        matched_cat_flux_cols=['flux_r', 'flux_i', 'flux_z'],
                        matched_cat_flux_err_cols=[
                            'flux_err_r', 'flux_err_i', 'flux_err_z'],
@@ -501,6 +501,7 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
         flux_out[detected, :] = mag_in[detected, :] + flux_err[detected, :]
 
     flux_out = 10**((flux_out - zp) / -2.5)
+    flux_err_report *= 10 ** ((zp_data - zp) / -2.5)
     flux_out[~detected, :] = -99
 
     return flux_out, flux_err_report
@@ -599,7 +600,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
     obs = make_output_structure(len(g), dbase_style=dbase_style, bands=bands,
                                 nbands=len(usemags),
                                 all_obs_fields=all_obs_fields,
-                                blind_obs=blind_obs)
+                                blind_obs=blind_obs,
+                                balrog_bands=balrog_bands)
 
 
     if ("Y1" in survey) | ("Y3" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
@@ -633,12 +635,17 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
     oidx[guse] = True
 
     if apply_balrog_errors:
+        idx = np.zeros_like(omag, dtype=np.bool)
+        for i in range(omag.shape[1]):
+            if i not in usebalmags: continue
+            idx[guse,i] = True
+                
         flux_bal, fluxerr_bal = balrog_error_apply(detection_catalog,
                                                    true_deep_cat,
                                                    matched_catalog,
-                                                   omag[guse, usebalmags],
+                                                   omag[idx].reshape(-1,len(usebalmags)),
                                                    matched_cat_sorter=matched_cat_sorter,
-                                                   zp=zp,
+                                                   zp_data=zp,
                                                    true_cat_mag_cols=usebalmags)
 
     bal_idx = dict(zip(usebalmags, np.arange(len(usebalmags))))
@@ -683,8 +690,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[mnames[ind]] = 99.0
             obs[menames[ind]] = 99.0
 
-            obs[fnames[ind]][guse] = flux_bal
-            obs[fenames[ind]][guse] = 1 / fluxerr_bal**2
+            obs[fnames[ind]][guse] = flux
+            obs[fenames[ind]][guse] = 1 / fluxerr**2
             obs[mnames[ind]][guse] = 22.5 - 2.5 * np.log10(flux)
             obs[menames[ind]][guse] = 1.086 * fluxerr / flux
 
@@ -702,9 +709,9 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
 
             if apply_balrog_errors:
                 if i in usebalmags:
-                    obs[bfnames[bal_idx[ind]]][guse] = flux_bal[:, i]
-                    obs[bfenames[bal_idx[ind]]][guse] = 1 / fluxerr_bal[:, i]**2
-                    bad = (flux_bal[:, i] <= 0)
+                    obs[bfnames[bal_idx[ind]]][guse] = flux_bal[:, bal_idx[ind]]
+                    obs[bfenames[bal_idx[ind]]][guse] = 1 / fluxerr_bal[:, bal_idx[ind]]**2
+                    bad = (flux_bal[:, bal_idx[ind]] <= 0)
                     obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
                     obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
 
@@ -719,8 +726,9 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                 obs[menames[ind]][guse[bad]] = 99.0
 
                 if apply_balrog_errors:
-                    obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
-                    obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
+                    if i in usebalmags:
+                        obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
+                        obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
 
             if (filter_obs) and (mnames[ind] in refnames):
                 oidx[guse] &= obs[mnames[ind]][guse] < (
