@@ -416,6 +416,7 @@ def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
 
     return out
 
+
 def setup_deep_bal_cats(detection_catalog):
 
     # only keep things with good matches
@@ -504,8 +505,6 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
     flux_out[~detected, :] = -99
 
     return flux_out, flux_err_report
-
-
 
 def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 survey, magfile=None, usemags=None,
@@ -1081,7 +1080,7 @@ if __name__ == "__main__":
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
 
-    if 'balrog_bands' in cfg.keys():
+    if 'BalrogBands' in cfg.keys():
         balrog_bands = cfg['BalrogBands']
         usebalmags = cfg['UseBalMags']
         detection_file = cfg['DetectionFile']
