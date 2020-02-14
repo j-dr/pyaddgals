@@ -360,8 +360,7 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
 
 def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
                           all_obs_fields=True, blind_obs=False,
-                          balrog_bands=None,
-                          bal):
+                          balrog_bands=None):
 
     if all_obs_fields & dbase_style:
         if bands is None:
@@ -1091,7 +1090,7 @@ if __name__ == "__main__":
         usebalmags = None
         detection_file = None
         matched_cat_file = None
-        
+
     for fname, mname in zip(fnames[rank::size], mnames[rank::size]):
         if rodir is not None:
             p = fname.split('.')[-2]
