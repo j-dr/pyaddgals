@@ -8,6 +8,6 @@ setup(
     packages=find_packages(),
     scripts=['bin/addgals'],
     package_dir={'PyAddgals' : 'PyAddgals'},
-    package_data={'PyAddgals': ['data/filters/*/*', 'data/templates/*']},
+    package_data={'PyAddgals': ['data/filters/*/*', 'data/templates/*', 'data/training/*']},
     long_description=open('README.md').read(),
     )
