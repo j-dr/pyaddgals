@@ -599,8 +599,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
     obs = make_output_structure(len(g), dbase_style=dbase_style, bands=bands,
                                 nbands=len(usemags),
                                 all_obs_fields=all_obs_fields,
-                                blind_obs=blind_obs,
-                                apply_balrog_errors=apply_balrog_errors)
+                                blind_obs=blind_obs)
+
 
     if ("Y1" in survey) | ("Y3" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
         mindec = -90.
@@ -639,7 +639,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                    omag[guse, usebalmags],
                                                    matched_cat_sorter=matched_cat_sorter,
                                                    zp=zp,
-                                                   true_cat_mag_cols=balusemags)
+                                                   true_cat_mag_cols=usebalmags)
 
     bal_idx = dict(zip(usebalmags, np.arange(len(usebalmags))))
 
@@ -701,7 +701,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[mnames[ind]][guse[ntobs]] = 99.0
 
             if apply_balrog_errors:
-                if i in balusemags:
+                if i in usebalmags:
                     obs[bfnames[bal_idx[ind]]][guse] = flux_bal[:, i]
                     obs[bfenames[bal_idx[ind]]][guse] = 1 / fluxerr_bal[:, i]**2
                     bad = (flux_bal[:, i] <= 0)
@@ -1091,6 +1091,16 @@ if __name__ == "__main__":
         detection_file = None
         matched_cat_file = None
 
+    if balrog_bands is not None:
+        detection_catalog, true_deep_cat, \
+         matched_catalog, matched_cat_sorter = \
+           setup_balrog_error_model(detection_file, matched_cat_file)
+    else:
+        detection_catalog = None
+        true_deep_cat = None
+        matched_catalog = None
+        matched_cat_sorter = None
+
     for fname, mname in zip(fnames[rank::size], mnames[rank::size]):
         if rodir is not None:
             p = fname.split('.')[-2]
@@ -1125,15 +1135,7 @@ if __name__ == "__main__":
                                      redmapper_dtype=redmapper_dtype)
 
         else:
-            if balrog_bands is not None:
-                detection_catalog, true_deep_cat, \
-                 matched_catalog, matched_cat_sorter = \
-                   setup_balrog_error_model(detection_file, matched_cat_file)
-            else:
-                detection_catalog = None
-                true_deep_cat = None
-                matched_catalog = None
-                matched_cat_sorter = None
+
 
             oidx = apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                model, magfile=mname,
