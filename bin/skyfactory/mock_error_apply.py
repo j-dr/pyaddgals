@@ -12,6 +12,8 @@ import pickle
 import yaml
 import sys
 import os
+import h5py as h5
+from sklearn.neighbors import KDTree
 
 models = {
     'DR8':
@@ -109,27 +111,27 @@ models = {
         'maglims': [23.621, 23.232, 23.008, 22.374, 20.663],
         'exptimes': [4389.00, 1329.00, 1405.00, 517.00, 460.00],
         'lnscat': [0.276, 0.257, 0.247, 0.241, 0.300]
-        },
+            },
 
     'DES_SV_OPTIMISTIC':
         {
         'maglims': [23.621 + 0.5, 23.232 + 0.5, 23.008, 22.374, 20.663],
         'exptimes': [4389.00, 1329.00, 1405.00, 517.00, 460.00],
         'lnscat': [0.276, 0.257, 0.247, 0.241, 0.300]
-        },
+            },
     'WISE':
         {
         'maglims': [19.352, 18.574],
         'exptimes': [8.54, 3.46],
         'lnscat': [0.214, 0.283]
-        },
+            },
 
     'DECALS':
         {
             'maglims': [23.3, 23.3, 22.2, 20.6, 19.9],
             'exptimes': [1000, 3000, 2000, 1500, 1500],
             'lnscat': [0.2, 0.2, 0.2, 0.2, 0.2]
-    },
+        },
 
 }
 
@@ -241,16 +243,17 @@ def calc_uniform_errors(model, tmag, maglims, exptimes, lnscat, zp=22.5):
 
     return omag, omagerr, oflux, ofluxerr
 
+
 def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
     mask = healsparse.HealSparseMap.read(maskfile)
     depth = healsparse.HealSparseMap.read(depthmapfile)
 
-    area = np.sum(mask.getValuePixel(mask.validPixels)) * \
-        hp.nside2pixarea(mask.nsideSparse, degrees=True)
+    area = np.sum(mask.get_values_pix(mask.valid_pixels)) * \
+        hp.nside2pixarea(mask.nside_sparse, degrees=True)
 
     print('Area = ', area)
 
-    lim_ref = np.max(depth.getValuePixel(depth.validPixels)['m50'])
+    lim_ref = np.max(depth.get_values_pix(depth.valid_pixels)['m50'])
 
     print('Lim_ref = ', lim_ref)
 
@@ -332,8 +335,11 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
         influx = galaxies['FLUX_%s' % (band.upper())]
         influx_err = 1. / np.sqrt(galaxies['IVAR_%s' % (band.upper())])
 
-        mag = 2.5 * np.log10(1.0 / b_array[i]) - np.arcsinh(0.5 * influx / bscale[i]) / (0.4 * np.log(10.0))
-        mag_err = 2.5 * influx_err / (2.0 * bscale[i] * np.log(10.0) * np.sqrt(1.0 + (0.5 * influx / bscale[i])**2.))
+        mag = 2.5 * np.log10(1.0 / b_array[i]) - np.arcsinh(
+            0.5 * influx / bscale[i]) / (0.4 * np.log(10.0))
+        mag_err = 2.5 * influx_err / \
+            (2.0 * bscale[i] * np.log(10.0) *
+             np.sqrt(1.0 + (0.5 * influx / bscale[i])**2.))
 
         gals['mag'][:, i] = mag
         gals['mag_err'][:, i] = mag_err
@@ -341,8 +347,8 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
 
-    use, = np.where((mask.getValueRaDec(gals['ra'], gals['dec']) > 0) &
-                    (depth.getValueRaDec(gals['ra'], gals['dec'])['m50'] > gals['refmag']))
+    use, = np.where((mask.get_values_pos(gals['ra'], gals['dec'], lonlat=True) > 0) &
+                    (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag']))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
@@ -353,7 +359,8 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
 
 
 def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
-                          all_obs_fields=True, blind_obs=False):
+                          all_obs_fields=True, blind_obs=False,
+                          balrog_bands=None):
 
     if all_obs_fields & dbase_style:
         if bands is None:
@@ -368,6 +375,13 @@ def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
             fields.append(('MAGERR_{0}'.format(b.upper()), np.float))
             fields.append(('FLUX_{0}'.format(b.upper()), np.float))
             fields.append(('IVAR_{0}'.format(b.upper()), np.float))
+
+        if balrog_bands is not None:
+            for b in balrog_bands:
+                fields.append(('MCAL_MAG_{0}'.format(b.upper()), np.float))
+                fields.append(('MCAL_MAGERR_{0}'.format(b.upper()), np.float))
+                fields.append(('MCAL_FLUX_{0}'.format(b.upper()), np.float))
+                fields.append(('MCAL_IVAR_{0}'.format(b.upper()), np.float))
 
     if all_obs_fields & (not dbase_style):
 
@@ -402,14 +416,109 @@ def make_output_structure(ngals, dbase_style=False, bands=None, nbands=None,
     return out
 
 
+def setup_deep_bal_cats(detection_catalog):
+
+    # only keep things with good matches
+    match_idx = detection_catalog['match_flag_1.5_asec'] < 2
+    detection_catalog = detection_catalog[match_idx]
+
+    # get unique deep field galaxies
+    _, uidx = np.unique(detection_catalog['true_id'], return_index=True)
+    true_deep_cat = detection_catalog[uidx]
+
+    # rename ids so that they are contiguous
+    sidx = true_deep_cat['true_id'].argsort()
+    true_deep_cat = true_deep_cat[sidx]
+    old_id = np.copy(true_deep_cat['true_id'])
+    true_deep_cat['true_id'] = np.arange(len(true_deep_cat))
+    map_dict = dict(zip(old_id, true_deep_cat['true_id']))
+    detection_catalog['true_id'] = np.array(
+        [map_dict[detection_catalog['true_id'][i]] for i in range(len(detection_catalog['true_id']))])
+
+    # sort detection catalog by true_id
+    deep_sidx = detection_catalog['true_id'].argsort()
+    detection_catalog = detection_catalog[deep_sidx]
+
+    return detection_catalog, true_deep_cat
+
+
+def generate_bal_id(detection_catalog, true_deep_cat, sim_mag_true):
+
+    n_injections, _ = np.histogram(
+        detection_catalog['true_id'], np.arange(len(true_deep_cat) + 1))
+    cum_injections = np.cumsum(n_injections)
+    deep_tree = KDTree(true_deep_cat['true_bdf_mag_deredden'][:, 1:])
+    _, deep_idx = deep_tree.query(sim_mag_true)
+
+    rand = np.random.uniform(size=len(sim_mag_true))
+    bal_id = cum_injections[deep_idx].flatten(
+    ) - cum_injections[0] + np.floor(rand * n_injections[deep_idx].flatten())
+
+    return detection_catalog['bal_id'][bal_id.astype(np.int)], bal_id.astype(np.int)
+
+
+def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag_in,
+                       matched_cat_sorter=None, zp=22.5, zp_data=30.,
+                       matched_cat_flux_cols=['flux_r', 'flux_i', 'flux_z'],
+                       matched_cat_flux_err_cols=[
+                           'flux_err_r', 'flux_err_i', 'flux_err_z'],
+                       true_cat_mag_cols=[1, 2, 3]):
+
+    flux_out = np.zeros_like(mag_in)
+    flux_err = np.zeros_like(mag_in)
+    flux_err_report = np.zeros_like(mag_in)
+
+    # get balrog injection ids for all simulated galaxies
+    bal_id, bal_cat_idx = generate_bal_id(
+        detection_catalog, true_deep_cat, mag_in)
+
+    # determine which are detected
+    detected = detection_catalog['detected'][bal_cat_idx].astype(np.bool)
+
+    # find matches in matched cat to get wide field measured fluxes
+    matched_idx = matched_balrog_cat['catalog/unsheared/bal_id'][:].searchsorted(bal_id[detected],
+                                                                                 sorter=matched_cat_sorter)
+
+    # calculate error
+    if matched_cat_sorter is not None:
+        for i in range(len(matched_cat_flux_cols)):
+            flux_err[detected, i] = matched_balrog_cat['catalog/unsheared/{}'.format(
+                matched_cat_flux_cols[i])][:][matched_cat_sorter][matched_idx]
+            flux_err_report[detected, i] = matched_balrog_cat['catalog/unsheared/{}'.format(
+                matched_cat_flux_err_cols[i])][:][matched_cat_sorter][matched_idx]
+
+    else:
+        for i in range(len(matched_cat_flux_cols)):
+            flux_err[detected, i] = matched_balrog_cat['catalog/unsheared/{}'.format(
+                matched_cat_flux_cols[i])][:][matched_idx]
+            flux_err_report[detected, i] = matched_balrog_cat['catalog/unsheared/{}'.format(
+                matched_cat_flux_err_cols[i])][:][matched_idx]
+
+    for i in range(len(matched_cat_flux_cols)):
+        flux_err[detected, i] = zp_data - 2.5 * np.log10(flux_err[detected, i])
+        flux_err[detected, i] -= detection_catalog['true_bdf_mag_deredden'][bal_cat_idx[detected.astype(
+            np.bool)], true_cat_mag_cols[i]]
+        flux_out[detected, :] = mag_in[detected, :] + flux_err[detected, :]
+
+    flux_out = 10**((flux_out - zp) / -2.5)
+    flux_err_report *= 10 ** ((zp_data - zp) / -2.5)
+    flux_out[~detected, :] = -99
+
+    return flux_out, flux_err_report
+
 def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 survey, magfile=None, usemags=None,
-                                nest=False, bands=None, all_obs_fields=True,
+                                nest=False, bands=None, balrog_bands=None,
+                                usebalmags=None, all_obs_fields=True,
                                 dbase_style=True, use_lmag=True,
                                 sigpz=0.03, blind_obs=False, filter_obs=True,
                                 refbands=None, zp=22.5, maker=None,
                                 redmapper_info_dict=None,
-                                redmapper_dtype=None):
+                                redmapper_dtype=None,
+                                detection_catalog=None,
+                                true_deep_cat=None,
+                                matched_catalog=None,
+                                matched_cat_sorter=None):
 
     if magfile is not None:
         mags = fitsio.read(magfile)
@@ -454,11 +563,18 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
 
         ra, dec = hp.vec2ang(vec, lonlat=True)
 
+    if balrog_bands is not None:
+        apply_balrog_errors = True
+
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
         menames = ['MAGERR_{0}'.format(b.upper()) for b in bands]
         fnames = ['FLUX_{0}'.format(b.upper()) for b in bands]
         fenames = ['IVAR_{0}'.format(b.upper()) for b in bands]
+
+        if apply_balrog_errors:
+            bfnames = ['MCAL_FLUX_{0}'.format(b.upper()) for b in balrog_bands]
+            bfenames = ['MCAL_IVAR_{0}'.format(b.upper()) for b in balrog_bands]
 
         if filter_obs & (refbands is not None):
             refnames = ['MAG_{}'.format(b.upper()) for b in refbands]
@@ -484,7 +600,9 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
     obs = make_output_structure(len(g), dbase_style=dbase_style, bands=bands,
                                 nbands=len(usemags),
                                 all_obs_fields=all_obs_fields,
-                                blind_obs=blind_obs)
+                                blind_obs=blind_obs,
+                                balrog_bands=balrog_bands)
+
 
     if ("Y1" in survey) | ("Y3" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
         mindec = -90.
@@ -515,6 +633,22 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
 
     oidx = np.zeros(len(omag), dtype=bool)
     oidx[guse] = True
+
+    if apply_balrog_errors:
+        idx = np.zeros_like(omag, dtype=np.bool)
+        for i in range(omag.shape[1]):
+            if i not in usebalmags: continue
+            idx[guse,i] = True
+                
+        flux_bal, fluxerr_bal = balrog_error_apply(detection_catalog,
+                                                   true_deep_cat,
+                                                   matched_catalog,
+                                                   omag[idx].reshape(-1,len(usebalmags)),
+                                                   matched_cat_sorter=matched_cat_sorter,
+                                                   zp_data=zp,
+                                                   true_cat_mag_cols=usebalmags)
+
+    bal_idx = dict(zip(usebalmags, np.arange(len(usebalmags))))
 
     for ind, i in enumerate(usemags):
 
@@ -573,6 +707,14 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[mnames[ind]][guse[ntobs]] = 99.0
             obs[mnames[ind]][guse[ntobs]] = 99.0
 
+            if apply_balrog_errors:
+                if i in usebalmags:
+                    obs[bfnames[bal_idx[ind]]][guse] = flux_bal[:, bal_idx[ind]]
+                    obs[bfenames[bal_idx[ind]]][guse] = 1 / fluxerr_bal[:, bal_idx[ind]]**2
+                    bad = (flux_bal[:, bal_idx[ind]] <= 0)
+                    obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
+                    obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
+
             r = np.random.rand(len(pixind))
 
             if len(d['FRACGOOD'].shape) > 1:
@@ -583,9 +725,16 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                 obs[mnames[ind]][guse[bad]] = 99.0
                 obs[menames[ind]][guse[bad]] = 99.0
 
+                if apply_balrog_errors:
+                    if i in usebalmags:
+                        obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
+                        obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
+
             if (filter_obs) and (mnames[ind] in refnames):
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
+
+
 
     obs['RA'] = ra
     obs['DEC'] = dec
@@ -783,6 +932,22 @@ def apply_uniform_errormodel(g, obase, odir, survey, filename_base,
                               redmapper_dtype, maker)
 
 
+def setup_balrog_error_model(detection_file, matched_cat_file):
+
+    detection_catalog = fitsio.read(detection_file,
+                                    columns=['match_flag_1.5_asec',
+                                             'true_id',
+                                             'true_bdf_mag_deredden',
+                                             'bal_id',
+                                             'detected'])
+
+    detection_catalog, true_deep_cat = setup_deep_bal_cats(detection_catalog)
+    matched_catalog = h5.File(matched_cat_file, 'r')
+    bal_id_sidx = matched_catalog['catalog/unsheared/bal_id'][:].argsort()
+
+    return detection_catalog, true_deep_cat, matched_catalog, bal_id_sidx
+
+
 if __name__ == "__main__":
 
     comm = MPI.COMM_WORLD
@@ -916,10 +1081,33 @@ if __name__ == "__main__":
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         mask_healsparse, mode,
                                                                         bands, refbands[0])
-        maker = redmapper.GalaxyCatalogMaker(oname, redmapper_info_dict, parallel=True)
+        maker = redmapper.GalaxyCatalogMaker(
+            oname, redmapper_info_dict, parallel=True)
 
     else:
         maker, redmapper_info_dict, redmapper_dtype = None
+
+    if 'BalrogBands' in cfg.keys():
+        balrog_bands = cfg['BalrogBands']
+        usebalmags = cfg['UseBalMags']
+        detection_file = cfg['DetectionFile']
+        matched_cat_file = cfg['MatchedCatFile']
+
+    else:
+        balrog_bands = None
+        usebalmags = None
+        detection_file = None
+        matched_cat_file = None
+
+    if balrog_bands is not None:
+        detection_catalog, true_deep_cat, \
+         matched_catalog, matched_cat_sorter = \
+           setup_balrog_error_model(detection_file, matched_cat_file)
+    else:
+        detection_catalog = None
+        true_deep_cat = None
+        matched_catalog = None
+        matched_cat_sorter = None
 
     for fname, mname in zip(fnames[rank::size], mnames[rank::size]):
         if rodir is not None:
@@ -955,10 +1143,14 @@ if __name__ == "__main__":
                                      redmapper_dtype=redmapper_dtype)
 
         else:
+
+
             oidx = apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                model, magfile=mname,
                                                usemags=usemags,
+                                               usebalmags=usebalmags,
                                                nest=nest, bands=bands,
+                                               balrog_bands=balrog_bands,
                                                all_obs_fields=all_obs_fields,
                                                dbase_style=dbstyle,
                                                use_lmag=use_lmag,
@@ -967,7 +1159,14 @@ if __name__ == "__main__":
                                                refbands=refbands,
                                                zp=zp, maker=maker,
                                                redmapper_info_dict=redmapper_info_dict,
-                                               redmapper_dtype=redmapper_dtype)
+                                               redmapper_dtype=redmapper_dtype,
+                                               detection_catalog=detection_catalog,
+                                               true_deep_cat=true_deep_cat,
+                                               matched_catalog=matched_catalog,
+                                               matched_cat_sorter=matched_cat_sorter)
+
+    if matched_catalog is not None:
+        matched_catalog.close()
 
     comm.Barrier()
 
