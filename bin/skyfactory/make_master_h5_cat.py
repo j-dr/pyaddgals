@@ -5,13 +5,15 @@ import sys
 import os
 import yaml
 import healpy as hp
+import healsparse
 import fitsio
 from scipy import spatial
 from sklearn.cluster import KMeans
 
 
-cats_redmagic = ['redmagic_highdens_0.5-10',
-                 'redmagic_highlum_1.0-04', 'redmagic_higherlum_1.5-01']
+
+cats_redmagic = ['redmagic_highdens',
+                 'redmagic_highlum', 'redmagic_higherlum']
 cats_redmapper = ['lgt20_vl02_catalog', 'lgt5_vl02_catalog',
                   'lgt20_vl02_catalog_members', 'lgt5_vl02_catalog_members']
 cats_redmapper_random = [
@@ -22,8 +24,8 @@ cats_redmapper_random_table = ['lgt5', 'lgt20']
 
 # Details for combining redmagic samples
 combined_dict = {
-    'samples': ['redmagic_highdens_0.5-10', 'redmagic_highlum_1.0-04', 'redmagic_higherlum_1.5-01'],
-    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85], [0.85, 0.95]],
+    'samples': ['redmagic_highdens', 'redmagic_highlum'],
+    'binedges': [[0.15, 0.35, 0.5, 0.65], [0.65, 0.85, 0.95]],
     'label': 'combined_sample_fid',
     'fracgood': 0.8,
     'zlum': 4.,
@@ -33,7 +35,8 @@ combined_dict = {
 def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                      file='buzzard-3_1.6_y3_run_redmapper_v6.4.20',
                      file_ext='fit',
-                     make_combined=True):
+                     make_combined=True,
+                     no_redmapper=False):
     """
     Converts redmagic+redmapper fits files into a single h5 file with separate tables for each including randoms.
     """
@@ -53,10 +56,10 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
             rmg_filebase + file + '_' + cats_redmagic[i] + '.' + file_ext)[1].read_header()['NAXIS2']
         # Sort by healpix id
         s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                  np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
+                                  np.radians(cat['dec']), np.radians(cat['ra']), nest=True))
         # Loop over columns and stick in h5 file
         for name in cols:
-            if name.lower() == 'coadd_objects_id':
+            if name.lower() == 'id':
                 #                print 'coadd'
                 f.create_dataset('catalog/redmagic/' + cats_redmagic_table[i] + '/coadd_object_id', maxshape=(
                     total_length,), shape=(total_length,), dtype=int, chunks=(total_length,))
@@ -70,17 +73,22 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
 
     # Loop over masks and put in h5 file
     for i in range(len(cats_redmagic)):
-        mask = fitsio.FITS(rmg_filebase + file + '_' +
-                           cats_redmagic[i][:-3] + '_vlim_zmask.' + file_ext)[1].read()
-        cols = [name for name in mask.dtype.names]
-        total_length = len(mask)
-        mask['HPIX'] = hp.ring2nest(4096, mask['HPIX'])
-        s = np.argsort(mask['HPIX'])
+        maskfile = rmg_filebase + file + '_' + cats_redmagic[i] + '_vlim_zmask.' + file_ext
+        mask = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
+        mask_values = mask.get_values_pix(mask.valid_pixels)
+        cols = [name for name in mask_values.dtype.names]
+        total_length = len(mask.valid_pixels)
+#        mask['hpix'] = hp.ring2nest(4096, mask['hpix'])
+#        s = np.argsort(mask.valid_pixels)
         for name in cols:
             f.create_dataset('masks/redmagic/' + cats_redmagic_table[i] + '/' + name.lower(), maxshape=(
-                total_length,), shape=(total_length,), dtype=mask.dtype[name], chunks=(100000,))
+                total_length,), shape=(total_length,), dtype=mask_values.dtype[name], chunks=(100000,))
             f['masks/redmagic/' + cats_redmagic_table[i] +
-                '/' + name.lower()][:] = mask[name][s]
+                '/' + name.lower()][:] = mask_values[name]
+
+        f.create_dataset('masks/redmagic/' + cats_redmagic_table[i] + '/hpix', maxshape=(
+            total_length,), shape=(total_length,), dtype=np.int, chunks=(100000,))
+        f['masks/redmagic/' + cats_redmagic_table[i] + '/hpix'][:] = mask.valid_pixels
 
     # Loop over randoms and put in h5 file
     for i in range(len(cats_redmagic)):
@@ -90,80 +98,88 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
         total_length = fitsio.FITS(
             rmg_filebase + file + '_' + cats_redmagic[i] + '_randoms.' + file_ext)[1].read_header()['NAXIS2']
         s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                  np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
+                                  np.radians(cat['dec']), np.radians(cat['ra']), nest=True))
         for name in cols:
             f.create_dataset('randoms/redmagic/' + cats_redmagic_table[i] + '/' + name.lower(), maxshape=(
                 total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(1000000,))
             f['randoms/redmagic/' + cats_redmagic_table[i] +
                 '/' + name.lower()][:] = cat[name][s]
 
-    # Loop over redmapper cats and put in h5 file
-    for i in range(len(cats_redmapper)):
-        cat = fitsio.FITS(rmp_filebase + file + '_' +
-                          cats_redmapper[i] + '.' + file_ext)[1].read()
-        cols = [name for name in cat.dtype.names]
-        total_length = fitsio.FITS(
-            rmp_filebase + file + '_' + cats_redmapper[i] + '.' + file_ext)[1].read_header()['NAXIS2']
-        s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                  np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
-        for name in cols:
-            f.create_dataset('catalog/redmapper/' + cats_redmapper_table[i] + '/' + name.lower(), maxshape=(
-                total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
-            f['catalog/redmapper/' + cats_redmapper_table[i] +
-                '/' + name.lower()][:] = cat[name][s]
-
-    # Loop over redmapper randoms and put in h5 file
-    for i in range(len(cats_redmapper_random)):
-        try:
+    if not no_redmapper:
+        # Loop over redmapper cats and put in h5 file
+        for i in range(len(cats_redmapper)):
             cat = fitsio.FITS(rmp_filebase + file + '_' +
-                              cats_redmapper_random[i] + '.' + file_ext)[1].read()
-
+                              cats_redmapper[i] + '.' + file_ext)[1].read()
             cols = [name for name in cat.dtype.names]
             total_length = fitsio.FITS(
-                rmp_filebase + file + '_' + cats_redmapper_random[i] + '.' + file_ext)[1].read_header()['NAXIS2']
+                rmp_filebase + file + '_' + cats_redmapper[i] + '.' + file_ext)[1].read_header()['NAXIS2']
             s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                      np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
+                                      np.radians(cat['dec']), np.radians(cat['ra']), nest=True))
             for name in cols:
-                f.create_dataset('randoms/redmapper/' + cats_redmapper_random_table[i] + '/' + name.lower(
-                ), maxshape=(total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
-                f['randoms/redmapper/' + cats_redmapper_random_table[i] +
+                f.create_dataset('catalog/redmapper/' + cats_redmapper_table[i] + '/' + name.lower(), maxshape=(
+                    total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
+                f['catalog/redmapper/' + cats_redmapper_table[i] +
                     '/' + name.lower()][:] = cat[name][s]
-        except OSError as e:
-            print(e)
-            print('Redmapper randoms do not exist')
+
+        # Loop over redmapper randoms and put in h5 file
+        for i in range(len(cats_redmapper_random)):
+            try:
+                cat = fitsio.FITS(rmp_filebase + file + '_' +
+                                  cats_redmapper_random[i] + '.' + file_ext)[1].read()
+
+                cols = [name for name in cat.dtype.names]
+                total_length = fitsio.FITS(
+                    rmp_filebase + file + '_' + cats_redmapper_random[i] + '.' + file_ext)[1].read_header()['NAXIS2']
+                s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
+                                          np.radians(cat['dec']), np.radians(cat['ra']), nest=True))
+                for name in cols:
+                    f.create_dataset('randoms/redmapper/' + cats_redmapper_random_table[i] + '/' + name.lower(
+                    ), maxshape=(total_length,), shape=(total_length,), dtype=cat.dtype[name], chunks=(total_length,))
+                    f['randoms/redmapper/' + cats_redmapper_random_table[i] +
+                        '/' + name.lower()][:] = cat[name][s]
+            except OSError as e:
+                print(e)
+                print('Redmapper randoms do not exist')
 
     # Make combined catalog version and add in new h5 table
     if make_combined:
-        #        print 'combined redmagic'
-        binedges_all = np.unique(np.hstack(combined_dict['binedges']))
-        # combined_mask
         for i in range(len(combined_dict['samples'])):
             zmax_cut = combined_dict['binedges'][i][-1]
             if i == 0:
-                mask_master = fitsio.FITS(
-                    rmg_filebase + file + '_' + combined_dict['samples'][i][:-3] + '_vlim_zmask.' + file_ext)[1].read()
-                mask_master['HPIX'] = hp.ring2nest(4096, mask_master['HPIX'])
-                select_zmax = (mask_master['ZMAX'] > zmax_cut)
-                mask_master = mask_master[select_zmax]
-            else:
-                mask = fitsio.FITS(
-                    rmg_filebase + file + '_' + combined_dict['samples'][i][:-3] + '_vlim_zmask.' + file_ext)[1].read()
-                mask['HPIX'] = hp.ring2nest(4096, mask['HPIX'])
-                select_zmax = (mask['ZMAX'] > zmax_cut)
-                badpix = mask['HPIX'][~select_zmax]
-                select_badpix = np.in1d(mask_master['HPIX'], badpix)
-                mask_master = mask_master[~select_badpix]
+                maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
+                mask_master = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
+                select_zmax = (mask_master.get_values_pix(mask_master.valid_pixels)['zmax'] >= zmax_cut)
+                mask_master_pix = mask_master.valid_pixels[select_zmax]
+                mask_master_values = mask_master.get_values_pix(mask_master_pix)
 
-        select_fracdet = (mask_master['FRACGOOD'] > combined_dict['fracgood'])
-        mask_master = mask_master[select_fracdet]
-        cols = [name for name in mask_master.dtype.names]
-        total_length = len(mask_master)
-        s = np.argsort(mask_master['HPIX'])
+            else:
+                maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
+                mask = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
+                mask_values = mask.get_values_pix(mask.valid_pixels)
+                print(mask_values['zmax'])
+                print(zmax_cut)
+                select_zmax = (mask_values['zmax'] >= zmax_cut)
+                badpix = mask.valid_pixels[~select_zmax]
+                print(badpix)
+                select_badpix = np.in1d(mask_master_pix, badpix)
+                mask_master_pix = mask_master_pix[~select_badpix]
+                mask_master_values = mask_master_values[~select_badpix]
+            print(len(mask_master_pix))
+
+        select_fracdet = (mask_master_values['fracgood'] > combined_dict['fracgood'])
+        mask_master_values = mask_master_values[select_fracdet]
+        mask_master_pix = mask_master_pix[select_fracdet]
+        cols = [name for name in mask_master_values.dtype.names]
+        total_length = len(mask_master_values)
         for name in cols:
             f.create_dataset('masks/redmagic/' + combined_dict['label'] + '/' + name.lower(), maxshape=(
-                total_length,), shape=(total_length,), dtype=mask_master.dtype[name], chunks=(100000,))
+                total_length,), shape=(total_length,), dtype=mask_master_values.dtype[name], chunks=(100000,))
             f['masks/redmagic/' + combined_dict['label'] +
-                '/' + name.lower()][:] = mask_master[name][s]
+                '/' + name.lower()][:] = mask_master_values[name]
+
+        f.create_dataset('masks/redmagic/' + combined_dict['label'] + '/hpix', maxshape=(
+            total_length,), shape=(total_length,), dtype=mask_master_pix.dtype, chunks=(100000,))
+        f['masks/redmagic/' + combined_dict['label'] + '/hpix'][:] = mask_master_pix
 
         # combined catalog
         for i in range(len(combined_dict['samples'])):
@@ -173,10 +189,10 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                 rmg_filebase + file + '_' + combined_dict['samples'][i] + '_randoms.' + file_ext)[1].read()
             binedges = combined_dict['binedges'][i]
             select_zrange = (
-                cat_sample['ZREDMAGIC'] >= binedges[0]) * (cat_sample['ZREDMAGIC'] < binedges[-1])
+                cat_sample['zredmagic'] >= binedges[0]) * (cat_sample['zredmagic'] < binedges[-1])
             cat_sample = cat_sample[select_zrange]
             select_zrange = (
-                ran_sample_['Z'] >= binedges[0]) * (ran_sample_['Z'] < binedges[-1])
+                ran_sample_['z'] >= binedges[0]) * (ran_sample_['z'] < binedges[-1])
             ran_sample_ = ran_sample_[select_zrange]
             if i == 0:
                 cat = cat_sample
@@ -190,31 +206,31 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
         # hpix = HealPix('ring',4096)
         # catpix = hpix.eq2pix(cat['RA'],cat['DEC'])
         catpix = hp.ang2pix(
-            4096, np.pi / 2. - np.radians(ran_sample['DEC']), np.radians(ran_sample['RA']), nest=True)
-        select_inmask = np.in1d(catpix, mask_master['HPIX'])
+            4096, np.pi / 2. - np.radians(ran_sample['dec']), np.radians(ran_sample['ra']), nest=True)
+        select_inmask = np.in1d(catpix, mask_master_pix)
         ran_sample = ran_sample[select_inmask]
 
         catpix = hp.ang2pix(
-            4096, np.pi / 2. - np.radians(cat['DEC']), np.radians(cat['RA']), nest=True)
-        select_inmask = np.in1d(catpix, mask_master['HPIX'])
+            4096, np.pi / 2. - np.radians(cat['dec']), np.radians(cat['ra']), nest=True)
+        select_inmask = np.in1d(catpix, mask_master_pix)
 
         # apply ZLUM cut
-        select_zlum = (cat['ZLUM'] < combined_dict['zlum'])
+        select_zlum = (cat['lum'] < combined_dict['zlum'])
 
         # remove dupes
         seen = {}
         dupes = []
-        for item in cat['COADD_OBJECTS_ID']:
+        for item in cat['id']:
             if item in seen:
                 dupes.append(item)
             seen[item] = 1
 
         print('removing', len(dupes), 'duplicates')
-        select_keep = np.ones(len(cat['COADD_OBJECTS_ID'])).astype('bool')
+        select_keep = np.ones(len(cat['id'])).astype('bool')
         for d in dupes:
             # location of all objects with this id
-            loc = np.where(cat['COADD_OBJECTS_ID'] == d)[0]
-            dupe_z = cat['ZREDMAGIC'][loc]
+            loc = np.where(cat['id'] == d)[0]
+            dupe_z = cat['zredmagic'][loc]
             loc_remove = loc[dupe_z != dupe_z.max()]
             select_keep[loc_remove] = False  # set all but last value to keep
 
@@ -223,9 +239,9 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
         cols = [name for name in cat.dtype.names]
         total_length = len(cat)
         s = np.argsort(hp.ang2pix(16384, np.pi / 2. -
-                                  np.radians(cat['DEC']), np.radians(cat['RA']), nest=True))
+                                  np.radians(cat['dec']), np.radians(cat['ra']), nest=True))
         for name in cols:
-            if name.lower() == 'coadd_objects_id':
+            if name.lower() == 'id':
                 print('coadd')
                 f.create_dataset('catalog/redmagic/' + combined_dict['label'] + '/coadd_object_id', maxshape=(
                     total_length,), shape=(total_length,), dtype=int, chunks=(total_length,))
@@ -238,7 +254,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                     '/' + name.lower()][:] = cat[name][s]
 
         s = np.argsort(hp.ang2pix(
-            16384, np.pi / 2. - np.radians(ran_sample['DEC']), np.radians(ran_sample['RA']), nest=True))
+            16384, np.pi / 2. - np.radians(ran_sample['dec']), np.radians(ran_sample['ra']), nest=True))
         for name in ran_sample.dtype.names:
             f.create_dataset('randoms/redmagic/' + combined_dict['label'] + '/' + name.lower(), maxshape=(
                 len(ran_sample),), shape=(len(ran_sample),), dtype=ran_sample.dtype[name], chunks=(1000000,))
@@ -313,16 +329,20 @@ def generate_jk_centers_from_mask(outfile, regionfile, nrand=1e5):
     fitsio.write(regionfile, centers_dist)
 
 
-def assign_jk_regions(mastercat, regionsfile, nside=512):
+def assign_jk_regions(mastercat, regionsfile, nside=512, just_rm=False):
 
-    catalogs = ['catalog/gold', 'catalog/metacal/unsheared',
-                'catalog/redmagic/combined_sample_fid',
-                'catalog/redmapper/lgt20'
-                'catalog/redmapper/lgt5'
-                'randoms/redmagic/combined_sample_fid',
-                'randoms/redmapper/lgt20',
-                'randoms/redmapper/lgt5',
-                'randoms/maglim']
+    if not just_rm:
+        catalogs = ['catalog/gold', 'catalog/metacal/unsheared',
+                    'catalog/redmagic/combined_sample_fid',
+                    'catalog/redmapper/lgt20'
+                    'catalog/redmapper/lgt5'
+                    'randoms/redmagic/combined_sample_fid',
+                    'randoms/redmapper/lgt20',
+                    'randoms/redmapper/lgt5',
+                    'randoms/maglim']
+    else:
+        catalogs = ['catalog/redmagic/combined_sample_fid',
+                    'randoms/redmagic/combined_sample_fid']
 
     f = h5py.File(mastercat, 'r+')
 
@@ -404,7 +424,7 @@ def make_mcal_selection(f, x_opt):
     return idx
 
 
-def make_altlens_selection(f, x_opt, mask_hpix, zdata='catalog/dnf/unsheared/z_mc'):
+def make_altlens_selection(f, x_opt, mask_hpix, zdata='catalog/bpz/unsheared/z'):
     mag_i = f['catalog/gold/mag_i'][:]
     z = f[zdata][:]
     idx = (mag_i < (x_opt[0] * z + x_opt[1])) & (z > 0)
@@ -453,8 +473,11 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     #    # Open catalog h5 files for sorting by healpix id
     f = h5py.File(goldfile, 'r+')
-    b = h5py.File(bpzfile, 'r+')
     m = h5py.File(shapefile, 'r+')
+    if bpzfile is not None:
+        b = h5py.File(bpzfile, 'r+')
+    else:
+        b = None
 
     # Sort by healpix id and loop over all columns in catalogs, reordering
     s = np.argsort(f['catalog']['gold']['coadd_object_id'][:])
@@ -476,15 +499,16 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
     del s
 
-    s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
-    for col in b['catalog']['bpz'].keys():
-        print(col)
-        sys.stdout.flush()
-        
-        c = b['catalog']['bpz'][col][:]
-        b['catalog']['bpz'][col][:] = c[s]
+    if b is not None:
+        s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
+        for col in b['catalog']['bpz'].keys():
+            print(col)
+            sys.stdout.flush()
 
-    del s
+            c = b['catalog']['bpz'][col][:]
+            b['catalog']['bpz'][col][:] = c[s]
+
+        del s
 
     s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
     for col in f['catalog']['gold'].keys():
@@ -497,20 +521,22 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     for col in m['catalog']['unsheared']['metacal'].keys():
         print(col)
         sys.stdout.flush()
-        
+
         c = m['catalog']['unsheared']['metacal'][col][:]
         m['catalog']['unsheared']['metacal'][col][:] = c[s]
 
-    for col in b['catalog']['bpz'].keys():
-        print(col)
-        sys.stdout.flush()
-        
-        c = b['catalog']['bpz'][col][:]
-        b['catalog']['bpz'][col][:] = c[s]
+    if b is not None:
+        for col in b['catalog']['bpz'].keys():
+            print(col)
+            sys.stdout.flush()
+
+            c = b['catalog']['bpz'][col][:]
+            b['catalog']['bpz'][col][:] = c[s]
 #
     f.close()
-    b.close()
     m.close()
+    if b is not None:
+        b.close()
 
     # Create master h5 file and softlink all external data tables inside it
     try:
@@ -521,7 +547,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['/catalog/metacal/unsheared'] = h5py.ExternalLink(
         shapefile, "/catalog/unsheared/metacal")
     f['/catalog/gold'] = h5py.ExternalLink(goldfile, "/catalog/gold")
-    f['/catalog/bpz/unsheared'] = h5py.ExternalLink(bpzfile, "/catalog/bpz")
+    if b is not None:
+        f['/catalog/bpz/unsheared'] = h5py.ExternalLink(bpzfile, "/catalog/bpz")
+
     f['/catalog/redmagic'] = h5py.ExternalLink(rmfile, "/catalog/redmagic")
     f['/catalog/redmapper'] = h5py.ExternalLink(
         rmfile, "/catalog/redmapper")
@@ -556,11 +584,12 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     gpix = f['catalog']['gold']['hpix_16384'][:]
 
     # construct indices to map gold onto the photoz catalogs
-    for x in ['bpz']:
-        s = np.arange(total_length)
-        f.create_dataset('index/' + x + '/match_gold', maxshape=(len(s),),
-                         shape=(len(s),), dtype=int, chunks=(1000000,))
-        f['index/' + x + '/match_gold'][:] = s
+    if b is not None:
+        for x in ['bpz']:
+            s = np.arange(total_length)
+            f.create_dataset('index/' + x + '/match_gold', maxshape=(len(s),),
+                             shape=(len(s),), dtype=int, chunks=(1000000,))
+            f['index/' + x + '/match_gold'][:] = s
 
     # construct gold level selection flags (in index form)
     ngal = len(f['catalog/gold/flags_gold'])
@@ -608,11 +637,12 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
         f['index/redmagic/' + table + '/random_select'][:] = np.where(mask)[0]
 
     # construct gold-pz level selection flags (in index form)
-    for x in ['bpz']:
+    if b is not None:
+        for x in ['bpz']:
 
-        f.create_dataset('index/' + x + '/select', maxshape=(ngal,),
-                         shape=(ngal,), dtype=int, chunks=(1000000,))
-        f['index/' + x + '/select'][:] = np.arange(ngal)
+            f.create_dataset('index/' + x + '/select', maxshape=(ngal,),
+                             shape=(ngal,), dtype=int, chunks=(1000000,))
+            f['index/' + x + '/select'][:] = np.arange(ngal)
 
     # construct shape catalog selection flags for default expected selection (in index form) including redmagic joint masking
 
@@ -654,7 +684,6 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     make_maglim_randoms(f, rmfile)
 
     f['/randoms/maglim'] = h5py.ExternalLink(rmfile, "/randoms/maglim")
-
 
     f.close()
 
@@ -803,15 +832,18 @@ if __name__ == '__main__':
     else:
         dnffile = None
 
+    just_rm = cfg.pop('just_rm', False)
+
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
     h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
                                 file=rmfile)
 
-    make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                    maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile)
+    if not just_rm:
+        make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
+                        maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile)
 
-    match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
+        match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
