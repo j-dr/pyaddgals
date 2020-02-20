@@ -346,11 +346,11 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
 
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
-    unique_ids = np.unique(gals['id'])
-    unique_ids = np.in1d(gals['id'], unique_ids)
+    _, unique_idx = np.unique(gals['id'], return_index=True)
+
     use, = np.where((mask.get_values_pos(gals['ra'], gals['dec'], lonlat=True) > 0) &
                     (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag'])
-                    & (unique_ids))
+                    & np.in1d(np.arange(len(gals)), unique_idx))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
