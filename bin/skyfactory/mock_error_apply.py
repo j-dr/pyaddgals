@@ -346,9 +346,11 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
 
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
-
+    unique_ids = np.unique(gals['id'])
+    unique_ids = np.in1d(gals['id'], unique_ids)
     use, = np.where((mask.get_values_pos(gals['ra'], gals['dec'], lonlat=True) > 0) &
-                    (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag']))
+                    (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag'])
+                    & (unique_ids))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
@@ -467,6 +469,7 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
     flux_out = np.zeros_like(mag_in)
     flux_err = np.zeros_like(mag_in)
     flux_err_report = np.zeros_like(mag_in)
+    mag_in[~np.isfinite(mag_in) | (mag_in != mag_in)] = 99
 
     # get balrog injection ids for all simulated galaxies
     bal_id, bal_cat_idx = generate_bal_id(
@@ -639,7 +642,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
         for i in range(omag.shape[1]):
             if i not in usebalmags: continue
             idx[guse,i] = True
-                
+
         flux_bal, fluxerr_bal = balrog_error_apply(detection_catalog,
                                                    true_deep_cat,
                                                    matched_catalog,
