@@ -47,9 +47,6 @@ class buzzard_flat_cat(object):
         self.already_merged = already_merged
         self.odir = self.obsdir
 
-        if merge:
-            self.merge_rank_files(merge_with_bpz=merge_with_bpz)
-
     def process_single_file_all_detections(self, obs, truth, pz, rank, debug=False):
 
         gold = np.zeros(len(obs), dtype=[('coadd_objects_id', 'i8')]
@@ -242,54 +239,6 @@ class buzzard_flat_cat(object):
         gout.close()
 
         return
-
-    def merge_rank_files(self, merge_with_bpz=False):
-
-        gout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_gold.fits', 'rw')
-        sout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_shape.fits', 'rw')
-        pout = fio.FITS(self.odir + '/' + self.simname +
-                        '_{}'.format(self.obsdir[:-1]) + '_pz.fits', 'rw')
-
-        gfiles = glob.glob(self.odir + '/' +
-                           self.simname + '_{}'.format(self.obsdir[:-1]) +
-                           '_gold*[0-9].fits')
-        size = len(gfiles)
-        count = 0
-        for i in range(size):
-            try:
-                gold = fio.read(self.odir + '/' +
-                                self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.fits'.format(i))
-                shape = fio.read(self.odir + '/' +
-                                 self.simname + '_{}'.format(self.obsdir[:-1]) + '_shape.{}.fits'.format(i))
-                photoz = fio.read(self.odir + '/' +
-                                  self.simname + '_{}'.format(self.obsdir[:-1]) + '_pz.{}.fits'.format(i))
-            except OSError as e:
-                print('File rank {} has no galaxies in it'.format(i))
-                continue
-
-            idx = ((gold['mag_g'] < 99) & (gold['mag_r'] < 99) & (gold['mag_i'] < 99) & (gold['mag_z'] < 99) &
-                   np.isfinite(gold['mag_g']) & np.isfinite(
-                       gold['mag_r']) & np.isfinite(gold['mag_i'])
-                   & np.isfinite(gold['mag_z']))
-
-            if merge_with_bpz:
-                bpz = fio.read(
-                    self.simname + '_{}'.format(self.obsdir[:-1]) + '_gold.{}.BPZ.fits'.format(i))
-                photoz['mean-z'] = bpz['MEAN_Z']
-                photoz['mc-z'] = bpz['Z_MC']
-                photoz['mode-z'] = bpz['MODE_Z']
-
-            if count == 0:
-                gout.write(gold[idx])
-                sout.write(shape[idx])
-                pout.write(photoz[idx])
-            else:
-                gout[-1].append(gold[idx])
-                sout[-1].append(shape[idx])
-                pout[-1].append(photoz[idx])
-            count += 1
 
     def merge_rank_files_h5(self, merge_with_bpz=False):
 
