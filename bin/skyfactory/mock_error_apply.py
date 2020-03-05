@@ -244,12 +244,10 @@ def calc_uniform_errors(model, tmag, maglims, exptimes, lnscat, zp=22.5):
     return omag, omagerr, oflux, ofluxerr
 
 
-def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
-    mask = healsparse.HealSparseMap.read(maskfile)
-    depth = healsparse.HealSparseMap.read(depthmapfile)
+def setup_redmapper_infodict(depthmapfile, area, mode, bands,
+                             refband):
 
-    area = np.sum(mask.get_values_pix(mask.valid_pixels)) * \
-        hp.nside2pixarea(mask.nside_sparse, degrees=True)
+    depth = healsparse.HealSparseMap.read(depthmapfile)
 
     print('Area = ', area)
 
@@ -292,9 +290,6 @@ def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
     info_dict['ZP'] = zp
     info_dict['B'] = b_array  # if magnitudes are actually luptitudes
 
-    info_dict['mask'] = mask
-    info_dict['depth'] = depth
-
     if mode == 'DES':
         info_dict['G_IND'] = 0  # g-band index
         info_dict['R_IND'] = 1  # r-band index
@@ -312,9 +307,6 @@ def setup_redmapper_infodict(depthmapfile, maskfile, mode, bands, refband):
 
 def write_redmapper_files(galaxies, filename_base, info_dict,
                           redmapper_dtype, maker):
-
-    mask = info_dict['mask']
-    depth = info_dict['depth']
 
     b_array = info_dict['B']
     bscale = info_dict['B'] * (10.**(info_dict['ZP'] / 2.5))
@@ -346,9 +338,9 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
 
     gals['refmag'][:] = gals['mag'][:, ref_ind]
     gals['refmag_err'][:] = gals['mag_err'][:, ref_ind]
+    _, unique_idx = np.unique(gals['id'], return_index=True)
 
-    use, = np.where((mask.get_values_pos(gals['ra'], gals['dec'], lonlat=True) > 0) &
-                    (depth.get_values_pos(gals['ra'], gals['dec'], lonlat=True)['m50'] > gals['refmag']))
+    use, = np.where(np.in1d(np.arange(len(gals)), unique_idx))
 
     if use.size == 0:
         print('No good galaxies in pixel!')
@@ -467,6 +459,7 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
     flux_out = np.zeros_like(mag_in)
     flux_err = np.zeros_like(mag_in)
     flux_err_report = np.zeros_like(mag_in)
+    mag_in[~np.isfinite(mag_in) | (mag_in != mag_in)] = 99
 
     # get balrog injection ids for all simulated galaxies
     bal_id, bal_cat_idx = generate_bal_id(
@@ -639,7 +632,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
         for i in range(omag.shape[1]):
             if i not in usebalmags: continue
             idx[guse,i] = True
-                
+
         flux_bal, fluxerr_bal = balrog_error_apply(detection_catalog,
                                                    true_deep_cat,
                                                    matched_catalog,
@@ -976,6 +969,7 @@ if __name__ == "__main__":
         d, dhdr = fitsio.read(dfile, header=True)
         pidx = d['HPIX'].argsort()
         d = d[pidx]
+        area = len(d['HPIX']) * hp.nside2pixarea(dhdr['NSIDE'])
     else:
         uniform = True
 
@@ -1079,7 +1073,7 @@ if __name__ == "__main__":
         oname = "{0}/{1}_obs_rmp".format(odir, obase)
 
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
-                                                                        mask_healsparse, mode,
+                                                                        area, mode,
                                                                         bands, refbands[0])
         maker = redmapper.GalaxyCatalogMaker(
             oname, redmapper_info_dict, parallel=True)
