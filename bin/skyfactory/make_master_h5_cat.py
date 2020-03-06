@@ -10,7 +10,6 @@ import fitsio
 from scipy import spatial
 from sklearn.cluster import KMeans
 
-
 cats_redmagic = ['redmagic_highdens',
                  'redmagic_highlum', 'redmagic_higherlum']
 cats_redmapper = ['lgt20_vl02_catalog', 'lgt5_vl02_catalog',
@@ -20,6 +19,7 @@ cats_redmapper_random = [
 cats_redmagic_table = ['highdens', 'highlum', 'higherlum']
 cats_redmapper_table = ['lgt20', 'lgt5', 'lgt20/members', 'lgt5/members']
 cats_redmapper_random_table = ['lgt5', 'lgt20']
+lstar_map = {'highdens': '05', 'highlum': '10', 'higherlum': '15'}
 
 # Details for combining redmagic samples
 combined_dict = {
@@ -77,6 +77,8 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     # Loop over masks and put in h5 file
     for i in range(len(cats_redmagic)):
         maskfile = rmg_filebase + file + '_' + cats_redmagic[i] + '_vlim_zmask.' + file_ext
+        if not os.path.exists(maskfile):
+            maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])
         mask = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
         mask_values = mask.get_values_pix(mask.valid_pixels)
         cols = [name for name in mask_values.dtype.names]
