@@ -11,7 +11,6 @@ from scipy import spatial
 from sklearn.cluster import KMeans
 
 
-
 cats_redmagic = ['redmagic_highdens',
                  'redmagic_highlum', 'redmagic_higherlum']
 cats_redmapper = ['lgt20_vl02_catalog', 'lgt5_vl02_catalog',
@@ -35,11 +34,15 @@ combined_dict = {
 def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                      file='buzzard-3_1.6_y3_run_redmapper_v6.4.20',
                      file_ext='fit',
-                     make_combined=True,
-                     no_redmapper=False):
+                     make_combined=True):
     """
     Converts redmagic+redmapper fits files into a single h5 file with separate tables for each including randoms.
     """
+
+    if rmp_filebase is None:
+        no_redmapper = True
+    else:
+        no_redmapper = False
 
     # Create h5 file
     f = h5py.File(rmg_filebase + file + '.h5', 'w')
