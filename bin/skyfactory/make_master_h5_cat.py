@@ -19,7 +19,9 @@ cats_redmapper_random = [
 cats_redmagic_table = ['highdens', 'highlum', 'higherlum']
 cats_redmapper_table = ['lgt20', 'lgt5', 'lgt20/members', 'lgt5/members']
 cats_redmapper_random_table = ['lgt5', 'lgt20']
-lstar_map = {'highdens': '05', 'highlum': '10', 'higherlum': '15'}
+lstar_map = {'redmagic_highdens': 'redmagic_05',
+             'redmagic_highlum': 'redmagic_10',
+             'redmagic_higherlum': 'redmagic_15'}
 
 # Details for combining redmagic samples
 combined_dict = {
