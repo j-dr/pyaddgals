@@ -46,6 +46,8 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     else:
         no_redmapper = False
 
+    print('no_redmapper: {}'.format(no_redmapper))
+
     # Create h5 file
     f = h5py.File(rmg_filebase + file + '.h5', 'w')
     # Loop over redmagic cats fits files and dump into h5
@@ -154,6 +156,8 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
             zmax_cut = combined_dict['binedges'][i][-1]
             if i == 0:
                 maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
+                if not os.path.exists(maskfile):
+                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])                
                 mask_master = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
                 select_zmax = (mask_master.get_values_pix(mask_master.valid_pixels)['zmax'] >= zmax_cut)
                 mask_master_pix = mask_master.valid_pixels[select_zmax]
@@ -161,6 +165,8 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
 
             else:
                 maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
+                if not os.path.exists(maskfile):
+                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])                
                 mask = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
                 mask_values = mask.get_values_pix(mask.valid_pixels)
                 print(mask_values['zmax'])
@@ -828,6 +834,10 @@ if __name__ == '__main__':
     rmfile = cfg['rmfile']
     rmg_filebase = cfg['redmagic_filebase']
     rmp_filebase = cfg['redmapper_filebase']
+    if rmp_filebase == 'None':
+        rmp_filebase = None
+        print(rmp_filebase)
+        
     maskfile = cfg['footprint_maskfile']
     regionfile = cfg['regionfile']
     x_opt = cfg['x_opt']
