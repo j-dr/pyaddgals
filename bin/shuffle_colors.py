@@ -983,6 +983,11 @@ if __name__ == '__main__':
 
         print('[{}]: Writing to {}'.format(rank, ofile))
 
-        fitsio.write(ofile, g)
+        try:
+            fitsio.write(ofile, g)
+            os.remove(files[i])
+        except Exception as e:
+            print(e)
+            raise(e)
 
         del g
