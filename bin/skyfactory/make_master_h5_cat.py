@@ -365,7 +365,7 @@ def assign_jk_regions(mastercat, regionsfile, nside=512, just_rm=False):
     pixra, pixdec = hp.pix2ang(nside, np.arange(
         12 * nside**2), nest=True, lonlat=True)
     pixcenters = np.vstack([pixra, pixdec]).T
-    _, jk_idx = spatial.cKDTree(centers).query(pixcenters)
+    _, jk_idx = spatial.cKDTree(centers[:,:2]).query(pixcenters)
 
     for i, cat in enumerate(catalogs):
         try:
@@ -437,20 +437,23 @@ def make_mcal_selection(f, x_opt):
     return idx
 
 
-def make_altlens_selection(f, x_opt, mask_hpix, zdata='catalog/bpz/unsheared/z'):
+def make_altlens_selection(f, x_opt, mask_hpix, depth_i, zdata='catalog/bpz/unsheared/z'):
     mag_i = f['catalog/gold/mag_i'][:]
     z = f[zdata][:]
     idx = (mag_i < (x_opt[0] * z + x_opt[1])) & (z > 0)
-    del z
 
     idx &= (mag_i > 17.5) & (mag_i < 23)
     idx &= (f['catalog/gold/mag_err_i'][:] < 0.1)
-    del mag_i
 
-    idx = np.where(idx)[0]
-    pix = hp.ang2pix(4096, f['catalog/gold/ra'][:][idx],
-                     f['catalog/gold/dec'][:][idx], lonlat=True)
-    idx = idx[np.in1d(pix, mask_hpix)]
+    pix = hp.ang2pix(4096, f['catalog/gold/ra'][:],
+                     f['catalog/gold/dec'][:], lonlat=True)
+    mag_i_max = np.max(mag_i[idx][z[idx] < 1.05])
+
+    mask_hpix = mask_hpix[depth_i > mag_i_max]
+    
+    idx = idx & np.in1d(pix, mask_hpix) 
+
+    del mag_i, z    
 
     return idx
 
@@ -459,10 +462,9 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
                     shapefile='y3v02-mcal-002-blind-v1.h5', goldfile='Y3_GOLD_2_2.h5',
                     bpzfile='Y3_GOLD_2_2_BPZ.h5', rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5',
                     mapfile='Y3_GOLD_2_2_1_maps.h5', maskfile=None, dnffile=None,
-                    good=1):
+                    good=1, do_id_sort=True, do_hpix_sort=True):
     """
     Create master h5 file that links the individual catalog h5 files and
-    outfile='./Y3_mastercat_v1_6_20_18.h5'; shapefile='y3v02-mcal-002-blind-v1.h5'; goldfile='Y3_GOLD_2_2.h5'; rmfile='y3_gold_2.2.1_wide_sofcol_run_redmapper_v6.4.22.h5'; bpzfile='Y3_GOLD_2_2_BPZ.h5'; dnffile='Y3_GOLD_2_2_DNF.h5'; mapfile='Y3_GOLD_2_2_1_maps.h5'
     """
 
     # still need to add mask to gold h5 file
@@ -492,59 +494,61 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     else:
         b = None
 
-    # Sort by healpix id and loop over all columns in catalogs, reordering
-    s = np.argsort(f['catalog']['gold']['coadd_object_id'][:])
-    for col in f['catalog']['gold'].keys():
-        print(col)
-        sys.stdout.flush()
-        c = f['catalog']['gold'][col][:]
-        f['catalog']['gold'][col][:] = c[s]
-
-    del s
-
-    s = np.argsort(m['catalog']['unsheared']['metacal']['coadd_object_id'][:])
-    for col in m['catalog']['unsheared']['metacal'].keys():
-        print(col)
-        sys.stdout.flush()
-
-        c = m['catalog']['unsheared']['metacal'][col][:]
-        m['catalog']['unsheared']['metacal'][col][:] = c[s]
-
-    del s
-
-    if b is not None:
-        s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
-        for col in b['catalog']['bpz'].keys():
+    if do_id_sort:
+        # Sort by healpix id and loop over all columns in catalogs, reordering
+        s = np.argsort(f['catalog']['gold']['coadd_object_id'][:])
+        for col in f['catalog']['gold'].keys():
             print(col)
             sys.stdout.flush()
-
-            c = b['catalog']['bpz'][col][:]
-            b['catalog']['bpz'][col][:] = c[s]
+            c = f['catalog']['gold'][col][:]
+            f['catalog']['gold'][col][:] = c[s]
 
         del s
 
-    s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
-    for col in f['catalog']['gold'].keys():
-        print(col)
-        sys.stdout.flush()
-
-        c = f['catalog']['gold'][col][:]
-        f['catalog']['gold'][col][:] = c[s]
-
-    for col in m['catalog']['unsheared']['metacal'].keys():
-        print(col)
-        sys.stdout.flush()
-
-        c = m['catalog']['unsheared']['metacal'][col][:]
-        m['catalog']['unsheared']['metacal'][col][:] = c[s]
-
-    if b is not None:
-        for col in b['catalog']['bpz'].keys():
+        s = np.argsort(m['catalog']['unsheared']['metacal']['coadd_object_id'][:])
+        for col in m['catalog']['unsheared']['metacal'].keys():
             print(col)
             sys.stdout.flush()
 
-            c = b['catalog']['bpz'][col][:]
-            b['catalog']['bpz'][col][:] = c[s]
+            c = m['catalog']['unsheared']['metacal'][col][:]
+            m['catalog']['unsheared']['metacal'][col][:] = c[s]
+
+        del s
+
+        if b is not None:
+            s = np.argsort(b['catalog']['bpz']['coadd_object_id'][:])
+            for col in b['catalog']['bpz'].keys():
+                print(col)
+                sys.stdout.flush()
+
+                c = b['catalog']['bpz'][col][:]
+                b['catalog']['bpz'][col][:] = c[s]
+
+            del s
+
+    if do_hpix_sort:
+        s = np.argsort(f['catalog']['gold']['hpix_16384'][:])
+        for col in f['catalog']['gold'].keys():
+            print(col)
+            sys.stdout.flush()
+
+            c = f['catalog']['gold'][col][:]
+            f['catalog']['gold'][col][:] = c[s]
+            
+        for col in m['catalog']['unsheared']['metacal'].keys():
+            print(col)
+            sys.stdout.flush()
+
+            c = m['catalog']['unsheared']['metacal'][col][:]
+            m['catalog']['unsheared']['metacal'][col][:] = c[s]
+
+        if b is not None:
+            for col in b['catalog']['bpz'].keys():
+                print(col)
+                sys.stdout.flush()
+
+                c = b['catalog']['bpz'][col][:]
+                b['catalog']['bpz'][col][:] = c[s]
 #
     f.close()
     m.close()
@@ -571,14 +575,17 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
     f['/masks/redmagic'] = h5py.ExternalLink(rmfile, "/masks/redmagic")
     f['/maps'] = h5py.ExternalLink(mapfile, "/maps")
 
-    f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(
-        goldfile, 'catalog/gold/ra')
-    f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(
-        goldfile, 'catalog/gold/dec')
-    f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(
-        goldfile, 'catalog/gold/tra')
-    f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(
-        goldfile, 'catalog/gold/tdec')
+    try:
+        f['catalog/metacal/unsheared/ra'] = h5py.ExternalLink(
+            goldfile, 'catalog/gold/ra')
+        f['catalog/metacal/unsheared/dec'] = h5py.ExternalLink(
+            goldfile, 'catalog/gold/dec')
+        f['catalog/metacal/unsheared/tra'] = h5py.ExternalLink(
+            goldfile, 'catalog/gold/tra')
+        f['catalog/metacal/unsheared/tdec'] = h5py.ExternalLink(
+            goldfile, 'catalog/gold/tdec')
+    except:
+        pass
 
     # include index coadd id array in master file
     coadd = f['catalog/gold/coadd_object_id'][:]
@@ -675,11 +682,20 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
         del idx
 
+    mask_hpix = f['maps/hpix'][:]
+    mask_ra, mask_dec = hp.pix2ang(4096, mask_hpix, lonlat=True)
+    depth_i = f['maps/i/mof_depth'][:]
+    maglim_idx = (((mask_ra<60) | (mask_dec>-58)) & ((mask_dec>-58) | (mask_ra<60)))
+
+    del mask_ra, mask_dec
+
     if dnffile is not None:
         include_dnf(f, dnffile)
-        idx = make_altlens_selection(f, x_opt_altlens, zdata='catalog/dnf/unsheared/z_mc')
+        idx = make_altlens_selection(f, x_opt_altlens, mask_hpix[maglim_idx], depth_i[maglim_idx], zdata='catalog/dnf/unsheared/z_mc')
     else:
-        idx = make_altlens_selection(f, x_opt_altlens, zdata='catalog/bpz/unsheared/z')
+        idx = make_altlens_selection(f, x_opt_altlens, mask_hpix[maglim_idx], depth_i[maglim_idx], zdata='catalog/bpz/unsheared/z')
+
+    del maglim_idx, depth_i, mask_hpix
 
     idx &= np.in1d(f['catalog/gold/hpix_16384'][:] //
                    (hp.nside2npix(16384) // hp.nside2npix(4096)), f['index/mask/hpix'][:])
@@ -760,20 +776,20 @@ def generateAngularRandoms(hpix, nrand, nside,
     return rand_ra, rand_dec
 
 
-def make_maglim_randoms(f, rmgfile):
+def make_maglim_randoms(f, rmgfile, zdata='catalog/bpz/unsheared/z'):
 
     with h5py.File(rmgfile, 'r+') as fr:
 
         maglim_select = f['index/maglim/select'][:]
         mag_i_maglim = f['catalog/gold/mag_i'][:][maglim_select]
-        zmean_maglim = f['catalog/dnf/unsheared/z_mean'][:][maglim_select]
+        zmean_maglim = f[zdata][:][maglim_select]
 
         mag_i_max = np.max(mag_i_maglim[zmean_maglim < 1.05])
 
         del mag_i_maglim, zmean_maglim
 
-        mask_hpix = f['maps/buzzard/hpix'][:]
-        depth_sof_i = f['maps/buzzard/i/sof_depth'][:]
+        mask_hpix = f['maps/hpix'][:]
+        depth_sof_i = f['maps/i/mof_depth'][:]
 
         mask_hpix = mask_hpix[depth_sof_i < mag_i_max]
 
@@ -811,12 +827,11 @@ def make_maglim_randoms(f, rmgfile):
                               shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
             fr.create_dataset('randoms/maglim/weight', maxshape=(total_length,),
                               shape=(total_length,), dtype=rand_ra.dtype, chunks=(1000000,))
-
         print('writing')
         fr['randoms/maglim/ra'][:] = rand_ra[s]
         fr['randoms/maglim/dec'][:] = rand_dec[s]
         fr['randoms/maglim/z'][:] = np.random.choice(
-            f['catalog/dnf/unsheared/z_mc'][:][maglim_select], size=len(rand_ra[s]))
+            f[zdata][:][maglim_select], size=len(rand_ra[s]))
         fr['randoms/maglim/weight'][:] = np.ones_like(rand_ra[s])
 
 
@@ -843,6 +858,8 @@ if __name__ == '__main__':
     x_opt = cfg['x_opt']
     x_opt_altlens = cfg['x_opt_altlens']
     mapfile = cfg['mapfile']
+    do_hpix_sort = np.bool(cfg.pop('do_hpix_sort', True))
+    do_id_sort = np.bool(cfg.pop('do_id_sort', True))
 
     if 'dnffile' in cfg.keys():
         dnffile = cfg['dnffile']
@@ -858,7 +875,8 @@ if __name__ == '__main__':
 
     if not just_rm:
         make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
-                        maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile)
+                        maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile,
+                        do_id_sort=do_id_sort, do_hpix_sort=do_hpix_sort)
 
         match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
