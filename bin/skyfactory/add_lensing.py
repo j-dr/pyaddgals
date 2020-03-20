@@ -8,6 +8,7 @@ import numpy as np
 import fitsio
 import yaml
 import sys
+import os
 
 
 def compute_lensing(g, shear, halos=False):
@@ -175,8 +176,13 @@ def add_lensing(gfiles, sfiles):
 
         print("[{1}] Writing lensed catalog to {0}".format(oname, rank))
 
-        fits = fitsio.FITS(oname, 'rw')
-        fits.write(g)
+        try:
+            fits = fitsio.FITS(oname, 'rw')
+            fits.write(g)
+            os.remove(gf)
+        except Exception as e:
+            print(e)
+            raise(e)
 
 
 if __name__ == '__main__':
