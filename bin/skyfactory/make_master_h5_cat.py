@@ -157,7 +157,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
             if i == 0:
                 maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
                 if not os.path.exists(maskfile):
-                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])                
+                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])
                 mask_master = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
                 select_zmax = (mask_master.get_values_pix(mask_master.valid_pixels)['zmax'] >= zmax_cut)
                 mask_master_pix = mask_master.valid_pixels[select_zmax]
@@ -166,7 +166,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
             else:
                 maskfile = rmg_filebase + file + '_' + combined_dict['samples'][i] + '_vlim_zmask.' + file_ext
                 if not os.path.exists(maskfile):
-                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])                
+                    maskfile = maskfile.replace(cats_redmagic[i], lstar_map[cats_redmagic[i]])
                 mask = healsparse.HealSparseMap.read(maskfile, nside_coverage=4098)
                 mask_values = mask.get_values_pix(mask.valid_pixels)
                 print(mask_values['zmax'])
@@ -276,6 +276,39 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
     f.close()
 
     return rmg_filebase + file + '.h5'
+
+
+def apply_systematics_weights(maptemplate, zbins, rmfile, nside=4096):
+
+    nzbins = len(zbins) - 1
+
+    with h5py.File(rmfile, 'r+') as fp:
+
+        ra = fp['catalog/redmagic/combined_sample_fid/ra'][:]
+        dec = fp['catalog/redmagic/combined_sample_fid/dec'][:]
+        zrmg = fp['catalog/redmagic/combined_sample_fid/zredmagic'][:]
+        weights = np.ones_like(ra)
+
+        hpix = hp.ang2pix(nside, ra, dec, lonlat=True)
+
+        try:
+            fp.create_dataset('catalog/redmagic/combined_sample_fid/weight',
+                              maxshape=(len(ra),), shape=(len(ra),),
+                              dtype=ra.dtype, chunks=(1000000,))
+        except Exception as e:
+            print(e)
+            pass
+
+        for i in range(nzbins):
+            weightmap = fitsio.read(maptemplate.format(i))
+
+            idx = (zbins[i] < zrmg) & (zrmg < zbins[i + 1])
+            hidx = weightmap['HPIX'].searchsorted(hpix[idx])
+            weights[idx] = weightmap['VALUE'][hidx]
+
+        fp['catalog/redmagic/combined_sample_fid/weights'][:] = weights
+
+    return weights
 
 
 def include_dnf(f, dnffile):
@@ -450,10 +483,10 @@ def make_altlens_selection(f, x_opt, mask_hpix, depth_i, zdata='catalog/bpz/unsh
     mag_i_max = np.max(mag_i[idx][z[idx] < 1.05])
 
     mask_hpix = mask_hpix[depth_i > mag_i_max]
-    
-    idx = idx & np.in1d(pix, mask_hpix) 
 
-    del mag_i, z    
+    idx = idx & np.in1d(pix, mask_hpix)
+
+    del mag_i, z
 
     return idx
 
@@ -534,7 +567,7 @@ def make_master_bcc(x_opt, x_opt_altlens, outfile='./Y3_mastercat_v2_6_20_18.h5'
 
             c = f['catalog']['gold'][col][:]
             f['catalog']['gold'][col][:] = c[s]
-            
+
         for col in m['catalog']['unsheared']['metacal'].keys():
             print(col)
             sys.stdout.flush()
@@ -852,7 +885,7 @@ if __name__ == '__main__':
     if rmp_filebase == 'None':
         rmp_filebase = None
         print(rmp_filebase)
-        
+
     maskfile = cfg['footprint_maskfile']
     regionfile = cfg['regionfile']
     x_opt = cfg['x_opt']
@@ -860,6 +893,8 @@ if __name__ == '__main__':
     mapfile = cfg['mapfile']
     do_hpix_sort = np.bool(cfg.pop('do_hpix_sort', True))
     do_id_sort = np.bool(cfg.pop('do_id_sort', True))
+
+    sys_weight_template = cfg.pop('sys_weight_template', None)
 
     if 'dnffile' in cfg.keys():
         dnffile = cfg['dnffile']
@@ -872,6 +907,11 @@ if __name__ == '__main__':
 
     h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
                                 file=rmfile)
+
+    if sys_weight_template is not None:
+        apply_systematics_weights(sys_weight_template,
+                                  [0.15, 0.35, 0.5, 0.85, 0.95],
+                                  h5rmfile)
 
     if not just_rm:
         make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
