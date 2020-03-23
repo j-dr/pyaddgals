@@ -398,7 +398,7 @@ def assign_jk_regions(mastercat, regionsfile, nside=512, just_rm=False):
     pixra, pixdec = hp.pix2ang(nside, np.arange(
         12 * nside**2), nest=True, lonlat=True)
     pixcenters = np.vstack([pixra, pixdec]).T
-    _, jk_idx = spatial.cKDTree(centers[:,:2]).query(pixcenters)
+    _, jk_idx = spatial.cKDTree(centers[:, :2]).query(pixcenters)
 
     for i, cat in enumerate(catalogs):
         try:
@@ -407,14 +407,13 @@ def assign_jk_regions(mastercat, regionsfile, nside=512, just_rm=False):
             dec = f[cat + '/dec'][:]
             pix = hp.ang2pix(nside, ra, dec, nest=True, lonlat=True)
             jk_region = jk_idx[pix]
-        except:
-            pass
 
-        try:
             f.create_dataset('regions/' + cat + '/region', maxshape=(
                 cat_size,), shape=(cat_size,), dtype=int, chunks=(1000000,))
             f['regions/' + cat + '/region'][:] = jk_region
-        except:
+
+        except Exception as e:
+            print(e)
             pass
 
     f.create_dataset('regions/centers/ra', maxshape=(len(centers),),
