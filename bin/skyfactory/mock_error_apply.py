@@ -1062,7 +1062,7 @@ if __name__ == "__main__":
 
     print("Rank {0} assigned {1} files".format(rank, len(fnames[rank::size])))
 
-    if 'redmapper' in cfg.keys():
+    if 'redmapper' in cfg.keys() & (not truth_only):
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
@@ -1093,10 +1093,10 @@ if __name__ == "__main__":
         detection_file = None
         matched_cat_file = None
 
-    if balrog_bands is not None:
+    if (balrog_bands is not None) & (not truth_only):
         detection_catalog, true_deep_cat, \
-         matched_catalog, matched_cat_sorter = \
-           setup_balrog_error_model(detection_file, matched_cat_file)
+            matched_catalog, matched_cat_sorter = \
+            setup_balrog_error_model(detection_file, matched_cat_file)
     else:
         detection_catalog = None
         true_deep_cat = None
@@ -1164,7 +1164,7 @@ if __name__ == "__main__":
 
     comm.Barrier()
 
-    if maker is not None:
+    if (maker is not None) & (not truth_only):
         maker.finalize_catalog()
 
     if rank == 0:
