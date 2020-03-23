@@ -1062,7 +1062,7 @@ if __name__ == "__main__":
 
     print("Rank {0} assigned {1} files".format(rank, len(fnames[rank::size])))
 
-    if 'redmapper' in cfg.keys() & (not truth_only):
+    if ('redmapper' in cfg.keys()) & (not truth_only):
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
