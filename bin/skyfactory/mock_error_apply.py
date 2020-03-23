@@ -1079,7 +1079,7 @@ if __name__ == "__main__":
             oname, redmapper_info_dict, parallel=True)
 
     else:
-        maker, redmapper_info_dict, redmapper_dtype = None
+        maker, redmapper_info_dict, redmapper_dtype = None, None, None
 
     if 'BalrogBands' in cfg.keys():
         balrog_bands = cfg['BalrogBands']
