@@ -460,11 +460,13 @@ def make_mcal_selection(f, x_opt):
 
     idx &= np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
     idx &= np.abs(f['catalog/metacal/unsheared/e2'][:]) < 1
-    idx &= f['catalog/gold/mag_err_r'][:] < 0.25
-    idx &= f['catalog/gold/mag_err_i'][:] < 0.25
-    idx &= f['catalog/gold/mag_err_z'][:] < 0.25
-    idx &= f['catalog/gold/mag_i'][:] < (x_opt[0] +
-                                         x_opt[1] * f['catalog/bpz/unsheared/z'][:])
+    mag_err_i = f['catalog/gold/mag_err_i'][:]
+    snr_i = 1 / mag_err_i
+    del mag_err_i
+
+    idx &= (10 < snr_i) & (snr_i < 1000)
+
+    del snr_i
 
     return idx
 
