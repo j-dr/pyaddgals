@@ -455,7 +455,7 @@ def make_mcal_selection(f, x_opt):
     del psfmap
 
     idx = np.sqrt(f['catalog/metacal/unsheared/size']
-                  [:]**2 + gpsf**2) > (x_opt[2] * gpsf)
+                  [:]**2 + gpsf**2) > (x_opt[0] * gpsf)
     del gpsf
 
     idx &= np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
@@ -924,5 +924,5 @@ if __name__ == '__main__':
     if os.path.exists(regionfile):
         assign_jk_regions(outfile, regionfile)
     else:
-        generate_jk_centers_from_mask(outfile)
+        generate_jk_centers_from_mask(outfile, regionfile)
         assign_jk_regions(outfile, regionfile)
