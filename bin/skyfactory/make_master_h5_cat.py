@@ -454,15 +454,15 @@ def make_mcal_selection(f, x_opt):
     del psfmap['PIXEL'], psfmap['SIGNAL']
     del psfmap
 
-    idx = np.sqrt(f['catalog/metacal/unsheared/size']
-                  [:]**2 + gpsf**2) > (x_opt[0] * gpsf)
+    idx = np.sqrt(f['catalog/metacal/unsheared/size'][:]**2 + gpsf**2) > (x_opt[0] * gpsf)
     del gpsf
 
     idx &= np.abs(f['catalog/metacal/unsheared/e1'][:]) < 1
     idx &= np.abs(f['catalog/metacal/unsheared/e2'][:]) < 1
-    mag_err_i = f['catalog/gold/mag_err_i'][:]
-    snr_i = 1 / mag_err_i
-    del mag_err_i
+    flux_i = f['catalog/gold/mcal_flux_i'][:]
+    ivar_i = f['catalog/gold/mcal_ivar_i'][:]
+    snr_i = flux_i * np.sqrt(ivar_i)
+    del flux_i, ivar_i
 
     idx &= (10 < snr_i) & (snr_i < 1000)
 
