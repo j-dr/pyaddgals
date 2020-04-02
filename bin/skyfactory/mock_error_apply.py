@@ -660,7 +660,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs['OMAG'][guse, ind] = 22.5 - 2.5 * np.log10(flux)
             obs['OMAGERR'][guse, ind] = 1.086 * fluxerr / flux
 
-            bad = (flux <= 0)
+            bad = (flux <= 0) & (obs['OMAG'][:, ind] > 0)
 
             obs['OMAG'][guse[bad], ind] = 99.0
             obs['OMAGERR'][guse[bad], ind] = 99.0
@@ -688,7 +688,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[mnames[ind]][guse] = 22.5 - 2.5 * np.log10(flux)
             obs[menames[ind]][guse] = 1.086 * fluxerr / flux
 
-            bad = (flux <= 0)
+            bad = (flux <= 0) | (obs[mnames[ind]] < 0)
 
             obs[mnames[ind]][guse[bad]] = 99.0
             obs[menames[ind]][guse[bad]] = 99.0
@@ -726,7 +726,6 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             if (filter_obs) and (mnames[ind] in refnames):
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
-
 
 
     obs['RA'] = ra
