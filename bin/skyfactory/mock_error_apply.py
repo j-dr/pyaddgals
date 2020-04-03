@@ -496,6 +496,7 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
     flux_out = 10**((flux_out - zp) / -2.5)
     flux_err_report *= 10 ** ((zp_data - zp) / -2.5)
     flux_out[~detected, :] = -99
+    flux_out[flux_out != flux_out] = -99
 
     return flux_out, flux_err_report
 
@@ -660,7 +661,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs['OMAG'][guse, ind] = 22.5 - 2.5 * np.log10(flux)
             obs['OMAGERR'][guse, ind] = 1.086 * fluxerr / flux
 
-            bad = (flux <= 0) & (obs['OMAG'][:, ind] > 0)
+            bad = (flux <= 0) & (obs['OMAG'][guse, ind] > 0)
 
             obs['OMAG'][guse[bad], ind] = 99.0
             obs['OMAGERR'][guse[bad], ind] = 99.0
@@ -688,7 +689,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[mnames[ind]][guse] = 22.5 - 2.5 * np.log10(flux)
             obs[menames[ind]][guse] = 1.086 * fluxerr / flux
 
-            bad = (flux <= 0) | (obs[mnames[ind]] < 0)
+            bad = (flux <= 0) | (obs[mnames[ind]][guse] < 0)
 
             obs[mnames[ind]][guse[bad]] = 99.0
             obs[menames[ind]][guse[bad]] = 99.0
