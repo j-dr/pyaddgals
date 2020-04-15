@@ -82,36 +82,46 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
             e1 = f['catalog/metacal/unsheared/e1'][:][idx]
             e2 = f['catalog/metacal/unsheared/e2'][:][idx]
 
+            g1 = f['catalog/metacal/unsheared/g1'][:][idx]
+            g2 = f['catalog/metacal/unsheared/g1'][:][idx]
+            k = f['catalog/metacal/unsheared/kappa'][:][idx]
+            e1_dt = e1.dtype
+
+            del idx
+
+            gr = (g1 + 1j * g2) / (1 - k)
+            del g1, g2, k
+
+            ehat = e1 + 1j * e2
+
+            e = (ehat - gr) / (1 - ehat * gr.conjugate())
+            del e1, e2, ehat
+
             try:
                 mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
-                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                    size_tot,), shape=(size_tot,), dtype=e1_dt, chunks=(1000000,))
                 mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
-                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                    size_tot,), shape=(size_tot,), dtype=e1_dt, chunks=(1000000,))
             except:
                 del mf['catalog/unsheared/metacal/e1_matched_se'], mf['catalog/unsheared/metacal/e2_matched_se']
 
                 mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
-                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                    size_tot,), shape=(size_tot,), dtype=e1_dt, chunks=(1000000,))
                 mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
-                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
-
-            e1_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
-            e2_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
+                    size_tot,), shape=(size_tot,), dtype=e1_dt, chunks=(1000000,))
 
             for i in range(len(zbins) - 1):
                 idxi = (zbins[i] < zmean) & (zmean < zbins[i + 1])
-                sigma_e = np.std(e1[idxi])
-                ds = np.sqrt((sigma_e_data[i]**2 - sigma_e**2))
+                sigma_e = np.std(e[idxi]) / np.sqrt(2)
 
-                e1_sn[idx[idxi]] = e1[idxi] + ds * \
-                    np.random.randn(np.sum(idxi))
-                e2_sn[idx[idxi]] = e2[idxi] + ds * \
-                    np.random.randn(np.sum(idxi))
+                fsigma_e = sigma_e_data[i] / sigma_e
+                e[idxi] *= fsigma_e
+                print(np.std(e[idxi]) / np.sqrt(2))
 
-                print(e1_sn[idx[idxi]])
+            eps = (e + gr) / (1 + e * gr.conjugate())
 
-            mf['catalog/unsheared/metacal/e1_matched_se'][:] = e1_sn
-            mf['catalog/unsheared/metacal/e2_matched_se'][:] = e2_sn
+            mf['catalog/unsheared/metacal/e1_matched_se'][:] = np.real(eps)
+            mf['catalog/unsheared/metacal/e2_matched_se'][:] = np.imag(eps)
 
 
 if __name__ == '__main__':
