@@ -767,7 +767,7 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
 
             size_tot = len(f['catalog/metacal/unsheared/e1'][:])
             idx = f['index/select'][:]
-            zmean = f['catalog/bpz/unsheared/zmean_sof'][:][idx]
+            zmean = f['catalog/sompz/unsheared/bhat'][:][idx]
             e1 = f['catalog/metacal/unsheared/e1'][:][idx]
             e2 = f['catalog/metacal/unsheared/e2'][:][idx]
 
@@ -905,6 +905,7 @@ if __name__ == '__main__':
     do_id_sort = np.bool(cfg.pop('do_id_sort', True))
 
     sys_weight_template = cfg.pop('sys_weight_template', None)
+    just_match_se = cfg.pop('just_match_se', False)
 
     if 'dnffile' in cfg.keys():
         dnffile = cfg['dnffile']
@@ -915,23 +916,28 @@ if __name__ == '__main__':
 
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
-    h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
-                                file=rmfile)
+    if not just_match_se:
+        h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
+                                    file=rmfile)
 
-    if sys_weight_template is not None:
+    if (sys_weight_template is not None) & (not just_match_se):
         apply_systematics_weights(sys_weight_template,
                                   [0.15, 0.35, 0.5, 0.85, 0.95],
                                   h5rmfile)
 
-    if not just_rm:
+    if (not just_rm) & (not just_match_se):
         make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
                         maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile,
                         do_id_sort=do_id_sort, do_hpix_sort=do_hpix_sort)
 
         match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
-    if os.path.exists(regionfile):
-        assign_jk_regions(outfile, regionfile)
-    else:
-        generate_jk_centers_from_mask(outfile, regionfile)
-        assign_jk_regions(outfile, regionfile)
+    elif just_match_se:
+        match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
+
+    if (not just_match_se) & (not just_rm):
+        if os.path.exists(regionfile):
+            assign_jk_regions(outfile, regionfile)
+        else:
+            generate_jk_centers_from_mask(outfile, regionfile)
+            assign_jk_regions(outfile, regionfile)
