@@ -1,6 +1,7 @@
 import numpy as np
 import h5py as h5
 import sys
+import yaml
 
 
 def include_sompz(catfile, sompzfile, bpzfile, sort=False):
@@ -64,16 +65,68 @@ def include_sompz(catfile, sompzfile, bpzfile, sort=False):
                     f['catalog/sompz/unsheared/' + name.lower()][:] = sompzarray[name]
 
                 try:
-                    f['catalog/sompz/unsheared/z'] = h5py.ExternalLink(bpzfile, 'catalog/bpx/unsheared/z')
-                    f['catalog/sompz/unsheared/redshift_cos'] = h5py.ExternalLink(bpzfile, 'catalog/bpx/unsheared/redshift_cos')
+                    f['catalog/sompz/unsheared/z'] = h5.ExternalLink(bpzfile, 'catalog/bpx/unsheared/z')
+                    f['catalog/sompz/unsheared/redshift_cos'] = h5.ExternalLink(bpzfile, 'catalog/bpx/unsheared/redshift_cos')
                 except:
                     pass
 
 
+def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
+
+    with h5.File(filename, 'r') as f:
+        with h5.File(mcalfilename, 'r+') as mf:
+
+            size_tot = len(f['catalog/metacal/unsheared/e1'][:])
+            idx = f['index/select'][:]
+            zmean = f['catalog/sompz/unsheared/bhat'][:][idx]
+            e1 = f['catalog/metacal/unsheared/e1'][:][idx]
+            e2 = f['catalog/metacal/unsheared/e2'][:][idx]
+
+            try:
+                mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+            except:
+                del mf['catalog/unsheared/metacal/e1_matched_se'], mf['catalog/unsheared/metacal/e2_matched_se']
+
+                mf.create_dataset('catalog/unsheared/metacal/e1_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+                mf.create_dataset('catalog/unsheared/metacal/e2_matched_se', maxshape=(
+                    size_tot,), shape=(size_tot,), dtype=e1.dtype, chunks=(1000000,))
+
+            e1_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
+            e2_sn = np.zeros(len(f['catalog/metacal/unsheared/e1']))
+
+            for i in range(len(zbins) - 1):
+                idxi = (zbins[i] < zmean) & (zmean < zbins[i + 1])
+                sigma_e = np.std(e1[idxi])
+                ds = np.sqrt((sigma_e_data[i]**2 - sigma_e**2))
+
+                e1_sn[idx[idxi]] = e1[idxi] + ds * \
+                    np.random.randn(np.sum(idxi))
+                e2_sn[idx[idxi]] = e2[idxi] + ds * \
+                    np.random.randn(np.sum(idxi))
+
+                print(e1_sn[idx[idxi]])
+
+            mf['catalog/unsheared/metacal/e1_matched_se'][:] = e1_sn
+            mf['catalog/unsheared/metacal/e2_matched_se'][:] = e2_sn
+
+
 if __name__ == '__main__':
 
-    mastercat_file = sys.argv[1]
-    sompz_file = sys.argv[2]
-    bpz_file = sys.argv[3]
+    cfgfile = sys.argv[1]
+
+    with open(cfgfile, 'r') as fp:
+        cfg = yaml.load(fp)
+
+    mastercat_file = cfg['outfile']
+    sompz_file = cfg['sompzfile']
+    bpz_file = cfg['bpzfile']
+    mcalfilename = cfg['mcalfile']
+    zbins = cfg['zbins']
+    sigma_e_data = cfg['sigma_e_data']
 
     include_sompz(mastercat_file, sompz_file, bpz_file)
+    match_shape_noise(mastercat_file, mcalfilename, zbins, sigma_e_data)
