@@ -87,7 +87,7 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
             k = f['catalog/metacal/unsheared/kappa'][:][idx]
             e1_dt = e1.dtype
 
-            del idx
+#            del idx
 
             gr = (g1 + 1j * g2) / (1 - k)
             del g1, g2, k
@@ -119,9 +119,13 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
                 print(np.std(e[idxi]) / np.sqrt(2))
 
             eps = (e + gr) / (1 + e * gr.conjugate())
+            e1 = mf['catalog/unsheared/metacal/e1_matched_se'][:]
+            e2 = mf['catalog/unsheared/metacal/e2_matched_se'][:]
 
-            mf['catalog/unsheared/metacal/e1_matched_se'][:] = np.real(eps)
-            mf['catalog/unsheared/metacal/e2_matched_se'][:] = np.imag(eps)
+            e1[idx] = np.real(eps)
+            e2[idx] = np.imag(eps)
+            mf['catalog/unsheared/metacal/e1_matched_se'][:] = e1
+            mf['catalog/unsheared/metacal/e2_matched_se'][:] = e2
 
 
 if __name__ == '__main__':
