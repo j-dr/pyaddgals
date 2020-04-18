@@ -36,7 +36,8 @@ combined_dict = {
 def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                      file='buzzard-3_1.6_y3_run_redmapper_v6.4.20',
                      file_ext='fit',
-                     make_combined=True):
+                     make_combined=True, zmask_filebase=None,
+                     zmask_file=None):
     """
     Converts redmagic+redmapper fits files into a single h5 file with separate tables for each including randoms.
     """
@@ -45,6 +46,16 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
         no_redmapper = True
     else:
         no_redmapper = False
+
+    if zmask_filebase:
+
+        for cat in ['vl05', 'vl10', 'vl15']:
+            fin = '{}/{}_{}_vlim_zmask.fit'.format(zmask_filebase,
+                                                   zmask_file,
+                                                   cat)
+            fout = '{}/{}_{}_vlim_zmask.fit'.format(rmg_filebase,
+                                                    file, cat)
+            os.symlink(fin, fout)
 
     print('no_redmapper: {}'.format(no_redmapper))
 
@@ -892,6 +903,9 @@ if __name__ == '__main__':
     rmfile = cfg['rmfile']
     rmg_filebase = cfg['redmagic_filebase']
     rmp_filebase = cfg['redmapper_filebase']
+    zmask_filebase = cfg.pop('zmask_filebase', None)
+    zmask_file = cfg.pop('zmask_file', None)
+
     if rmp_filebase == 'None':
         rmp_filebase = None
         print(rmp_filebase)
@@ -905,7 +919,6 @@ if __name__ == '__main__':
     do_id_sort = np.bool(cfg.pop('do_id_sort', True))
 
     sys_weight_template = cfg.pop('sys_weight_template', None)
-    just_match_se = cfg.pop('just_match_se', False)
 
     if 'dnffile' in cfg.keys():
         dnffile = cfg['dnffile']
@@ -916,26 +929,23 @@ if __name__ == '__main__':
 
     goodmask_value = int(cfg.pop('goodmask_value', 1))
 
-    if not just_match_se:
-        h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
-                                    file=rmfile)
+    h5rmfile = convert_rm_to_h5(rmg_filebase=rmg_filebase, rmp_filebase=rmp_filebase,
+                                file=rmfile, zmask_file=zmask_file,
+                                zmask_filebase=zmask_filebase)
 
-    if (sys_weight_template is not None) & (not just_match_se):
+    if (sys_weight_template is not None):
         apply_systematics_weights(sys_weight_template,
                                   [0.15, 0.35, 0.5, 0.85, 0.95],
                                   h5rmfile)
 
-    if (not just_rm) & (not just_match_se):
+    if (not just_rm):
         make_master_bcc(x_opt, x_opt_altlens, outfile=outfile, shapefile=mcalfile, goldfile=goldfile, bpzfile=bpzfile, rmfile=h5rmfile,
                         maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile,
                         do_id_sort=do_id_sort, do_hpix_sort=do_hpix_sort)
 
         match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
 
-    elif just_match_se:
-        match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
-
-    if (not just_match_se) & (not just_rm):
+    if (not just_rm):
         if os.path.exists(regionfile):
             assign_jk_regions(outfile, regionfile)
         else:
