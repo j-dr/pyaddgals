@@ -53,7 +53,7 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
             fin = '{}/{}_{}_vlim_zmask.fit'.format(zmask_filebase,
                                                    zmask_file,
                                                    cat)
-            fout = '{}/{}_{}_vlim_zmask.fit'.format(rmg_filebase,
+            fout = '{}/{}_redmagic_{}_vlim_zmask.fit'.format(rmg_filebase,
                                                     file, cat)
             os.symlink(fin, fout)
 
