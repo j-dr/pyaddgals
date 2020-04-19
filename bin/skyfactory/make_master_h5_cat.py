@@ -946,8 +946,6 @@ if __name__ == '__main__':
                         maskfile=maskfile, good=goodmask_value, mapfile=mapfile, dnffile=dnffile,
                         do_id_sort=do_id_sort, do_hpix_sort=do_hpix_sort)
 
-        match_shape_noise(outfile, mcalfile, cfg['zbins'], cfg['sigma_e_data'])
-
     if (not just_rm):
         if os.path.exists(regionfile):
             assign_jk_regions(outfile, regionfile)
