@@ -55,7 +55,10 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                                                    cat)
             fout = '{}/{}_redmagic_{}_vlim_zmask.fit'.format(rmg_filebase,
                                                     file, cat)
-            os.symlink(fin, fout)
+            try:
+                os.symlink(fin, fout)
+            except:
+                pass
 
     print('no_redmapper: {}'.format(no_redmapper))
 
