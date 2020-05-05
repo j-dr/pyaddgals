@@ -306,7 +306,7 @@ def apply_systematics_weights(maptemplate, zbins, rmfile, nside=4096):
         hpix = hp.ang2pix(nside, ra, dec, lonlat=True)
 
         try:
-            fp.create_dataset('catalog/redmagic/combined_sample_fid/weight',
+            fp.create_dataset('catalog/redmagic/combined_sample_fid/weights',
                               maxshape=(len(ra),), shape=(len(ra),),
                               dtype=ra.dtype, chunks=(1000000,))
         except Exception as e:
