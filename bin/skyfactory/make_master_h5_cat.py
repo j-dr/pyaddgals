@@ -315,8 +315,9 @@ def apply_systematics_weights(maptemplate, zbins, rmfile, nside=4096):
 
         for i in range(nzbins):
             weightmap = fitsio.read(maptemplate.format(i))
+            inwm = np.in1d(hpix, weightmap['HPIX'])
 
-            idx = (zbins[i] < zrmg) & (zrmg < zbins[i + 1])
+            idx = (zbins[i] < zrmg) & (zrmg < zbins[i + 1]) & inwm
             hidx = weightmap['HPIX'].searchsorted(hpix[idx])
             weights[idx] = weightmap['VALUE'][hidx]
 
