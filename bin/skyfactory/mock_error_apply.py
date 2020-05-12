@@ -119,6 +119,12 @@ models = {
         'exptimes': [4389.00, 1329.00, 1405.00, 517.00, 460.00],
         'lnscat': [0.276, 0.257, 0.247, 0.241, 0.300]
             },
+    'DES_Y3_UNIFORM':
+        {
+        'exptimes': [1.07409391, 0.94403685, 0.51463345, 0.25248926],
+        'maglims': [23.78276062, 23.56146812, 23.03665161, 22.39552879],
+        'lnscat': [0.0, 0.0, 0.0, 0.0]
+        },
     'WISE':
         {
         'maglims': [19.352, 18.574],
@@ -208,10 +214,9 @@ def calc_uniform_errors(model, tmag, maglims, exptimes, lnscat, zp=22.5):
     tmag = tmag.reshape(len(tmag), nmag)
 
     # calculate fsky1 -- sky in 1 second
-    flux1_lim = 10**((maglims - zp) / (-2.5))
-    flux1_lim[flux1_lim < 120 / exptimes] = 120 / \
-        exptimes[flux1_lim < 120 / exptimes]
-    fsky1 = (flux1_lim**2 * exptimes) / 100. - flux1_lim
+    f1lim = 10**((maglims - zp) / (-2.5))
+    fsky1 = ((f1lim**2) * exptimes) / (10**2) - f1lim
+    fsky1[fsky1 < 0.001] = 0.001
 
     oflux = np.zeros((ngal, nmag))
     ofluxerr = np.zeros((ngal, nmag))
@@ -221,8 +226,8 @@ def calc_uniform_errors(model, tmag, maglims, exptimes, lnscat, zp=22.5):
 
     for i in range(nmag):
         tflux = exptimes[i] * 10**((tmag[:, i] - offset - zp) / (-2.5))
-        noise = np.exp(np.log(np.sqrt(fsky1[i] * exptimes[i] + tflux))
-                       + lnscat[i] * np.random.randn(ngal))
+        noise = np.exp(np.log(np.sqrt(fsky1[i] * exptimes[i] + tflux)) +
+                       lnscat[i] * np.random.randn(ngal))
 
         flux = tflux + noise * np.random.randn(ngal)
 
@@ -245,14 +250,15 @@ def calc_uniform_errors(model, tmag, maglims, exptimes, lnscat, zp=22.5):
 
 
 def setup_redmapper_infodict(depthmapfile, area, mode, bands,
-                             refband):
+                             refband, lim_ref=None):
 
-    depth = healsparse.HealSparseMap.read(depthmapfile)
+    if depthmapfile is None:
+        assert(lim_ref is not None)
+    else:
+        depth = healsparse.HealSparseMap.read(depthmapfile)
+        lim_ref = np.max(depth.get_values_pix(depth.valid_pixels)['m50'])
 
     print('Area = ', area)
-
-    lim_ref = np.max(depth.get_values_pix(depth.valid_pixels)['m50'])
-
     print('Lim_ref = ', lim_ref)
 
     if mode == 'DES':
@@ -891,11 +897,6 @@ def apply_uniform_errormodel(g, obase, odir, survey, filename_base,
             else:
                 print('mnames[ind]: {}'.format(mnames[ind]))
 
-#    print('filter_obs: {}'.format(filter_obs))
-#    print('refnames: {}'.format(refnames))
-#    print('maglims: {}'.format(maglims))
-#    print('oidx.any(): {}'.format(oidx.any()))
-
     if use_lmag:
         obs['RA'] = g['RA']
         obs['DEC'] = g['DEC']
@@ -1066,6 +1067,7 @@ if __name__ == "__main__":
         mode = cfg['redmapper']['mode']
         depthmap_healsparse = cfg['redmapper']['depthmap_hs']
         mask_healsparse = cfg['redmapper']['mask_hs']
+        lim_ref = cfg['redmapper'].pop('lim_ref', None)
 
         fname = fnames[0]
         fs = fname.split('.')
@@ -1074,7 +1076,8 @@ if __name__ == "__main__":
 
         redmapper_info_dict, redmapper_dtype = setup_redmapper_infodict(depthmap_healsparse,
                                                                         area, mode,
-                                                                        bands, refbands[0])
+                                                                        bands, refbands[0],
+                                                                        lim_ref=lim_ref)
         maker = redmapper.GalaxyCatalogMaker(
             oname, redmapper_info_dict, parallel=True)
 
