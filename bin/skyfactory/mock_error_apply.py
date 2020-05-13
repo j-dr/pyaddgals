@@ -1065,7 +1065,7 @@ if __name__ == "__main__":
 
     if ('redmapper' in cfg.keys()) & (not truth_only):
         mode = cfg['redmapper']['mode']
-        depthmap_healsparse = cfg['redmapper']['depthmap_hs']
+        depthmap_healsparse = cfg['redmapper'].pop('depthmap_hs', None)
         mask_healsparse = cfg['redmapper']['mask_hs']
         lim_ref = cfg['redmapper'].pop('lim_ref', None)
 
