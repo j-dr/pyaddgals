@@ -83,7 +83,7 @@ def match_shape_noise(filename, mcalfilename, zbins, sigma_e_data):
             e2 = f['catalog/metacal/unsheared/e2'][:][idx]
 
             g1 = f['catalog/metacal/unsheared/g1'][:][idx]
-            g2 = f['catalog/metacal/unsheared/g1'][:][idx]
+            g2 = f['catalog/metacal/unsheared/g2'][:][idx]
             k = f['catalog/metacal/unsheared/kappa'][:][idx]
             e1_dt = e1.dtype
 
