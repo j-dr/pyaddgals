@@ -30,6 +30,14 @@ def main():
     nb_config = config['NBody']
     runtime_config = config['Runtime']
 
+    outpath = runtime_config['outpath']
+
+    try:
+        outpath = '/'.join(outpath.split('/')[:-1])
+        os.mkdir(outpath)
+    except Exception as e:
+        print(e)
+
     cosmo = Cosmology(**cc)
 
     domain = Domain(cosmo, luminosityFunctionConfig=config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig'],
