@@ -939,7 +939,7 @@ if __name__ == '__main__':
 
     if (sys_weight_template is not None):
         apply_systematics_weights(sys_weight_template,
-                                  [0.15, 0.35, 0.5, 0.85, 0.95],
+                                  [0.15, 0.35, 0.5, 0.65, 0.85, 0.95],
                                   h5rmfile)
 
     if (not just_rm):
