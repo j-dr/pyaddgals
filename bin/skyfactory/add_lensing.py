@@ -5,6 +5,7 @@ from glob import glob
 import numpy.lib.recfunctions as rf
 import healpy as hp
 import numpy as np
+import time
 import fitsio
 import yaml
 import sys
@@ -75,12 +76,14 @@ def compute_lensing(g, shear, halos=False):
 
     print('Number of multiply imaged galaxies: {0}'.format(nmi))
     sys.stdout.flush()
+    if nmi > 0:
+        g = np.hstack([g, g[shear['index'][miidx]]])
+        shear['index'][miidx] = np.arange(nmi) + len(sidx)
 
-    g = np.hstack([g, g[shear['index'][miidx]]])
-
-    shear['index'][miidx] = np.arange(nmi) + len(sidx)
-
+    start = time()
     g = g[shear['index']]
+    end = time()
+    print('reordering took {}s'.format(end - start))
 
     g['TRA'] = g['RA']
     g['TDEC'] = g['DEC']
