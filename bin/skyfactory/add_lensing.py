@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 from mpi4py import MPI
-from glob import glob
 import numpy.lib.recfunctions as rf
 import healpy as hp
 import numpy as np
-import time
 import fitsio
 import yaml
 import sys
@@ -73,17 +71,14 @@ def compute_lensing(g, shear, halos=False):
     # number of multiply imaged galaxies should be difference in lengths
     # of shear catalog and galaxy catalog
     assert(nmi == (len(shear) - len(g)))
-
-    print('Number of multiply imaged galaxies: {0}'.format(nmi))
-    sys.stdout.flush()
     if nmi > 0:
         g = np.hstack([g, g[shear['index'][miidx]]])
         shear['index'][miidx] = np.arange(nmi) + len(sidx)
 
-    start = time()
-    g = g[shear['index']]
-    end = time()
-    print('reordering took {}s'.format(end - start))
+    if not (np.diff(shear['index']) > 0).all():
+        print('reordering')
+        sys.stdout.flush()
+        g = g[shear['index']]
 
     g['TRA'] = g['RA']
     g['TDEC'] = g['DEC']
@@ -103,6 +98,8 @@ def compute_lensing(g, shear, halos=False):
         # lens the size and magnitudes
         g['SIZE'] = g['TSIZE'] * np.sqrt(g['MU'])
         for im in range(g['AMAG'].shape[1]):
+            print(im)
+            sys.stdout.flush()
             g['LMAG'][:, im] = g['TMAG'][:, im] - 2.5 * np.log10(g['MU'])
 
         # get intrinsic shape
@@ -178,10 +175,10 @@ def add_lensing(gfiles, sfiles):
         oname = "{0}/{1}_lensed.{2}.fits".format(gbase, gfss[0], gfss[1])
 
         print("[{1}] Writing lensed catalog to {0}".format(oname, rank))
-
+        sys.stdout.flush()
+        
         try:
-            fits = fitsio.FITS(oname, 'rw')
-            fits.write(g)
+            fitsio.write(oname, g, clobber=True)
             os.remove(gf)
         except Exception as e:
             print(e)

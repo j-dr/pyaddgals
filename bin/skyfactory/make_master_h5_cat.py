@@ -280,6 +280,14 @@ def convert_rm_to_h5(rmg_filebase=None, rmp_filebase=None,
                 f['catalog/redmagic/' + combined_dict['label'] +
                     '/' + name.lower()][:] = cat[name][s]
 
+        # downsample randoms to 40x lenses
+        if len(ran_sample) > 40 * len(cat):
+            idx = np.random.choice(np.arange(len(ran_sample)), size=40 * len(cat),
+                                   replace=False)
+            ran_sample = ran_sample[idx]
+        else:
+            print('There are <40x randoms than lenses. Not downsampling')
+
         s = np.argsort(hp.ang2pix(
             16384, np.pi / 2. - np.radians(ran_sample['dec']), np.radians(ran_sample['ra']), nest=True))
         for name in ran_sample.dtype.names:
