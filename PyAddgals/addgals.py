@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from mpi4py import MPI
 import numpy as np
 import argparse
+import os
 
 from .config import parseConfig
 from .cosmology import Cosmology
@@ -27,6 +28,8 @@ def main():
 
     domain = Domain(cosmo, **nb_config['Domain'])
     domain.decomp(comm, comm.rank, comm.size)
+
+    outbase = '/'.join(runtime_config['outpath'].split('/')[:-1])
 
     for d in domain.yieldDomains():
         nbody = NBody(cosmo, d, **nb_config)
