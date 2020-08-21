@@ -34,7 +34,7 @@ def main():
 
     try:
         outpath = '/'.join(outpath.split('/')[:-1])
-        os.mkdir(outpath)
+        os.makedirs(outpath)
     except Exception as e:
         print(e)
 
@@ -44,16 +44,6 @@ def main():
                     **nb_config.pop('Domain'))
 
     if comm.rank == 0:
-
-        # make sure directory that we want to write to exists
-
-        try:
-            ps = runtime_config['outpath'].split('/')
-            outdir = '/'.join(ps[:-1])
-            print('Making output directory: {}'.format(outdir))
-            os.mkdir(outdir)
-        except Exception as e:
-            pass
 
         wwaiting = []
         writing = []
