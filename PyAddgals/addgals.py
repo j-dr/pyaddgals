@@ -29,8 +29,6 @@ def main():
     domain = Domain(cosmo, **nb_config['Domain'])
     domain.decomp(comm, comm.rank, comm.size)
 
-    outbase = '/'.join(runtime_config['outpath'].split('/')[:-1])
-
     for d in domain.yieldDomains():
         nbody = NBody(cosmo, d, **nb_config)
 
