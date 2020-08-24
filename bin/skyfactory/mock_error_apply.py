@@ -701,7 +701,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             obs[menames[ind]][guse[bad]] = 99.0
 
             # Set fluxes, magnitudes of non detections to zero, 99
-            ntobs = ~np.isfinite(flux) | ~np.isfinite(fluxerr)
+            ntobs = ~np.isfinite(flux) | ~np.isfinite(1 / fluxerr**2)
             obs[fnames[ind]][guse[ntobs]] = 0.0
             obs[fenames[ind]][guse[ntobs]] = 0.0
             obs[mnames[ind]][guse[ntobs]] = 99.0
