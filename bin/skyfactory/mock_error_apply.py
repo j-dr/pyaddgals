@@ -735,6 +735,9 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             if (filter_obs) and (mnames[ind] in refnames):
                 oidx[guse] &= obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)
+                oidx[guse] &= np.isfinite(obs[menames[ind]][guse])
+                oidx[guse] &= np.isfinite(obs[fnames[ind]][guse])
+                oidx[guse] &= np.isfinite(obs[fenames[ind]][guse])
 
 
     obs['RA'] = ra
