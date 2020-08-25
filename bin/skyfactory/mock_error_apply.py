@@ -740,7 +740,9 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                 oidx[guse] &= ((obs[mnames[ind]][guse] < (
                     d['LIMMAGS'][pixind, ind] + 0.5)) &
                     (obs[mnames[ind]][guse] > 0))
-                oidx[guse] &= obs[menames[ind]][guse] > 0
+            oidx[guse] &= obs[menames[ind]][guse] > 0
+            oidx[guse] &= obs[mnames[ind]][guse] > 0
+
 
     obs['RA'] = ra
     obs['DEC'] = dec
