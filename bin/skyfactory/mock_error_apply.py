@@ -565,6 +565,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
 
     if balrog_bands is not None:
         apply_balrog_errors = True
+    else:
+        apply_balrog_errors = False
 
     if dbase_style:
         mnames = ['MAG_{0}'.format(b.upper()) for b in bands]
