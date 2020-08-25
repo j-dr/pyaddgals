@@ -650,7 +650,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                    zp_data=zp,
                                                    true_cat_mag_cols=usebalmags)
 
-    bal_idx = dict(zip(usebalmags, np.arange(len(usebalmags))))
+        bal_idx = dict(zip(usebalmags, np.arange(len(usebalmags))))
 
     for ind, i in enumerate(usemags):
 
