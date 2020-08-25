@@ -111,33 +111,33 @@ models = {
         'maglims': [23.621, 23.232, 23.008, 22.374, 20.663],
         'exptimes': [4389.00, 1329.00, 1405.00, 517.00, 460.00],
         'lnscat': [0.276, 0.257, 0.247, 0.241, 0.300]
-            },
+    },
 
     'DES_SV_OPTIMISTIC':
         {
         'maglims': [23.621 + 0.5, 23.232 + 0.5, 23.008, 22.374, 20.663],
         'exptimes': [4389.00, 1329.00, 1405.00, 517.00, 460.00],
         'lnscat': [0.276, 0.257, 0.247, 0.241, 0.300]
-            },
+    },
     'DES_Y3_UNIFORM':
         {
         'exptimes': [1.07409391, 0.94403685, 0.51463345, 0.25248926],
         'maglims': [23.78276062, 23.56146812, 23.03665161, 22.39552879],
         'lnscat': [0.0, 0.0, 0.0, 0.0]
-        },
+            },
     'WISE':
         {
         'maglims': [19.352, 18.574],
         'exptimes': [8.54, 3.46],
         'lnscat': [0.214, 0.283]
-            },
+    },
 
     'DECALS':
         {
             'maglims': [23.3, 23.3, 22.2, 20.6, 19.9],
             'exptimes': [1000, 3000, 2000, 1500, 1500],
             'lnscat': [0.2, 0.2, 0.2, 0.2, 0.2]
-        },
+            },
 
 }
 
@@ -506,6 +506,7 @@ def balrog_error_apply(detection_catalog, true_deep_cat, matched_balrog_cat, mag
 
     return flux_out, flux_err_report
 
+
 def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 survey, magfile=None, usemags=None,
                                 nest=False, bands=None, balrog_bands=None,
@@ -576,7 +577,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
 
         if apply_balrog_errors:
             bfnames = ['MCAL_FLUX_{0}'.format(b.upper()) for b in balrog_bands]
-            bfenames = ['MCAL_IVAR_{0}'.format(b.upper()) for b in balrog_bands]
+            bfenames = ['MCAL_IVAR_{0}'.format(
+                b.upper()) for b in balrog_bands]
 
         if filter_obs & (refbands is not None):
             refnames = ['MAG_{}'.format(b.upper()) for b in refbands]
@@ -604,7 +606,6 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 all_obs_fields=all_obs_fields,
                                 blind_obs=blind_obs,
                                 balrog_bands=balrog_bands)
-
 
     if ("Y1" in survey) | ("Y3" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
         mindec = -90.
@@ -639,13 +640,15 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
     if apply_balrog_errors:
         idx = np.zeros_like(omag, dtype=np.bool)
         for i in range(omag.shape[1]):
-            if i not in usebalmags: continue
-            idx[guse,i] = True
+            if i not in usebalmags:
+                continue
+            idx[guse, i] = True
 
         flux_bal, fluxerr_bal = balrog_error_apply(detection_catalog,
                                                    true_deep_cat,
                                                    matched_catalog,
-                                                   omag[idx].reshape(-1,len(usebalmags)),
+                                                   omag[idx].reshape(-1,
+                                                                     len(usebalmags)),
                                                    matched_cat_sorter=matched_cat_sorter,
                                                    zp_data=zp,
                                                    true_cat_mag_cols=usebalmags)
@@ -712,7 +715,8 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
             if apply_balrog_errors:
                 if i in usebalmags:
                     obs[bfnames[bal_idx[ind]]][guse] = flux_bal[:, bal_idx[ind]]
-                    obs[bfenames[bal_idx[ind]]][guse] = 1 / fluxerr_bal[:, bal_idx[ind]]**2
+                    obs[bfenames[bal_idx[ind]]][guse] = 1 / \
+                        fluxerr_bal[:, bal_idx[ind]]**2
                     bad = (flux_bal[:, bal_idx[ind]] <= 0)
                     obs[bfnames[bal_idx[ind]]][guse[bad]] = 0.0
                     obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
@@ -733,12 +737,10 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                         obs[bfenames[bal_idx[ind]]][guse[bad]] = 0.0
 
             if (filter_obs) and (mnames[ind] in refnames):
-                oidx[guse] &= obs[mnames[ind]][guse] < (
-                    d['LIMMAGS'][pixind, ind] + 0.5)
-                oidx[guse] &= np.isfinite(obs[menames[ind]][guse])
-                oidx[guse] &= np.isfinite(obs[fnames[ind]][guse])
-                oidx[guse] &= np.isfinite(obs[fenames[ind]][guse])
-
+                oidx[guse] &= ((obs[mnames[ind]][guse] < (
+                    d['LIMMAGS'][pixind, ind] + 0.5)) &
+                    (obs[mnames[ind]][guse] > 0))
+                oidx[guse] &= obs[menames[ind]][guse] > 0
 
     obs['RA'] = ra
     obs['DEC'] = dec
@@ -1145,7 +1147,6 @@ if __name__ == "__main__":
                                      redmapper_dtype=redmapper_dtype)
 
         else:
-
 
             oidx = apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                                model, magfile=mname,
