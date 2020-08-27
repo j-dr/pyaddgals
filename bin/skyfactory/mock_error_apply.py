@@ -347,6 +347,11 @@ def write_redmapper_files(galaxies, filename_base, info_dict,
     _, unique_idx = np.unique(gals['id'], return_index=True)
 
     use, = np.where(np.in1d(np.arange(len(gals)), unique_idx))
+    nonneg = ((gals['mag'][use] > 0) & (gals['mag_err'][use] > 0)).all(axis=1)
+
+    if np.sum(nonneg) < len(use):
+        print('Negative luptitudes/errors for {} galaxies. Cutting these out'.format(len(use) - np.sum(nonneg)))
+        use = use[nonneg]
 
     if use.size == 0:
         print('No good galaxies in pixel!')
