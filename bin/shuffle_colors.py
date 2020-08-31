@@ -907,9 +907,13 @@ if __name__ == '__main__':
     else:
         red_sequence_shift_and_scatter = False
 
-    lensmags = False
-
     files = glob(filepath)
+
+    if 'lensed' in files[0]:
+        lensmags = True
+    else:
+        lensmags = False
+
     halofiles = glob(hfilepath.format('*[0-9]'))
     comm = MPI.COMM_WORLD
     size = comm.size
