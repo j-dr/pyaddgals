@@ -459,8 +459,8 @@ class ColorModel(object):
         coeffs *= 10 ** ((mag.reshape(-1, 1) - amag) / -2.5)
 
         # Calculate observed and absolute magnitudes magnitudes
-        print(filters)
-        sys.stdout.flush()
+#        print(filters)
+#        sys.stdout.flush()
 
         filter_lambda, filter_pass = kcorr.load_filters(filters)
 

@@ -254,7 +254,7 @@ class KCorrect(object):
         dlambda = template_lambda[1:] - template_lambda[:-1]
 
         for k in range(nk):
-            print(k)
+#            print(k)
             sys.stdout.flush()
             filter_lambda_k, filter_pass_k = self.zero_pad(
                 template_lambda, filter_lambda[k], filter_pass[k])

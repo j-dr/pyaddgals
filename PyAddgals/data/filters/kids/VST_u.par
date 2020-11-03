@@ -1,8 +1,8 @@
-# typedef struct {
-#                            double lambda;
-#                            double pass;
-#                           } DFILTER;
-# 
+ typedef struct {
+                            double lambda;
+                            double pass;
+                           } DFILTER;
+ 
 DFILTER 3146.9000 0.000000
 DFILTER 3176.9000 0.000000
 DFILTER 3207.0000 0.000000
