@@ -8,6 +8,7 @@ import healpy as hp
 import numpy as np
 import sys
 import fitsio
+import sys
 
 from .kcorrect import KCorrect, k_reconstruct_maggies
 
@@ -458,6 +459,9 @@ class ColorModel(object):
         coeffs *= 10 ** ((mag.reshape(-1, 1) - amag) / -2.5)
 
         # Calculate observed and absolute magnitudes magnitudes
+        print(filters)
+        sys.stdout.flush()
+
         filter_lambda, filter_pass = kcorr.load_filters(filters)
 
         rmatrix0 = kcorr.k_projection_table(filter_pass, filter_lambda,
