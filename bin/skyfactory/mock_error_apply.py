@@ -612,7 +612,7 @@ def apply_nonuniform_errormodel(g, obase, odir, d, dhdr,
                                 blind_obs=blind_obs,
                                 balrog_bands=balrog_bands)
 
-    if ("Y1" in survey) | ("Y3" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
+    if ("Y1" in survey) | ("Y3" in survey) | ("Y6" in survey) | (survey == "DES") | (survey == "SVA") | (survey == 'Y3'):
         mindec = -90.
         maxdec = 90
         minra = 0.0
