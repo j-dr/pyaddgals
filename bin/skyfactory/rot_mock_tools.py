@@ -124,10 +124,16 @@ def rot_mock_file(fname,rmat,nfname,footprint=None,nside=None,nest=False):
     sys.stdout.flush()
     hdu = pyfits.open(fname)
     d = hdu[1].data
-
+    
+    #only unique galaxies
+    ids = d['id']
+    _, idx =np.unique(ids, return_index=True)
+    d = d[idx]
+    
     #get file gaain for rotated version
     nhdu = pyfits.open(fname)
     nd = nhdu[1].data
+    nd = nd[idx]
 
     didRot = False
     badRot = False
