@@ -1,0 +1,60 @@
+Runtime :
+  outpath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/pyaddgals/Buzzard-0
+NBody :
+  Domain :
+    fmt : BCCLightcone
+    lbox : 1050
+    rmin : 1.0
+    rmax : 900.0
+    nrbins : 7
+    nside : 4
+    nest : True
+    pixlist : [0]
+  partpath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
+  denspath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/calcrnn/
+  hinfopath : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/pixlc/
+  halofile : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/cut_reform_out_0.parents
+  halodensfile : /u/ki/jderose/desims/BCC/Chinchilla/Herd/Chinchilla-0/Lb1050/output/halos/rnn_cut_reform_out_0.parents
+
+Cosmology:
+  omega_m : 0.286
+  omega_b : 0.046
+  h : 1.0
+  n_s : 0.96
+  sigma8 : 0.82
+  w : -1.0
+
+GalaxyModel :
+  ADDGALSModel :
+    luminosityFunctionConfig :
+      modeltype : DSGLuminosityFunction
+      magmin : 25.0
+    rdelModelConfig :
+      rdelModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/DSG_0.684_0.17_global_rdelmodel.txt
+      lcenModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/rdel/C400_DSG_0.684_0.17_lcenmass.fits
+      lcenMassMin : 3162277660168
+      useSubhalos : False
+      scatter: 0.17
+    colorModelConfig :
+      redFractionModelFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/primus_rf_model.txt
+      trainingSetFile : /u/ki/jderose/ki23/SkyFactory-config/Addgals/sdss_vagc_kcorr_r177_z02_wdens.fits
+      filters :
+        - desy3/desy3std_g.par
+        - desy3/desy3std_r.par
+        - desy3/desy3std_i.par
+        - desy3/desy3std_z.par
+        - desy3/desy3_Y.par
+      band_shift : 0.1
+    shapeModelConfig :
+      n_components : 50
+      cov_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_cov_3p_nc50.txt.npy
+      means_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_mu_3p_nc50.txt.npy
+      weights_file : /u/ki/jderose/ki23/SkyFactory-config/Addgals/gmm_w_3p_nc50.txt.npy
+      conditional_fields : 
+        - (omag , 2)
+      conditional_field_mean : [22.33084578]
+      conditional_field_std : [1.25009228]
+      size_mean : -2.48034547
+      size_std : 0.27190989
+      epsilon_mean : 0.23635986
+      epsilon_std: 0.1341013
