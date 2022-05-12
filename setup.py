@@ -4,9 +4,8 @@ from setuptools import setup, find_packages
 setup(
     name='pyaddgals',
     version='1.0',
-#    packages=['PyAddgals',],
     packages=find_packages(),
-    scripts=['bin/addgals'],
+    scripts=['bin/adg-train', 'bin/compress-hlists', 'bin/addgals'],
     package_dir={'PyAddgals' : 'PyAddgals'},
     package_data={'PyAddgals': ['data/filters/*/*', 'data/templates/*', 'data/training/*']},
     long_description=open('README.md').read(),

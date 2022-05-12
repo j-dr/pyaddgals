@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+from __future__ import print_function, division
+from rdel import config
+import sys
+
+cfgfile = sys.argv[1]
+
+cfg = config.readCfg(cfgfile)
+sim, lf, m = config.parseConfig(cfg)
+
+for s in sim:
+    
+    ar = cfg['AbundanceMatch'].pop('run', True)
+    rr = cfg['RdelModel'].pop('run', True)
+
+
+    if ar:
+        s.abundanceMatch(lf, **cfg['AbundanceMatch'])
+        
+    if rr:
+        parallel = cfg['RdelModel'].pop('parallel', False)
+        debug    = cfg['RdelModel'].pop('debug', False)
+        startat  = cfg['RdelModel'].pop('startat', None)
+        endat  = cfg['RdelModel'].pop('endat', None)
+        alpha    = cfg['AbundanceMatch'].pop('alpha', 0.7)
+        scatter    = cfg['AbundanceMatch'].pop('scatter', 0.7)
+        
+        s.rdelMagDist(lf, parallel=parallel, debug=debug,
+                        startat=startat, endat=endat,
+                        alpha=alpha, scatter=scatter)
+    

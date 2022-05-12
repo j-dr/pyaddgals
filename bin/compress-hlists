@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+from __future__ import print_function, division
+from glob import glob
+from mpi4py import MPI
+from rdel import util
+import sys
+
+
+if __name__ == '__main__':
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    hlistdir = sys.argv[1]
+    outdir   = sys.argv[2]
+    fields   = sys.argv[3:]
+
+    if len(fields)==0:
+        fields = {'vmax':(75,'f4'),
+                  'mvir':(61,'f4'),
+                  'mpeak_scale':(70,'f4'),
+                  'upid':(6,'f4'),
+                  'x':(17,'f4'),
+                  'y':(18,'f4'),
+                  'z':(19,'f4'),
+                  'rs':(12,'f4'), 
+                  'b_to_a':(46,'f4'),
+                  'c_to_a':(47,'f4')}
+
+    hlists = glob(hlistdir)
+
+    for hlist in hlists[rank::size]:
+        print(hlist)
+        util.hlist2bin(hlist, fields, outdir)
