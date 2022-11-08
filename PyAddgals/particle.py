@@ -417,32 +417,32 @@ class ParticleCatalog(object):
         None
 
         """
+        pass
+        #partpath = self.nbody.partpath[self.nbody.boxnum]
 
-        partpath = self.nbody.partpath[self.nbody.boxnum]
+        #rmin = self.nbody.domain.rmin
+        #rmax = self.nbody.domain.rmax
+        #catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="1")
 
-        rmin = self.nbody.domain.rmin
-        rmax = self.nbody.domain.rmax
-        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="1")
+        ## get the part of the catalog for this task
+        #pos = catalog['Position'][:]
+        #r = np.sqrt(pos**2, axis=1)
+        #pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
+        #                 pos[:,1], pos[:,2],
+        #                 nest=self.nbody.domain.nest)
+        #idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
+        #idx = (self.nbody.domain.pix == pix) & idx
+        #catalog = catalog[idx]
+        #pos = pos[idx]
+        #del r, idx
+        ## store everything in a dict for easy access
+        #self.catalog = {}
 
-        # get the part of the catalog for this task
-        pos = catalog['Position'][:]
-        r = np.sqrt(pos**2, axis=1)
-        pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
-                         pos[:,1], pos[:,2],
-                         nest=self.nbody.domain.nest)
-        idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
-        idx = (self.nbody.domain.pix == pix) & idx
-        catalog = catalog[idx]
-        pos = pos[idx]
-        del r, idx
-        # store everything in a dict for easy access
-        self.catalog = {}
-
-        # calculate z from radii
-        self.catalog['z'] = (1/catalog['Aemit'] - 1).compute()
-        self.catalog['pos'] = pos.compute()
-        self.catalog['vel'] = catalog['Velocity'].compute()
-        self.catalog['id'] = catalog['ID'].compute()
+        ## calculate z from radii
+        #self.catalog['z'] = (1/catalog['Aemit'] - 1).compute()
+        #self.catalog['pos'] = pos.compute()
+        #self.catalog['vel'] = catalog['Velocity'].compute()
+        #self.catalog['id'] = catalog['ID'].compute()
 
 
     def readGadgetSnapshot(self, filename, read_pos=True, read_vel=True, read_id=False,
