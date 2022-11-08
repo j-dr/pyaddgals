@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from halotools.sim_manager import TabularAsciiReader
+from nbodykit.lab import *
 import numpy as np
 import healpy as hp
 
@@ -30,6 +31,8 @@ class HaloCatalog(object):
             self.readRockstarLightconeFile()
         elif self.nbody.domain.fmt == 'Snapshot':
             self.readRockstarSnapshotFile()
+        elif self.nbody.domain.fmt == 'FastPMLightcone':
+            self.readFastPMLightconeFile()
 
     def delete(self):
         """Delete halo catalog
@@ -59,7 +62,7 @@ class HaloCatalog(object):
                     'vy': (12, np.float), 'vz': (13, np.float),
                     'rs': (6, np.float), 'radius': (5, np.float),
                     'pid': (14, np.int), 'id': (0, np.int)}
-
+            
         elif fmt == 'Snapshot':
             return {'mass': (2, np.float), 'x': (8, np.float), 'y': (9, np.float),
                     'z': (10, np.float), 'vx': (11, np.float),
@@ -127,6 +130,37 @@ class HaloCatalog(object):
             1000.  # convert kpc to mpc
         self.catalog['rs'] = catalog['rs'] / 1000.  # convert kpc to mpc
         self.catalog['rnn'] = rnn[:, 1]
+        
+        
+    def readFastPMLightconeFile(self):
+    
+        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="RFOF")
+
+        # get the part of the catalog for this task
+        pos = catalog['Position'][:]
+        r = np.sqrt(pos**2, axis=1)
+        pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
+                         pos[:,1], pos[:,2],
+                         nest=self.nbody.domain.nest)
+        idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
+        idx = (self.nbody.domain.pix == pix) & idx
+        catalog = catalog[idx]
+        r = r[idx]
+#        del idx
+
+        self.catalog = {}
+
+        # calculate z from r
+        self.catalog['redshift'] = (1/catalog['Aemit'][idx] - 1).compute()
+        del r
+        self.catalog['id'] = catalog['ID'].compute()
+
+        self.catalog['pos'] = pos
+        self.catalog['vel'] = catalog['Velocity'].compute()
+        self.catalog['mass'] = (catalog['Length'] * catalog.attrs['M0'] * 10**10).compute()
+        self.catalog['radius'] = (np.sum(catalog['Rdisp'][:,:3], axis=1) / 3).compute()
+        self.catalog['vdisp'] = (np.sum(catalog['Vdisp'][:,:3], axis=1) / 3).compute()
+        self.mpart = catalog.attrs['M0'] * 10**10
 
     def readHaloRnn(self, filepath):
         """

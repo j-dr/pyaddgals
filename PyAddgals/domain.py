@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from itertools import product
 from scipy.interpolate import interp1d
+from scipy.integrate import quad
 from copy import copy
 import healpy as hp
 import numpy as np
@@ -439,3 +440,13 @@ class Domain(object):
             raise(ValueError('Cannot calculate volumes for fmt {}'.format(self.fmt)))
 
         return self.volume
+    
+    def getZeff(self):
+        
+        integrand = lambda z: z * self.cosmo.dVdz(z)
+        zeff, _, _, _, _ = quad(integrand, self.zmin, self.zmax)
+        self.zeff = zeff
+        
+        return zeff
+        
+        

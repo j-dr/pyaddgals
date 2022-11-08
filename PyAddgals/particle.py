@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from pixlc.pixLC import read_radial_bin, nest2peano
 from collections import namedtuple
+from nbodykit.lab import *
 import healpy as hp
 import numpy as np
 import struct
@@ -40,6 +41,10 @@ class ParticleCatalog(object):
         elif self.nbody.domain.fmt == 'Snapshot':
 
             self.readSnapshot()
+            
+        elif self.nbody.domain.fmt == 'FastPMLightcone':
+            
+            self.readFastPMLightcone()
 
         else:
             raise(NotImplementedError(
@@ -403,6 +408,42 @@ class ParticleCatalog(object):
         self.catalog['mass'] = hinfo['mass'][idx]
         self.catalog['radius'] = hinfo['radius'][idx]
         del hinfo
+        
+    def readFastPMLightcone(self):
+        """Read in particle information
+
+        Returns
+        -------
+        None
+
+        """
+
+        partpath = self.nbody.partpath[self.nbody.boxnum]
+
+        rmin = self.nbody.domain.rmin
+        rmax = self.nbody.domain.rmax
+        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="1")
+
+        # get the part of the catalog for this task
+        pos = catalog['Position'][:]
+        r = np.sqrt(pos**2, axis=1)
+        pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
+                         pos[:,1], pos[:,2],
+                         nest=self.nbody.domain.nest)
+        idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
+        idx = (self.nbody.domain.pix == pix) & idx
+        catalog = catalog[idx]
+        pos = pos[idx]
+        del r, idx
+        # store everything in a dict for easy access
+        self.catalog = {}
+
+        # calculate z from radii
+        self.catalog['z'] = (1/catalog['Aemit'] - 1).compute()
+        self.catalog['pos'] = pos.compute()
+        self.catalog['vel'] = catalog['Velocity'].compute()
+        self.catalog['id'] = catalog['ID'].compute()
+
 
     def readGadgetSnapshot(self, filename, read_pos=True, read_vel=True, read_id=False,
                            read_mass=False, print_header=False, single_type=-1,
