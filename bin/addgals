@@ -39,8 +39,12 @@ def main():
         print(e)
 
     cosmo = Cosmology(**cc)
-
-    domain = Domain(cosmo, luminosityFunctionConfig=config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig'],
+    if 'ADDGALSModel' in config['GalaxyModel'].keys():
+        lf_config= config['GalaxyModel']['ADDGALSModel']['luminosityFunctionConfig']
+    else:
+        lf_config = None
+    
+    domain = Domain(cosmo, luminosityFunctionConfig=lf_config,
                     **nb_config.pop('Domain'))
 
     if comm.rank == 0:
@@ -111,7 +115,7 @@ def main():
             print('Rank {}: writing to pix {}, waited {} s'.format(comm.rank, d.pix, wend - wstart))
             sys.stdout.flush()
 
-            if nbody.domain.fmt == 'BCCLightcone':
+            if (nbody.domain.fmt == 'BCCLightcone') | (nbody.domain.fmt == 'FastPMLightcone'):
                 nbody.galaxyCatalog.write(runtime_config['outpath'],
                                           int(runtime_config['nside_output']),
                                           bool(runtime_config['write_pos']))

@@ -7,8 +7,9 @@ import os
 import sys
 
 from .addgalsModel import ADDGALSModel
+from .CLFModel import CLFModel
 
-_available_models = ['ADDGALSModel']
+_available_models = ['ADDGALSModel', 'CLFModel']
 
 
 class GalaxyCatalog(object):
@@ -43,6 +44,9 @@ class GalaxyCatalog(object):
 
         if model_class == 'ADDGALSModel':
             self.model = ADDGALSModel(self.nbody, **config['ADDGALSModel'])
+            
+        if model_class == 'CLFModel':
+            self.model = CLFModel(self.nbody, **config['CLFModel'])
 
         print('Painting galaxies to domain with z_min, z_max, pix, nside: {}, {}, {}, {}'.format(self.nbody.domain.zmin,
                                                                                                  self.nbody.domain.zmax,
