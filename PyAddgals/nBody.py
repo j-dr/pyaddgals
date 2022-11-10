@@ -44,9 +44,14 @@ class NBody(object):
         if not partpath:
             raise(ValueError("partpath, path to particle data must be defined for nbody"))
 
-        if not denspath:
-            raise(ValueError(
-                "denspath, path to particle and halo density data must be defined for nbody"))
+        if self.domain.fmt == 'BCCLightcone':
+            if not denspath:
+                raise(ValueError(
+                    "denspath, path to particle and halo density data must be defined for nbody"))
+                
+            if not halodensfile:
+                raise(ValueError(
+                    "halodensfile, path to density measurements for halo catalog must be defined for nbody"))                
 
         if self.domain.fmt == 'BCCLightcone':
             if not hinfopath:
@@ -56,10 +61,6 @@ class NBody(object):
         if not halofile:
             raise(ValueError(
                 "halofile, path to input halo catalog must be defined for nbody"))
-
-        if not halodensfile:
-            raise(ValueError(
-                "halodensfile, path to density measurements for halo catalog must be defined for nbody"))
 
         if self.domain.fmt == 'Snapshot':
             if not n_blocks:
