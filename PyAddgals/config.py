@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import yaml
+from yaml import Loader
 
 _eval_keys = ['']
 
@@ -7,7 +8,7 @@ _eval_keys = ['']
 def readCfg(filename):
 
     with open(filename, 'r') as fp:
-        cfg = yaml.load(fp)
+        cfg = yaml.load(fp, Loader=Loader)
 
     return cfg
 
