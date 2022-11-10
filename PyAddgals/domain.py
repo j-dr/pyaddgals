@@ -22,7 +22,7 @@ class Domain(object):
         self.fmt = fmt
         self.cosmo = cosmo
 
-        if fmt == 'BCCLightcone':
+        if (fmt == 'BCCLightcone') | (fmt == 'FastPMLightcone'):
 
             self.subbox = None
 
