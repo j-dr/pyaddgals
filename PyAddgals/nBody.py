@@ -110,7 +110,7 @@ class NBody(object):
         self.boxnum = self.domain.boxnum
 
     def read(self):
-        if self.domain.fmt == 'BCCLightcone':
+        if (self.domain.fmt == 'BCCLightcone') | (self.domain.fmt == 'FastPMLightcone'):
             self.haloCatalog.read()
             self.particleCatalog.read()
         else:

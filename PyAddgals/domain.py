@@ -32,22 +32,22 @@ class Domain(object):
                 self.pixlist = pixlist
 
             if rmin is None:
-                raise(ValueError("rmin must be defined for BCCLightcone domain"))
+                raise(ValueError("rmin must be defined for Lightcone domain"))
 
             if not lbox:
-                raise(ValueError("lbox must be defined for BCCLightcone domain"))
+                raise(ValueError("lbox must be defined for Lightcone domain"))
 
             if rmax is None:
-                raise(ValueError("rmax must be defined for BCCLightcone domain"))
+                raise(ValueError("rmax must be defined for Lightcone domain"))
 
             if nrbins is None:
-                raise(ValueError("nrbins must be defined for BCCLightcone"))
+                raise(ValueError("nrbins must be defined for Lightcone"))
 
             if nside is None:
-                raise(ValueError("nside must be defined for BCCLightcone domain"))
+                raise(ValueError("nside must be defined for Lightcone domain"))
 
             if nest is None:
-                raise(ValueError("nest must be defined for BCCLightcone domain"))
+                raise(ValueError("nest must be defined for Lightcone domain"))
 
             if luminosityFunctionConfig is None:
                 self.numberDensityDomainDecomp = False
@@ -202,7 +202,7 @@ class Domain(object):
         self.comm = comm
         self.domain_counter = 0
 
-        if self.fmt == 'BCCLightcone':
+        if (self.fmt == 'BCCLightcone') | (self.fmt == 'FastPMLightcone'):
 
             if boxnum == 0:
                 self.rbins = []
@@ -320,7 +320,7 @@ class Domain(object):
         for i in range(self.ndomains_task):
             d = copy(self)
 
-            if self.fmt == 'BCCLightcone':
+            if (self.fmt == 'BCCLightcone') | (self.fmt == 'FastPMLightcone'):
 
                 d.boxnum = self.domains_boxnum_task[i]
                 d.rbin = self.domains_task[i][0]
@@ -358,7 +358,7 @@ class Domain(object):
     def dummyDomain(self):
         d = copy(self)
 
-        if self.fmt == 'BCCLightcone':
+        if (self.fmt == 'BCCLightcone') | (self.fmt == 'FastPMLightcone'):
 
             d.boxnum = self.domains_boxnum_task[0]
             d.rbin = self.domains_task[0][0]
@@ -422,7 +422,7 @@ class Domain(object):
         if hasattr(self, 'volume'):
             return self.volume
 
-        if self.fmt == 'BCCLightcone':
+        if (self.fmt == 'BCCLightcone') | (self.fmt == 'FastPMLightcone'):
             if not hasattr(self, 'pix'):
                 raise(ValueError('pix must be defined to calculate volume'))
 

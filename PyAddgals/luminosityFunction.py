@@ -226,7 +226,7 @@ class LuminosityFunction(object):
 
     def drawRedshifts(self, domain, overdens):
 
-        if domain.fmt == 'BCCLightcone':
+        if (domain.fmt == 'BCCLightcone') | (domain.fmt == 'FastPMLightcone'):
             z_min = domain.zmin
             z_max = domain.zmax
 
