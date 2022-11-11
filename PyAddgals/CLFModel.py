@@ -21,6 +21,7 @@ class CLFModel(GalaxyModel):
 
         self.nbody = nbody
         self.zeff = self.nbody.domain.getZeff()
+        self.delete_after_assignment = False
 
         if CLFModelConfig is None:
             raise(ValueError('CLF model must define luminosityFunctionConfig'))
@@ -68,10 +69,10 @@ class CLFModel(GalaxyModel):
         for k in self.sat_clf_params:
             sats_occ_model.param_dict[k] = self.sat_clf_params[k]            
             
-        for k in self.cen_clf_params:
+        for k in self.cen_prof_params:
             cens_prof_model.param_dict[k] = self.cen_prof_params[k]
             
-        for k in self.sat_clf_params:
+        for k in self.sat_prof_params:
             sats_prof_model.param_dict[k] = self.sat_prof_params[k]              
             
         model_instance = HodModelFactory(
@@ -85,20 +86,25 @@ class CLFModel(GalaxyModel):
             
         
     def setup_cacciato09_model(self):
+        print('setting up cacciato', flush=True)
+        threshold = (-0.4 * (self.luminosityFunction.m_min_of_z(self.zeff) - 4.76))
+        print('threshold: {}'.format(threshold), flush=True)
         cens_occ_model = Cacciato09Cens(
-            prim_haloprop_key="halo_m200m", redshift=self.zeff
+            prim_haloprop_key="halo_mvir", redshift=self.zeff,
+            threshold=threshold
         )
 
         sats_occ_model = Cacciato09Sats(
-            prim_haloprop_key="halo_m200m", redshift=self.zeff
+            prim_haloprop_key="halo_mvir", redshift=self.zeff,
+            threshold=threshold
         )
 
         cens_prof_model = TrivialPhaseSpace(
-            prim_haloprop_key="halo_m200m", redshift=self.zeff
+            prim_haloprop_key="halo_mvir", redshift=self.zeff
         )
 
         sats_prof_model = NFWPhaseSpace(
-            prim_haloprop_key="halo_m200m",
+            prim_haloprop_key="halo_mvir",
             redshift=self.zeff,
             conc_mass_model="dutton_maccio14",
         )        
@@ -128,14 +134,14 @@ class CLFModel(GalaxyModel):
             
     def convert_halocat_to_halotools(self):
         hc = self.nbody.haloCatalog.catalog
-        lb_ov_2 = self.domain.lboxp[self.nbody.boxnum] / 2
+        lb_ov_2 = self.nbody.domain.lbox[self.nbody.boxnum] / 2
         hcat = UserSuppliedHaloCatalog(simname='temp',
-                                       redshift=self.domain.zeff, 
+                                       redshift=self.nbody.domain.zeff, 
                                        particle_mass=self.nbody.haloCatalog.mpart, 
-                                       Lbox=self.nbody.lbox[self.nbody.boxnum],
-                                       halo_r200m=hc['radius'], 
-                                       halo_m200m=hc['mass'], 
-                                       halo_id=hc['id'],
+                                       Lbox=self.nbody.domain.lbox[self.nbody.boxnum],
+                                       halo_rvir=hc['radius'][:], 
+                                       halo_mvir=hc['mass'][:], 
+                                       halo_id=hc['id'][:],
                                        halo_x=hc['pos'][:,0]+lb_ov_2, 
                                        halo_y=hc['pos'][:,1]+lb_ov_2, 
                                        halo_z=hc['pos'][:,2]+lb_ov_2, 
@@ -164,8 +170,8 @@ class CLFModel(GalaxyModel):
         sys.stdout.flush()
         start = time()
 
-        self.clf_model_instance.populate_mock(self.nbody.HaloCatalog.catalog, 
-                                              halo_mass_column_key='halo_m200m',
+        self.clf_model_instance.populate_mock(self.nbody.haloCatalog.catalog, 
+                                              halo_mass_column_key='halo_mvir',
                                               Num_ptcl_requirement=1, enforce_PBC=False)
         
         galaxies = self.clf_model_instance.mock.galaxy_table
@@ -187,7 +193,7 @@ class CLFModel(GalaxyModel):
         ngal = len(galaxies)
         central = galaxies['gal_type'] == 'centrals'
         central = central.astype(int)
-        lb_ov_2 = self.domain.lboxp[self.nbody.boxnum] / 2        
+        lb_ov_2 = self.nbody.domain.lbox[self.nbody.boxnum] / 2        
         galaxies['x'] -= lb_ov_2
         galaxies['y'] -= lb_ov_2
         galaxies['z'] -= lb_ov_2
@@ -212,8 +218,8 @@ class CLFModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['Z_COS'] = z
         self.nbody.galaxyCatalog.catalog['Z'] = z_rsd
         self.nbody.galaxyCatalog.catalog['MAG_R'] = -2.5 * np.log10(galaxies['luminosity']) + 4.76
-        self.nbody.galaxyCatalog.catalog['M200'] = galaxies['halo_m200m']
-        self.nbody.galaxyCatalog.catalog['R200'] = galaxies['halo_r200m']
+        self.nbody.galaxyCatalog.catalog['MVIR'] = galaxies['halo_mvir']
+        self.nbody.galaxyCatalog.catalog['RVIR'] = galaxies['halo_rvir']
         self.nbody.galaxyCatalog.catalog['HALOID'] = galaxies['halo_id']
         self.nbody.galaxyCatalog.catalog['CENTRAL'] = central
 

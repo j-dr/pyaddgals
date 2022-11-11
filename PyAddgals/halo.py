@@ -1,9 +1,25 @@
 from __future__ import print_function, division
 from halotools.sim_manager import TabularAsciiReader
+from mpi4py import MPI
 from nbodykit.lab import *
 import numpy as np
 import healpy as hp
 
+class FakeComm(object):
+
+    def __init__(self):
+        self.rank = 0
+        self.size = 1
+
+    def bcast(self, something):
+
+        return something
+
+    def allreduce(self, something):
+
+        return something
+
+comm = FakeComm()
 
 class HaloCatalog(object):
 
@@ -32,6 +48,7 @@ class HaloCatalog(object):
         elif self.nbody.domain.fmt == 'Snapshot':
             self.readRockstarSnapshotFile()
         elif self.nbody.domain.fmt == 'FastPMLightcone':
+            print('reading halos', flush=True)
             self.readFastPMLightconeFile()
 
     def delete(self):
@@ -46,13 +63,16 @@ class HaloCatalog(object):
         if not hasattr(self, 'catalog'):
             return
 
-        keys = list(self.catalog.keys())
+        try:
+            keys = list(self.catalog.keys())
 
-        if len(keys) == 0:
-            return
+            if len(keys) == 0:
+                return
 
-        for k in keys:
-            del self.catalog[k]
+            for k in keys:
+                del self.catalog[k]
+        except:
+            del self.catalog
 
     def getColumnDict(self, fmt):
 
@@ -133,12 +153,11 @@ class HaloCatalog(object):
         
         
     def readFastPMLightconeFile(self):
-    
-        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="RFOF")
-
+        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="RFOF", comm=comm)
         # get the part of the catalog for this task
         pos = catalog['Position'][:]
-        r = np.sqrt(pos**2, axis=1)
+
+        r = np.sqrt(np.sum(pos**2, axis=1))
         pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
                          pos[:,1], pos[:,2],
                          nest=self.nbody.domain.nest)
@@ -146,16 +165,16 @@ class HaloCatalog(object):
         idx = (self.nbody.domain.pix == pix) & idx
         catalog = catalog[idx]
         r = r[idx]
-#        del idx
+        del idx
 
         self.catalog = {}
 
         # calculate z from r
-        self.catalog['redshift'] = (1/catalog['Aemit'][idx] - 1).compute()
+        self.catalog['redshift'] = (1/catalog['Aemit'] - 1).compute()
         del r
         self.catalog['id'] = catalog['ID'].compute()
 
-        self.catalog['pos'] = pos
+        self.catalog['pos'] = catalog['Position'].compute()
         self.catalog['vel'] = catalog['Velocity'].compute()
         self.catalog['mass'] = (catalog['Length'] * catalog.attrs['M0'] * 10**10).compute()
         self.catalog['radius'] = (np.sum(catalog['Rdisp'][:,:3], axis=1) / 3).compute()

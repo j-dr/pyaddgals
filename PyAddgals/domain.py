@@ -444,9 +444,12 @@ class Domain(object):
     def getZeff(self):
         
         integrand = lambda z: z * self.cosmo.dVdz(z)
-        zeff, _, _, _, _ = quad(integrand, self.zmin, self.zmax)
-        self.zeff = zeff
+        zeff, _ = quad(integrand, self.zmin, self.zmax)
+
+        integrand = lambda z: self.cosmo.dVdz(z)
+        vol, _ = quad(integrand, self.zmin, self.zmax)        
+        self.zeff = zeff / vol
         
-        return zeff
+        return zeff / vol
         
         

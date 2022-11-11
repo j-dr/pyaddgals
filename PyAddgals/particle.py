@@ -1,11 +1,28 @@
 from __future__ import print_function, division
 from pixlc.pixLC import read_radial_bin, nest2peano
 from collections import namedtuple
+from mpi4py import MPI
 from nbodykit.lab import *
 import healpy as hp
 import numpy as np
 import struct
 
+
+class FakeComm(object):
+
+    def __init__(self):
+        self.rank = 0
+        self.size = 1
+
+    def bcast(self, something):
+
+        return something
+
+    def allreduce(self, something):
+
+        return something
+
+comm = FakeComm()
 
 class ParticleCatalog(object):
 
@@ -43,7 +60,7 @@ class ParticleCatalog(object):
             self.readSnapshot()
             
         elif self.nbody.domain.fmt == 'FastPMLightcone':
-            
+            print('reading parts', flush=True)
             self.readFastPMLightcone()
 
         else:
@@ -422,7 +439,7 @@ class ParticleCatalog(object):
 
         #rmin = self.nbody.domain.rmin
         #rmax = self.nbody.domain.rmax
-        #catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="1")
+        #catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="1", comm=comm)
 
         ## get the part of the catalog for this task
         #pos = catalog['Position'][:]
