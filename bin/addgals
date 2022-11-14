@@ -5,6 +5,7 @@ from mpi4py import MPI
 import numpy as np
 import argparse
 import sys
+#sys.path.insert(0, '/global/cscratch1/sd/jderose/hdsims/pyaddgals/')
 import os
 
 from PyAddgals.config import parseConfig
