@@ -36,6 +36,8 @@ class CLFModel(GalaxyModel):
         self.sat_prof_params = CLFModelConfig['SatProfParams']
         self.clf_type = CLFModelConfig['CLFModelType']
         
+        colorModelConfig['derived_quantities'] = True
+        
         self.luminosityFunction = getattr(luminosityFunction, 'DSGLuminosityFunction')
         self.luminosityFunction = self.luminosityFunction(
             nbody.cosmo, magmin=self.magmin)
@@ -244,7 +246,8 @@ class CLFModel(GalaxyModel):
         z_rsd = self.nbody.galaxyCatalog.catalog['Z']
 
         sigma5, ranksigma5, redfraction, \
-            sed_idx, omag, amag, mag_evol = self.colorModel.assignSEDs(
+            sed_idx, omag, amag, mag_evol, \
+                sfr, met, smass = self.colorModel.assignSEDs(
                 pos, mag, z, z_rsd)
 
         self.nbody.galaxyCatalog.catalog['SIGMA5'] = sigma5
@@ -253,6 +256,9 @@ class CLFModel(GalaxyModel):
         self.nbody.galaxyCatalog.catalog['MAG_R_EVOL'] = mag_evol
         self.nbody.galaxyCatalog.catalog['TMAG'] = omag
         self.nbody.galaxyCatalog.catalog['AMAG'] = amag
+        self.nbody.galaxyCatalog.catalog['MSTAR'] = smass
+        self.nbody.galaxyCatalog.catalog['SFR'] = sfr
+        self.nbody.galaxyCatalog.catalog['METALLICITY'] = met
 
     def paintShapes(self):
         """Assign shapes to galaxies.

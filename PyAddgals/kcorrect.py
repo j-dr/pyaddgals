@@ -2,6 +2,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from numba import jit
 from . import config
 import numpy as np
+import fitsio
 import sys
 import os
 
@@ -276,3 +277,50 @@ class KCorrect(object):
                                                       templates[v, :], axis=-1)
 
         return rmatrix
+
+    def get_derived_quantities(self, cosmo, coeff, z):
+        """
+        Given a path to a kcorrect template file, as well as
+        kcorrect coefficients for a set of galaxies and return derived
+        quantities
+
+        inputs
+        ------
+        template_path -- str
+            path to kcorrect templates
+        coeff -- (N x N_templates) array
+            array of kcorrect coefficients
+        z -- (N,) array
+            redshifts of galaxies
+
+        returns
+        -------
+        sfr -- (N,) array
+            Array of star formation rates for galaxies
+        met -- (N,) array
+            Array of metallicities for galaxies
+        smass -- (N,) array
+            Array of stellar masses for galaxies
+        """
+
+        # read in relevant template info
+        template_path = '{}/data/templates/k_nmf_derived.default.fits'.format(os.path.dirname(config.__file__))
+
+        sfh_tot = fitsio.read(template_path, 12)
+        sfh_met = fitsio.read(template_path, 13)
+        mass_tot = fitsio.read(template_path, 17)
+
+        # get angular diameter distances
+
+        da = cosmo.angularDiameterDistance(z)
+
+        smass = np.dot(mass_tot, coeff.T) * (da * 1e6 / 10) ** 2
+        ssfr = np.dot(coeff, sfh_tot)
+        met = np.dot(coeff, sfh_tot * sfh_met) / ssfr
+        sfr = ssfr * smass[:, np.newaxis]
+
+        # get the values at z_galaxy
+        met = met[:, -1]
+        sfr = sfr[:, -1]
+
+        return sfr, met, smass
