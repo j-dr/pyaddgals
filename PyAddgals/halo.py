@@ -2,8 +2,12 @@ from __future__ import print_function, division
 from halotools.sim_manager import TabularAsciiReader
 from mpi4py import MPI
 from nbodykit.lab import *
+from nbodykit import set_options
 import numpy as np
 import healpy as hp
+
+set_options(dask_chunk_size=5e7)
+
 
 class FakeComm(object):
 

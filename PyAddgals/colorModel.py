@@ -551,7 +551,10 @@ class ColorModel(object):
         omag = -2.5 * np.log10(omag)
         amag = omag - dm.reshape(-1, 1) - kc
 
-        return omag, amag
+        if return_coeff:
+            return omag, amag, coeffs
+        else:
+            return omag, amag
 
     def reassign_colors_cam(
         self,
