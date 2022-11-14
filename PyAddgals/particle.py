@@ -3,10 +3,12 @@ from pixlc.pixLC import read_radial_bin, nest2peano
 from collections import namedtuple
 from mpi4py import MPI
 from nbodykit.lab import *
+from nbodykit import set_options
 import healpy as hp
 import numpy as np
 import struct
 
+set_options(dask_chunk_size=5e7)
 
 class FakeComm(object):
 
