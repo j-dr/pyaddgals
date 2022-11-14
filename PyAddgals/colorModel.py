@@ -729,7 +729,6 @@ class ColorModel(object):
             return sigma5, ranksigma5, redfraction, sed_idx, omag, amag, mag
         else:
             kcorr = KCorrect()
-            coeffs = self.trainingSet[sed_idx]["COEFFS"]
 
             sfr, met, smass = kcorr.get_derived_quantities(
                 self.nbody.cosmo, coeffs, z_a
