@@ -17,7 +17,7 @@ class Domain(object):
     def __init__(self, cosmo, fmt='BCCLightcone', nside=4, nest=True,
                  rmin=None, rmax=None, nrbins=None, lbox=None, nbox=None,
                  pixlist=None, n_snaps=None, snaplist=None,
-                 luminosityFunctionConfig=None, **kwargs):
+                 luminosityFunctionConfig=None, n_octs=2, **kwargs):
 
         self.fmt = fmt
         self.cosmo = cosmo
@@ -25,6 +25,7 @@ class Domain(object):
         if (fmt == 'BCCLightcone') | (fmt == 'FastPMLightcone'):
 
             self.subbox = None
+            self.n_octs = n_octs
 
             if pixlist is not None:
                 self.pixlist = [int(p) for p in pixlist]
@@ -219,7 +220,7 @@ class Domain(object):
             # that overlap with the octants in question.
             hrnside = 2048
             # for now only use two octants
-            for i in range(2):
+            for i in range(self.n_octs):
                 vec = self.octVert(i)
 
                 # only want pixels whose centers fall within the octants
