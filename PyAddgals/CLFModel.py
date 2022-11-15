@@ -171,6 +171,8 @@ class CLFModel(GalaxyModel):
         print('[{}] : Painting galaxy positions'.format(self.nbody.domain.rank))
         sys.stdout.flush()
         start = time()
+        if len(self.nbody.haloCatalog.catalog) == 0:
+            return
 
         self.clf_model_instance.populate_mock(self.nbody.haloCatalog.catalog, 
                                               halo_mass_column_key='halo_mvir',
