@@ -5,24 +5,36 @@ from nbodykit.lab import *
 from nbodykit import set_options
 import numpy as np
 import healpy as hp
+import bigfile 
 
 set_options(dask_chunk_size=5e7)
 
-class FakeComm(object):
+#class FakeComm(object):
+#
+#    def __init__(self):
+#        self.rank = 0
+#        self.size = 1
+#
+#    def bcast(self, something):
+#
+#        return something
+#
+#    def allreduce(self, something):
+#
+#        return something
+    
+def realloc_buffer(pos_buffer, new_len):
+    old_len = pos_buffer.shape[0]
+    old_wid = pos_buffer.shape[1]
+    
 
-    def __init__(self):
-        self.rank = 0
-        self.size = 1
+    temp = np.zeros((new_len, old_wid))
+    temp[:old_len] = pos_buffer[:]
+    
+    return temp    
 
-    def bcast(self, something):
+comm = MPI.COMM_WORLD
 
-        return something
-
-    def allreduce(self, something):
-
-        return something
-
-comm = FakeComm()
 
 class HaloCatalog(object):
 
@@ -43,6 +55,7 @@ class HaloCatalog(object):
         """
 
         self.nbody = nbody
+        self.nchunks_halo = 100
 
     def read(self):
 
@@ -156,33 +169,70 @@ class HaloCatalog(object):
         
         
     def readFastPMLightconeFile(self):
-        catalog = BigFileCatalog(self.nbody.halofile[self.nbody.boxnum], dataset="RFOF", comm=comm)
-        # get the part of the catalog for this task
-        pos = catalog['Position'][:]
+        with bigfile.File(self.nbody.halofile[self.nbody.boxnum]) as catalog:
+            self.mpart = catalog['Header'].attrs['MassTable'][1] * 10**10
+            nhalo = catalog['RFOF/ID'].size
+            size = comm.size
+            chunksize = nhalo // self.nchunks_halo
+            
+            pos_buffer = np.zeros((nhalo//size, 3))
+            vel_buffer = np.zeros((nhalo//size, 3))
+            z_buffer = np.zeros((nhalo//size))
+            id_buffer = np.zeros((nhalo//size))
+            vdisp_buffer = np.zeros((nhalo//size))
+            mhalo_buffer = np.zeros((nhalo//size))
+            r_buffer = np.zeros((nhalo//size))
 
-        r = np.sqrt(np.sum(pos**2, axis=1))
-        pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
-                         pos[:,1], pos[:,2],
-                         nest=self.nbody.domain.nest)
-        idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
-        idx = (self.nbody.domain.pix == pix) & idx
-        catalog = catalog[idx]
-        r = r[idx]
-        del idx
+            count = 0
+            realloc_count = 0
+            realloc_fac = 0.1
+            
+            for i in range(self.nchunks_halo):
+                print(i, flush=True)
+                pos = catalog['Position'][i * chunksize: (i + 1) * chunksize]
+                r = np.sqrt(np.sum(pos**2, axis=1))
+                pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
+                                pos[:,1], pos[:,2],
+                                nest=self.nbody.domain.nest)
+                idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
+                del r
+                idx = (self.nbody.domain.pix == pix) & idx
+                n_this = np.sum(idx)
+                
+                if count+n_this > len(pos_buffer):
+                    new_len = (1 + realloc_fac * (realloc_count + 1)) * nhalo//size
+                    realloc_count += 1
+                    pos_buffer   = realloc_buffer(pos_buffer, new_len)
+                    vel_buffer   = realloc_buffer(vel_buffer, new_len)
+                    z_buffer     = realloc_buffer(z_buffer, new_len)
+                    id_buffer    = realloc_buffer(id_buffer, new_len)
+                    vdisp_buffer = realloc_buffer(vdisp_buffer, new_len)
+                    mhalo_buffer = realloc_buffer(mhalo_buffer, new_len)
+                    r_buffer     = realloc_buffer(r_buffer, new_len)
+                    
 
+                r_buffer[count:count+n_this] = r[idx]
+                pos_buffer[count:count+n_this] = pos[idx]
+                vel_buffer[count:count+n_this] = catalog['Velocity'][i * chunksize: (i + 1) * chunksize][idx]
+                z_buffer[count:count+n_this] = (1/catalog['Aemit'][i * chunksize: (i + 1) * chunksize][idx] - 1)
+                id_buffer[count:count+n_this] = catalog['ID'][i * chunksize: (i + 1) * chunksize][idx]
+                mhalo_buffer[count:count+n_this] = catalog['Length'][i * chunksize: (i + 1) * chunksize][idx] * catalog['Header'].attrs['MassTable'][1] * 10**10
+                r_buffer[count:count+n_this] = np.sum(catalog['Rdisp'][i * chunksize: (i + 1) * chunksize][idx,:3], axis=1) / 3
+                vdisp_buffer[count:count+n_this] = np.sum(catalog['Vdisp'][i * chunksize: (i + 1) * chunksize][idx,:3], axis=1) / 3
+        
+                count += n_this
+        
         self.catalog = {}
 
         # calculate z from r
-        self.catalog['redshift'] = (1/catalog['Aemit'] - 1).compute()
-        del r
-        self.catalog['id'] = catalog['ID'].compute()
+        self.catalog['redshift'] = z_buffer[:count]
+        self.catalog['id'] = id_buffer[:count]
 
-        self.catalog['pos'] = catalog['Position'].compute()
-        self.catalog['vel'] = catalog['Velocity'].compute()
-        self.catalog['mass'] = (catalog['Length'] * catalog.attrs['M0'] * 10**10).compute()
-        self.catalog['radius'] = (np.sum(catalog['Rdisp'][:,:3], axis=1) / 3).compute()
-        self.catalog['vdisp'] = (np.sum(catalog['Vdisp'][:,:3], axis=1) / 3).compute()
-        self.mpart = catalog.attrs['M0'] * 10**10
+        self.catalog['pos'] = pos_buffer[:count]
+        self.catalog['vel'] = vel_buffer[:count]
+        self.catalog['mass'] = mhalo_buffer[:count]
+        self.catalog['radius'] = r_buffer[:count]
+        self.catalog['vdisp'] = vdisp_buffer[:count]
 
     def readHaloRnn(self, filepath):
         """
