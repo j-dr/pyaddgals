@@ -50,6 +50,7 @@ class ParticleCatalog(object):
         """
 
         self.nbody = nbody
+        self.nchunks_part = 10000
 
     def read(self):
 
@@ -437,6 +438,71 @@ class ParticleCatalog(object):
 
         """
         pass
+
+        with bigfile.File(self.nbody.partpath[self.nbody.boxnum]) as catalog:
+            self.mpart = catalog['Header'].attrs['MassTable'][1] * 10**10
+            npart = catalog['1/ID'].size
+            size = comm.size
+            chunksize = nhalo // self.nchunks_part
+            
+            pos_buffer = np.zeros((npart//size, 3))
+            vel_buffer = np.zeros((npart//size, 3))
+            z_buffer = np.zeros((npart//size))
+            id_buffer = np.zeros((npart//size))
+            vdisp_buffer = np.zeros((npart//size))
+            mhalo_buffer = np.zeros((npart//size))
+            r_buffer = np.zeros((npart//size))
+            if rank==1:
+                print('allocated buffers')
+            count = 0
+            realloc_count = 0
+            realloc_fac = 0.1
+            start = time()
+            for i in range(self.nchunks_halo):
+                end = time()
+                if (((1/catalog['1/Aemit'][npart - 1 - (i + 1) * chunksize] - 1) < self.nbody.domain.zmin) | \
+                    ((1/catalog['1/Aemit'][npart - 1 - i * chunksize] - 1) > self.nbody.domain.zmax)):
+                    continue
+                
+                if rank==1:
+                    print('[{} s] working on chunk {}'.format(end - start, i), flush=True)
+                pos = catalog['1/Position'][npart - 1 - (i + 1) * chunksize : npart - 1 - i * chunksize]
+                r = np.sqrt(np.sum(pos**2, axis=1))
+                pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
+                                pos[:,1], pos[:,2],
+                                nest=self.nbody.domain.nest)
+                idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
+                del r
+                idx = (self.nbody.domain.pix == pix) & idx
+                n_this = np.sum(idx)
+                
+                if count+n_this > len(pos_buffer):
+                    new_len = (1 + realloc_fac * (realloc_count + 1)) * npart//size
+                    realloc_count += 1
+                    pos_buffer   = realloc_buffer(pos_buffer, new_len)
+                    vel_buffer   = realloc_buffer(vel_buffer, new_len)
+                    z_buffer     = realloc_buffer(z_buffer, new_len)
+                    id_buffer    = realloc_buffer(id_buffer, new_len)
+                    vdisp_buffer = realloc_buffer(vdisp_buffer, new_len)
+                    mhalo_buffer = realloc_buffer(mhalo_buffer, new_len)
+                    r_buffer     = realloc_buffer(r_buffer, new_len)
+                    
+
+                pos_buffer[count:count+n_this] = pos[idx]
+                vel_buffer[count:count+n_this] = catalog['1/Velocity'][npart - 1 - (i + 1) * chunksize: npart - 1 - i * chunksize][idx]
+                z_buffer[count:count+n_this] = (1/catalog['1/Aemit'][npart - 1 - (i + 1) * chunksize: npart - 1 - i * chunksize][idx] - 1)
+                id_buffer[count:count+n_this] = catalog['1/ID'][npart - 1 - (i + 1) * chunksize: npart - 1 - i * chunksize][idx]
+        
+                count += n_this
+        
+        self.catalog = {}
+
+        # calculate z from r
+        self.catalog['redshift'] = z_buffer[:count]
+        self.catalog['id'] = id_buffer[:count]
+        self.catalog['pos'] = pos_buffer[:count]
+        self.catalog['vel'] = vel_buffer[:count]
+    
         #partpath = self.nbody.partpath[self.nbody.boxnum]
 
         #rmin = self.nbody.domain.rmin

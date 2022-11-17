@@ -3,6 +3,7 @@ from halotools.sim_manager import TabularAsciiReader
 from mpi4py import MPI
 from nbodykit.lab import *
 from nbodykit import set_options
+from time import time
 import numpy as np
 import healpy as hp
 import bigfile 
@@ -34,7 +35,7 @@ def realloc_buffer(pos_buffer, new_len):
     return temp    
 
 comm = MPI.COMM_WORLD
-
+rank = comm.rank
 
 class HaloCatalog(object):
 
@@ -182,14 +183,21 @@ class HaloCatalog(object):
             vdisp_buffer = np.zeros((nhalo//size))
             mhalo_buffer = np.zeros((nhalo//size))
             r_buffer = np.zeros((nhalo//size))
-
+            if rank==1:
+                print('allocated buffers')
             count = 0
             realloc_count = 0
             realloc_fac = 0.1
-            
+            start = time()
             for i in range(self.nchunks_halo):
-                print(i, flush=True)
-                pos = catalog['Position'][i * chunksize: (i + 1) * chunksize]
+                end = time()
+                if (((1/catalog['RFOF/Aemit'][nhalo - 1 - (i + 1) * chunksize] - 1) < self.nbody.domain.zmin) | \
+                    ((1/catalog['RFOF/Aemit'][nhalo - 1 - i * chunksize] - 1) > self.nbody.domain.zmax)):
+                    continue
+                
+                if rank==1:
+                    print('[{} s] working on chunk {}'.format(end - start, i), flush=True)
+                pos = catalog['RFOF/Position'][nhalo - 1 - (i + 1) * chunksize : nhalo - 1 - i * chunksize]
                 r = np.sqrt(np.sum(pos**2, axis=1))
                 pix = hp.vec2pix(self.nbody.domain.nside, pos[:,0],
                                 pos[:,1], pos[:,2],
@@ -211,14 +219,13 @@ class HaloCatalog(object):
                     r_buffer     = realloc_buffer(r_buffer, new_len)
                     
 
-                r_buffer[count:count+n_this] = r[idx]
                 pos_buffer[count:count+n_this] = pos[idx]
-                vel_buffer[count:count+n_this] = catalog['Velocity'][i * chunksize: (i + 1) * chunksize][idx]
-                z_buffer[count:count+n_this] = (1/catalog['Aemit'][i * chunksize: (i + 1) * chunksize][idx] - 1)
-                id_buffer[count:count+n_this] = catalog['ID'][i * chunksize: (i + 1) * chunksize][idx]
-                mhalo_buffer[count:count+n_this] = catalog['Length'][i * chunksize: (i + 1) * chunksize][idx] * catalog['Header'].attrs['MassTable'][1] * 10**10
-                r_buffer[count:count+n_this] = np.sum(catalog['Rdisp'][i * chunksize: (i + 1) * chunksize][idx,:3], axis=1) / 3
-                vdisp_buffer[count:count+n_this] = np.sum(catalog['Vdisp'][i * chunksize: (i + 1) * chunksize][idx,:3], axis=1) / 3
+                vel_buffer[count:count+n_this] = catalog['RFOF/Velocity'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx]
+                z_buffer[count:count+n_this] = (1/catalog['RFOF/Aemit'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx] - 1)
+                id_buffer[count:count+n_this] = catalog['RFOF/ID'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx]
+                mhalo_buffer[count:count+n_this] = catalog['RFOF/Length'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx] * catalog['Header'].attrs['MassTable'][1] * 10**10
+                r_buffer[count:count+n_this] = np.sum(catalog['RFOF/Rdisp'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx,:3], axis=1) / 3
+                vdisp_buffer[count:count+n_this] = np.sum(catalog['RFOF/Vdisp'][nhalo - 1 - (i + 1) * chunksize: nhalo - 1 - i * chunksize][idx,:3], axis=1) / 3
         
                 count += n_this
         
