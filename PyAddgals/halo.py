@@ -26,13 +26,16 @@ set_options(dask_chunk_size=5e7)
     
 def realloc_buffer(pos_buffer, new_len):
     old_len = pos_buffer.shape[0]
-    old_wid = pos_buffer.shape[1]
-    
-
-    temp = np.zeros((new_len, old_wid))
+    try:
+        old_wid = pos_buffer.shape[1]
+        temp = np.zeros((new_len, old_wid))
+    except Exception as e:
+        temp = np.zeros(new_len)
+        
     temp[:old_len] = pos_buffer[:]
     
-    return temp    
+    return temp
+
 
 comm = MPI.COMM_WORLD
 rank = comm.rank
@@ -170,19 +173,20 @@ class HaloCatalog(object):
         
         
     def readFastPMLightconeFile(self):
+        ndomain = 12*self.nbody.domain.nside**2 * len(self.nbody.domain.rbins[self.nbody.boxnum])
         with bigfile.File(self.nbody.halofile[self.nbody.boxnum]) as catalog:
             self.mpart = catalog['Header'].attrs['MassTable'][1] * 10**10
             nhalo = catalog['RFOF/ID'].size
             size = comm.size
             chunksize = nhalo // self.nchunks_halo
             
-            pos_buffer = np.zeros((nhalo//size, 3))
-            vel_buffer = np.zeros((nhalo//size, 3))
-            z_buffer = np.zeros((nhalo//size))
-            id_buffer = np.zeros((nhalo//size))
-            vdisp_buffer = np.zeros((nhalo//size))
-            mhalo_buffer = np.zeros((nhalo//size))
-            r_buffer = np.zeros((nhalo//size))
+            pos_buffer = np.zeros((nhalo//ndomain, 3))
+            vel_buffer = np.zeros((nhalo//ndomain, 3))
+            z_buffer = np.zeros((nhalo//ndomain))
+            id_buffer = np.zeros((nhalo//ndomain))
+            vdisp_buffer = np.zeros((nhalo//ndomain))
+            mhalo_buffer = np.zeros((nhalo//ndomain))
+            r_buffer = np.zeros((nhalo//ndomain))
             if rank==1:
                 print('allocated buffers')
             count = 0
@@ -208,7 +212,7 @@ class HaloCatalog(object):
                 n_this = np.sum(idx)
                 
                 if count+n_this > len(pos_buffer):
-                    new_len = (1 + realloc_fac * (realloc_count + 1)) * nhalo//size
+                    new_len = int((1 + realloc_fac * (realloc_count + 1)) * nhalo//size)
                     realloc_count += 1
                     pos_buffer   = realloc_buffer(pos_buffer, new_len)
                     vel_buffer   = realloc_buffer(vel_buffer, new_len)

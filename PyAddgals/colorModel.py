@@ -719,7 +719,7 @@ class ColorModel(object):
         end = time()
 
         print(
-            "[{}] Finished compiuting magnitudes from SEDs. Took {}s".format(
+            "[{}] Finished computing magnitudes from SEDs. Took {}s".format(
                 self.nbody.domain.rank, end - start
             )
         )

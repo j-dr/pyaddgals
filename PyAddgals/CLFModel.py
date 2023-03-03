@@ -239,7 +239,7 @@ class CLFModel(GalaxyModel):
 
         print('[{}] : Painting galaxy SEDs'.format(self.nbody.domain.rank))
         sys.stdout.flush()
-        if len(self.nbody.galaxtCatalog.catalog['PX'])==0:
+        if len(self.nbody.galaxyCatalog.catalog['PX'])==0:
             print('[{}] : No galaxies to put SEDs on (zmin, zmax): {}, {}!'.format(self.nbody.domain.rank. self.nbody.domain.zmin, self.nbody.domain.zmax))
             return
 

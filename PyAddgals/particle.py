@@ -5,10 +5,22 @@ from mpi4py import MPI
 from nbodykit.lab import *
 from nbodykit import set_options
 import healpy as hp
+import bigfile
 import numpy as np
 import struct
 
-set_options(dask_chunk_size=5e7)
+def realloc_buffer(pos_buffer, new_len):
+    old_len = pos_buffer.shape[0]
+    try:
+        old_wid = pos_buffer.shape[1]
+        temp = np.zeros((new_len, old_wid))
+    except Exception as e:
+        temp = np.zeros(new_len)
+        
+    temp[:old_len] = pos_buffer[:]
+    
+    return temp
+
 
 class FakeComm(object):
 
@@ -51,6 +63,7 @@ class ParticleCatalog(object):
 
         self.nbody = nbody
         self.nchunks_part = 10000
+        self.query_fac = 16
 
     def read(self):
 
@@ -437,21 +450,30 @@ class ParticleCatalog(object):
         None
 
         """
-        pass
-
+        return
+        halo_rmax = np.max(self.nbody.haloCatalog.catalog['radius'])
+        zmin = np.min([0.1,self.nbody.domain.zmin])
+        da_min = self.nbody.cosmo.angularDiameterDistance(zmin)
+        max_rad = np.arctan(halo_rmax/da_min)
+        query_rad = np.sqrt(2)*hp.nside2resol(self.nbody.domain.nside) + max_rad
+        vec = hp.pix2vec(self.nbody.domain.nside, self.nbody.domain.pix, nest=self.nbody.domain.nest)
+        qpix = hp.query_disc(self.nbody.domain.nside * self.query_fac, vec, query_rad,
+                             inclusive=True, nest=self.nbody.domain.nest)
+        
+        ndomain = 12*self.nbody.domain.nside**2 * len(self.nbody.domain.rbins[self.nbody.boxnum])        
         with bigfile.File(self.nbody.partpath[self.nbody.boxnum]) as catalog:
             self.mpart = catalog['Header'].attrs['MassTable'][1] * 10**10
             npart = catalog['1/ID'].size
             size = comm.size
-            chunksize = nhalo // self.nchunks_part
+            chunksize = npart // self.nchunks_part
             
-            pos_buffer = np.zeros((npart//size, 3))
-            vel_buffer = np.zeros((npart//size, 3))
-            z_buffer = np.zeros((npart//size))
-            id_buffer = np.zeros((npart//size))
-            vdisp_buffer = np.zeros((npart//size))
-            mhalo_buffer = np.zeros((npart//size))
-            r_buffer = np.zeros((npart//size))
+            pos_buffer = np.zeros((npart//ndomain, 3))
+            vel_buffer = np.zeros((npart//ndomain, 3))
+            z_buffer = np.zeros((npart//ndomain))
+            id_buffer = np.zeros((npart//ndomain))
+            vdisp_buffer = np.zeros((npart//ndomain))
+            mhalo_buffer = np.zeros((npart//ndomain))
+            r_buffer = np.zeros((npart//ndomain))
             if rank==1:
                 print('allocated buffers')
             count = 0
@@ -473,7 +495,7 @@ class ParticleCatalog(object):
                                 nest=self.nbody.domain.nest)
                 idx = (self.nbody.domain.rmin < r) & (r <= self.nbody.domain.rmax)
                 del r
-                idx = (self.nbody.domain.pix == pix) & idx
+                idx = np.in1d(pix, qpix) & idx
                 n_this = np.sum(idx)
                 
                 if count+n_this > len(pos_buffer):
