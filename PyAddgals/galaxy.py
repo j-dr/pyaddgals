@@ -64,6 +64,8 @@ class GalaxyCatalog(object):
         """
 
         domain = self.nbody.domain
+        if len(self.catalog) == 0:
+            return
 
         if 'ID' not in list(self.catalog.keys()):
             self.catalog['ID'] = np.zeros(len(self.catalog['PX']))
