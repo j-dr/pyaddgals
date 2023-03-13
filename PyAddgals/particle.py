@@ -8,7 +8,7 @@ import healpy as hp
 import numpy as np
 import struct
 
-set_options(dask_chunk_size=5e7)
+set_options(dask_chunk_size=1e8)
 
 class FakeComm(object):
 

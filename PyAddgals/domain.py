@@ -396,7 +396,7 @@ class Domain(object):
 
     def getArea(self):
 
-        if self.fmt is 'Snapshot':
+        if self.fmt == 'Snapshot':
             raise(ValueError('No area associated with snapshot catalogs'))
 
         if hasattr(self, 'area'):

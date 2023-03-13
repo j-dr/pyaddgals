@@ -6,7 +6,7 @@ from nbodykit import set_options
 import numpy as np
 import healpy as hp
 
-set_options(dask_chunk_size=5e7)
+set_options(dask_chunk_size=1e8)
 
 class FakeComm(object):
 
