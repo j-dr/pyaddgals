@@ -6,7 +6,7 @@ import numpy as np
 import sys
 
 from .galaxyModel import GalaxyModel
-from .CLF import CLFCens, CLFSats
+from .CLF import CLFCensZdep, CLFSatsZdep
 from .colorModel import ColorModel
 from . import luminosityFunction
 from . import shape
@@ -56,8 +56,8 @@ class CLFModel(GalaxyModel):
             
         if self.clf_type == 'Cacciato09':
             self.clf_model_instance = self.setup_model(Cacciato09Cens, Cacciato09Sats)
-        elif self.clf_type == 'DoubleSchechterVarScatCLF':
-            self.clf_model_instance = self.setup_model(CLFCens, CLFSats)
+        elif self.clf_type == 'CLFZdep':
+            self.clf_model_instance = self.setup_model(CLFCensZdep, CLFSatsZdep)
             
             
     def set_model_params(
