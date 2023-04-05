@@ -248,11 +248,17 @@ class CLFCensZdep(CLFCens):
         self.list_of_haloprops_needed = ['halo_redshift']
     
     def get_published_parameters(self):
-        param_dict = super().get_published_parameters()
-        param_dict['M_0_sigma'] = 13
-        param_dict['alpha_sigma'] = 0.1
-        param_dict['gamma_z'] = 0.0
-        param_dict['sigma_z'] = 0.0
+        param_dict = {
+                     'log_L_0': 9.725622685592828,
+                     'log_M_1': 10.265982545930683,
+                     'gamma_1': -4.784610837851426,
+                     'gamma_2': 0.18749287036525122,
+                     'gamma_z': -1.7631908701199062,
+                     'sigma': 0.22030986612787568,
+                     'sigma_z': 0.17320479653369245,
+                     'M_0_sigma': 13000000000000.0,
+                     'alpha_sigma': -0.025194506659825384
+                     }            
 
         return param_dict
     
@@ -291,9 +297,6 @@ class CLFCensZdep(CLFCens):
             )
             raise ValueError(msg)
             
-#        mass = kwargs["prim_haloprop"]
-#        z = kwargs["z"]
-
         gamma_1 = self.param_dict["gamma_1"]
         gamma_2 = self.param_dict["gamma_2"]
         gamma_z = self.param_dict["gamma_z"]
@@ -377,16 +380,31 @@ class CLFSatsZdep(CLFSats):
         self.list_of_haloprops_needed = ['halo_redshift']
 
     def get_default_parameters(self):
-        param_dict = super().get_default_parameters()
-        param_dict['M_0_sigma'] = 13
-        param_dict['alpha_sigma'] = 0.1
-        param_dict['alpha_21'] = 0.5
-        param_dict['alpha_22'] = 0.5
-        param_dict['phi_2'] = 1
-        param_dict["log_M_22"] = 14
-        param_dict["b_z"] = 0.0
-        param_dict["a_z"] = 0.0
-        param_dict["delta_z"] = 0.0
+        param_dict = {
+                        'a_1': 0.3068935357867946,
+                        'a_2': 2.442328102239726,
+                        'a_z': 0.23865742255581368,
+                        'log_M_2': 15.692957152591593,
+                        'b_0': -0.41666245257814455,
+                        'b_1': 0.725801223040405,
+                        'b_2': 0.02401944949058433,
+                        'b_z': 0.8796273353847173,
+                        'delta_1': -0.8813344530242989,
+                        'delta_2': 0.36947317730098717,
+                        'delta_z': -0.53331230103671,
+                        'log_L_0': 9.725622685592828,
+                        'log_M_1': 10.265982545930683,
+                        'gamma_1': -4.784610837851426,
+                        'gamma_2': 0.18749287036525122,
+                        'gamma_z': -1.7631908701199062,
+                        'sigma_z': 0.17320479653369245,
+                        'M_0_sigma': 13000000000000.0,
+                        'alpha_sigma': -0.025194506659825384,
+                        'alpha_12': 0.315930364323687,
+                        'alpha_22': 1.9325448310082627,
+                        'log_M_22': 15.690309063815548,
+                        'phi_2': -0.8062682843666532          
+                    }
 
         return param_dict
 
