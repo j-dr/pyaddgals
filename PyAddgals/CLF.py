@@ -307,8 +307,8 @@ class CLFCensZdep(CLFCens):
         return (prim_galprop_c * (r / (1 + r)) ** gamma_1 * (1 + r) ** gamma_2 * (1 + z) ** gamma_z)
 
 
-    def mean_occupation(self, prim_haloprop=1e12, prim_galprop_min=1e11,
-                        prim_galprop_max=1e12, z=0.0,
+    def mean_occupation(self, prim_haloprop=None, prim_galprop_min=None,
+                        prim_galprop_max=1e14, z=None,
                         **kwargs):
         
         if prim_galprop_min is not None:
@@ -329,9 +329,8 @@ class CLFCensZdep(CLFCens):
         if "table" in list(kwargs.keys()):
             mass = kwargs["table"][self.prim_haloprop_key]
             z = kwargs["table"]["halo_redshift"]
-        elif "prim_haloprop" in list(kwargs.keys()):
-            mass = kwargs["prim_haloprop"]
-            z = kwargs["z"]
+        elif (prim_haloprop is not None) & (z is not None):
+            mass = prim_haloprop
         else:
             msg = (
                 "\nYou must pass either a ``table`` or ``prim_haloprop`` "
@@ -481,7 +480,7 @@ class CLFSatsZdep(CLFSats):
         return phi
     
     def mean_occupation(
-        self, prim_haloprop=1e12, prim_galprop_min=1e11, prim_galprop_max=1e12, z=0.0, 
+        self, prim_haloprop=None, prim_galprop_min=None, prim_galprop_max=1e14, z=None, 
         **kwargs
     ):
         if prim_galprop_min is not None:
@@ -502,9 +501,9 @@ class CLFSatsZdep(CLFSats):
         if "table" in list(kwargs.keys()):
             mass = kwargs["table"][self.prim_haloprop_key]
             z = kwargs["table"]["halo_redshift"]
-        elif "prim_haloprop" in list(kwargs.keys()):
-            mass = kwargs["prim_haloprop"]
-            z = kwargs["z"]
+        elif (prim_haloprop is not None) & (z is not None):
+            mass = prim_haloprop
+            z = z
         else:
             msg = (
                 "\nYou must pass either a ``table`` or ``prim_haloprop`` "
